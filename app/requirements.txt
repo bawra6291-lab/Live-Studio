@@ -1,0 +1,6 @@
+requests>=2.32,<3
+websocket-client>=1.8,<2
+google-auth>=2.35,<3
+google-auth-oauthlib>=1.2,<2
+keyring>=25,<26
+pywin32>=306; sys_platform == 'win32'

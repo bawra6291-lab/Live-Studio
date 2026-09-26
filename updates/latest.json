@@ -1,0 +1,9 @@
+{
+  "app_id": "iskcon-live-desk",
+  "version": "0.5.1",
+  "update_format": 1,
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/main/updates/0.5.1/ISKCON-Live-Desk.zip",
+  "size": 88190,
+  "sha256": "402499391fefe291f6b4a73b126a2b8fccbe3c59d7ddfe4c42c70d1424a538a3",
+  "notes": "Online updates enabled. Your saved YouTube, Facebook, OBS and camera settings are preserved. Run Check connections after updating, then enable automation."
+}

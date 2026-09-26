@@ -1,0 +1,150 @@
+ISKCON KOLKATA — LIVE DESK v0.5.1
+Visible OBS + optional administrator launch + custom schedule
+
+APP KE ANDAR UPDATE (NEW v0.5)
+Is version ko ek baar lagana padega. Uske baad App updates button se update hoga.
+Dashboard mein bhi Updates tab hai; Open update controls PC par panel kholta hai.
+Online update address ek baar set hone ke baad Check for updates > Download &
+install dabao. App khud download karega, backup rakhega aur restart hoga.
+Permanent release address GitHub Live-Studio repository ka hai. v0.5.1 mein
+address pehle se set hai. v0.5.0 mein UPDATE-GUIDE.txt wala address ek baar paste
+karke Check for updates dabao. UPDATE-GUIDE.txt mein details hain. Local ZIP import fallback bhi hai.
+Install ke pehle automation Pause aur active live/recording end karna zaroori hai.
+Update ke baad Check connections > Enable automation. Same folder/startup path
+rehega; YT/FB setup dobara nahi hoga. Phone ko dobara pair karna pad sakta hai.
+
+UPDATE
+1. Idle time mein purane app mein Pause dabao. Operation khatam hone do, phir
+   app close karo. Chal raha live ho to pehle manually handle karo.
+2. ZIP ko poora Extract All karo. Permanent folder mein rakho.
+3. OPEN-LIVE-DESK.cmd kholo. Agar nahi khulta, extracted folder ki address bar
+   mein cmd likhkar Enter, phir: py launcher.py
+4. Missing module aaye to: py -m pip install -r requirements.txt
+   Uske baad: py launcher.py
+5. Launcher mein Start with Windows dobara dabao: startup shortcut new folder
+   ko point karega. App.py bhi ab new dashboard kholta hai.
+Saved YouTube/Facebook/OBS/camera credentials reuse hote hain; inhe delete mat karo.
+
+OBS FULL WINDOW + ADMINISTRATOR (NEW v0.4)
+1. Pehle idle time mein update karo. Active live ko beech mein close/restart mat karo.
+2. New launcher mein Set up administrator OBS dabao (ya SETUP-OBS-ADMIN.cmd).
+3. Windows UAC mein Yes karo. SAME Windows account use karo jo Live Desk chalata
+   hai. Is account ka Windows administrator hona zaroori hai. Dusre admin ke
+   credentials mat do: uska OBS profile aur saved settings alag ho sakta hai.
+4. READY aaye to Enter dabao. Setup OBS ya koi live start/stop nahi karta.
+5. OBS pehle se open hai to uska privilege same rahega. Jab koi live/recording
+   nahi chal rahi ho tab OBS normally close karo. Phir Open / Show OBS dabao.
+6. OBS ki main window restore/maximize hogi. Windows focus na de to taskbar mein
+   OBS icon click karo. Is button se streaming start/stop nahi hoti.
+7. Check connections chalao. Phir chhota supervised start/end test karo.
+8. Start with Windows dobara dabao taaki shortcut is naye folder par point kare.
+
+OBS ke Settings > General > System Tray mein 'Minimize to system tray when
+started' off rakho. App ab --minimize-to-tray argument nahi bhejta.
+Administrator setup standard Program Files OBS install ke liye hai. Connections
+mein wahi obs64.exe path hona chahiye. Task sirf current logged-in desktop par
+OBS kholta hai; login screen par UI nahi dikh sakta. PC mein Windows login rehna
+zaroori hai. Task mein stream start/stop arguments ya time trigger nahi hain.
+Setup ke baad unattended launch par baar-baar UAC prompt ki zaroorat nahi honi
+chahiye. Windows policy Task Scheduler ko block kare to error review karo.
+REMOVE-OBS-ADMIN.cmd isi OBS launch task ko remove karta hai; credentials,
+schedule aur running OBS ko nahi badalta. Windows UAC permanently disable mat karo.
+Manual ending: OBS mein YouTube main output aur Multiple RTMP 'FB Live' output
+ka status dekho aur zaroorat ke mutabik Stop karo; platforms par ended verify karo.
+
+APNI TIMING SET KARO (PC YA PAIRED PHONE)
+1. Dashboard mein Pause automation dabao aur operation finish hone do.
+2. Schedule tab kholo. Har program ke liye:
+   - Enabled: is program ko daily chalana hai ya nahi.
+   - Live start: apna start time, 24-hour IST.
+   - Live end: optional. Blank chhodo to manual ending.
+   - End on next day: overnight run ke liye tick karo.
+3. Camera steps mein har step ka action choose karo:
+   - Start patrol, number 1–8.
+   - Stop patrol, number 1–8.
+   - Go to preset, ordinary position number 1–32.
+     Preset 94 jaise special camera service/reboot numbers supported nahi hain.
+4. When choose karo:
+   - After BOTH go live: dono live confirm hone ke baad delay in seconds.
+   - At a clock time: exact time; next-day checkbox agar zaroori ho.
+   - Only while BOTH live: default checked. Before-live position ya independent
+     clock action ke liye hi uncheck karo. Unchecked action live ke bina bhi
+     camera chalayega, agar automation enabled aur PC/app chalu hai.
+5. + Add camera step se ek program mein maximum 8 steps rakh sakte ho.
+   Camera actions ke alag times do. Same end time par sirf patrol stop allowed hai.
+6. Late start allowance: 1–15 minutes. Default 2 min.
+7. Save my schedule dabao, exact times review karo aur Confirm.
+8. Overview mein Enable automation dabao. Save karna akela automation enable
+   nahi karta. Pehla chhota test run apni supervision mein karo.
+
+EXAMPLE (APNE HISAB SE BADALNA)
+Mangal Arati: start 04:30, end 05:00.
+Camera step 1: Go to preset 2 at 04:25; Only while BOTH live unchecked.
+Camera step 2: Start patrol 8, 120 seconds after BOTH go live.
+Camera step 3: Stop patrol 8 at 05:00; Only while BOTH live checked.
+Default update aapke liye end time set nahi karta; aapko save karna hai.
+
+TIMING RULES
+- Preparation starts 5 minutes before start. Next start se kam se kam 5 minutes
+  pehle previous auto-end rakho, taaki OBS idle mil sake.
+- End time blank ho to next program se pehle previous live manually end karo.
+- Camera/end action 2 min se late ho to skip hoga, unexpectedly baad mein execute
+  nahi hoga. Start ka late allowance aap choose kar sakte ho.
+- Live already started/prepared ho to us run ka original saved plan retain hota
+  hai. Started run ke baad schedule edit future run ko affect karta hai.
+- Prepared but not-started / ambiguous partial run ki editing block ho sakti hai;
+  pehle OBS aur dono platforms inspect karo. Existing event ko blindly duplicate
+  ya reschedule nahi kiya jata.
+- Automatic end exact recorded YouTube/Facebook IDs aur associated OBS outputs
+  par hi chalega. Manually started live ko app automatically end nahi karega.
+- OBS output/key/profile change ya manual restart detect ho to auto-end refuse
+  karke review maangega. End failure ke baad manual end karna zaroori ho sakta hai.
+- End time camera patrol ko khud stop nahi karta. Patrol stop ke liye camera step
+  add karo. OBS recording/replay buffer ko automatic stop nahi kiya jata.
+- Pause future STARTS, ENDS aur CAMERA actions sabko rokta hai. Current operation
+  finish ho sakta hai. Pause ke baad active live/camera aap handle karoge.
+- 08:00 ka extra program automatically add nahi hota. Existing 4 programs ke
+  start/end times customize kar sakte ho; YouTube matching program identity same hai.
+
+4:30 WALA START KYUN MISS HUA — FILE BHEJO
+1. Windows PC dashboard mein Activity tab kholo.
+2. Export diagnostics dabao.
+3. Downloads mein ISKCON-diagnostics.json milega. Chat mein ye file bhejo.
+Isme recent activity, run stages/errors, saved schedule, enabled state, app start
+and worker heartbeat timestamps hain. Passwords/tokens/stream keys nahi bheje jate.
+Purane app ke logs available rahe to report mein last 200 lines include honge.
+Old versions heartbeat save nahi karte the; missing heartbeat PC off hone ka proof
+nahi hai. Exact failure logs ke bina confirm nahi kiya ja sakta.
+
+RELIABILITY CHANGES
+- Startup connection check fail ho to enabled intent retained rehta hai aur
+  read-only checks 30 seconds baad retry hote hain. Public create/start/stop writes
+  fail hone par blindly repeat nahi hote.
+- Activity entries ab date + IST time ke saath save hoti hain.
+- Missed start, prepare-too-late, interrupted start/end aur camera errors record
+  hote hain. Dashboard failed run ka reason dikhaata hai.
+- Worker heartbeat har ~15 seconds save hota hai; network operation ke dauran
+  heartbeat update delay ho sakta hai.
+Ye improvements exact 4:30 failure ke proven fix ka claim nahi hain. Report bhejo.
+
+PHONE CONNECT
+Same trusted Wi-Fi/router par PC aur phone rakho. Launcher mein correct local IP
+choose karke Enable mobile access dabao. Displayed phone address Chrome/Safari
+mein kholo, phir Show code se pairing code enter karo. Page bookmark kar sakte ho.
+Agar Windows Firewall prompt aaye, trusted Private network ke liye Python allow
+karo. Guest Wi-Fi device isolation ho to phone access block ho sakta hai.
+HTTP local LAN only; pairing/session traffic encrypted nahi hai. Public Wi-Fi,
+router port forwarding, internet/mobile-data access ke liye yeh version nahi hai.
+Credentials edit, Google reconnect aur diagnostics export Windows PC par hote hain.
+Schedule editing aur automation enable/pause paired phone se supported hai.
+Har app restart par new pairing code; session 12 hours. Isse YT/FB setup reset
+nahi hota. Token expire/revoke ho to reconnect phir bhi zaroori ho sakta hai.
+
+PC CHALU RAKHO
+Phone controller hai; live Windows PC par chalta hai. Launcher running rakho,
+minimize kar sakte ho. Browser close karna fine hai. Launcher close karne se future
+starts, ends aur camera steps rukenge. Windows unlock/power-on is app ka kaam nahi.
+Start with Windows sirf Windows login ke baad app kholta hai.
+Default settings: %LOCALAPPDATA%\ISKCON-Live-Start
+Secrets: Windows Credential Manager, same ISKCON-Live-Start service.
+Python-based Windows app; standalone EXE/installer ya Android APK nahi.

@@ -1,0 +1,135 @@
+HISTORICAL ACCOUNT SETUP GUIDE (v0.1)
+For v0.3 custom timings/end/camera controls, read START-HERE-HINDI.txt.
+The fixed start-only descriptions below apply to the old version, not v0.3.
+
+ISKCON KOLKATA - LIVE START (integration test version 0.1)
+
+STATUS
+Code aur scheduler tests ready hain. Aapke Windows PC, OBS, YouTube,
+Facebook aur camera ke saath end-to-end test abhi NAHI hua hai.
+Sirf Google/Chrome/Facebook mein login hona is app ko API access nahi deta.
+Neeche ke account connections ke bina full automation nahi chalega.
+
+SCOPE
+04:30 Mangal Arati Darshan
+07:30 Darshan Arati & Guru Puja
+12:00 Rajbhog Arati
+18:00 Sandhya Arati
+Sab India time. 08:00 session aap manually karenge.
+YouTube previous matching live ka title/description/thumbnail reuse hota hai.
+Recent 200 completed broadcasts mein matching program dhundhta hai; na mile toh
+aapka diya reference use hota hai. Title mein date replace hoti hai. Thumbnail par likhi date/day edit NAHI hoti.
+Facebook mein full updated title/date, koi thumbnail nahi.
+Live dono platforms par confirm hone ke 120 seconds baad Patrol 8.
+App kisi live, OBS output ya patrol ko automatic stop nahi karta.
+Har live ke baad aap YouTube, Facebook aur OBS/FB Live output manually end karein.
+Pichhli live active hogi toh agla session skip/review hoga; force stop nahi hoga.
+
+INSTALL
+1. Python 3.12 ya newer Windows installer use karein:
+   https://www.python.org/downloads/windows/
+   Installation mein Python launcher aur tkinter installed hone chahiye.
+2. ZIP ko permanent folder mein Extract All karein, jaise Documents\ISKCON-Live-Start.
+3. Isi folder mein Terminal kholkar:
+   py -m pip install -r requirements.txt
+   py app.py
+4. START-HERE.cmd/PowerShell launcher required nahi hai.
+   Windows policy block aaye toh security off/unblock karne ke bajay screenshot bhejein.
+
+OBS
+Tools > WebSocket Server Settings > Enable server, port 4455, authentication ON.
+Password sirf app ke local field mein bharein.
+Profile: Untitled (video ke hisaab se; actual naam check karein).
+Collection: Temple Live. Program scene default Main; on-air scene verify karein.
+Multiple RTMP target: FB Live. FB Backup sync-start OFF hona chahiye.
+OBS normal user mode mein chale. Portable OBS path/config detection supported nahi.
+App FB Live target ki server/key aur sync-start update karta hai, kyunki har
+Facebook draft ka ingest URL alag ho sakta hai. Changes se pehle same OBS profile
+folder mein timestamped obs-multi-rtmp.before-iskcon-*.json backup rakhta hai.
+Inactive temporary profile switch se plugin settings reload hoti hain.
+Recording/replay/any output active ho toh profile change nahi karta.
+Main YouTube stream key/settings app nahi badalta; reusable key account se match
+honi chahiye. OBS confirmation dialogs/streaming delay unattended start rok sakte hain.
+Check aur supervised test mein inko verify karein.
+
+YOUTUBE - ONE-TIME API CONNECTION
+Google Cloud project mein YouTube Data API v3 enable karein.
+OAuth consent screen configure karke apne ISKCON Google account ko test user
+banayein (agar project Testing mein hai). Desktop app OAuth client banayein,
+JSON download karein aur app mein Browse se select karein.
+https://console.cloud.google.com/apis/library/youtube.googleapis.com
+https://developers.google.com/youtube/v3/guides/authentication
+Connect YouTube dabakar browser mein sahi ISKCON Kolkata channel authorize karein.
+App chaar reference videos ke owner se selected channel match karta hai.
+Refresh-token expiry, quota aur API project restrictions automation rok sakte hain.
+YouTube API ke unverified/audit-restricted projects se created broadcasts private
+reh sakte hain. App private event ko public live success nahi bolega; check fail
+hoga aur event manual review ke liye rahega. Public API access/audit ki zarurat pad
+sakti hai. Yeh requirement Autologon ya Chrome login se solve nahi hoti.
+API-supported common settings copy hote hain; Studio ke sab advanced settings
+(jaise monetization/moderation) copy nahi hote. First schedule manually review karein.
+Existing matching public schedule ho toh reuse karega. Auto-start/auto-stop aur
+monitor stream off hone chahiye; warna existing event ko silently change nahi karega.
+
+FACEBOOK - ONE-TIME PAGE API CONNECTION
+Target Page ID: 113962385367196
+Facebook Live Video API enabled app aur is Page ko publish/manage karne wala
+Page access token chahiye. Typically pages_manage_posts/pages_read_engagement
+and applicable Page access/app permissions required hain; Meta app eligibility,
+app mode/review and Page Live access apply karte hain.
+https://developers.facebook.com/docs/live-video-api/
+https://developers.facebook.com/docs/pages/access-tokens/
+Token ko app ke Facebook Page access token field mein LOCALLY paste karein.
+Chat mein token/password/stream key mat bhejein.
+Token /me ID target Page se match na ho toh app rokega.
+Agar target personal profile ho, ya required Page/API access available nahi ho,
+ye integration work nahi karega; browser-based alternative alag implement/test
+karna padega. App isko silently bypass nahi karta.
+Graph API version default v23.0; apne approved app ki supported version set karein.
+First connection test read-only hai; publish permission ka final test supervised
+scheduled start mein hi hoga. API denial aaye toh app ready nahi maana jayega.
+
+CAMERA
+Base: http://192.168.29.10   Username: admin (actual local user use karein).
+Camera password app mein locally save karein.
+Firmware ko authenticated ISAPI channel 1 / Patrol 8 support karna chahiye.
+Check connections sirf deviceInfo aur Patrol 8 config read karta hai; camera
+move nahi karta. Start action PUT /ISAPI/PTZCtrl/channels/1/patrols/8/start hai.
+Aapke exact firmware par yeh endpoint abhi verified nahi; check fail ho toh camera
+settings/firmware inspect karna hoga. Successful response command acceptance hai,
+actual movement ko first supervised run mein dekhkar confirm karein.
+
+ENABLE
+1. Settings save karein, Connect YouTube karein.
+2. Check connections (no live) click karein. Sab checks successful hon.
+3. Daily schedule tab > Enable daily starts.
+4. First scheduled session ko khud monitor karein. OBS preview/audio aur dono
+   live dashboards check karein, phir 2 minutes baad camera movement dekhein.
+5. Uske baad hi unattended use karein.
+6. Open app after Windows login se normal Startup shortcut banta hai.
+   Extracted folder ko baad mein move/delete na karein.
+Autologon restart par Windows login karta hai. Ye app already locked PC ko unlock
+nahi karta, PC wake/power-on nahi karta aur sleep/lock settings nahi badalta.
+API control desktop mouse clicks use nahi karta, lekin locked state mein aapke
+OBS video/audio sources ka actual capture alag test karna zaroori hai.
+PC powered on, awake, network connected, OBS/app available rehna chahiye.
+
+FAILURE / RECOVERY
+Start window se 5 minutes pehle broadcasts prepare hote hain.
+Actual go-live timing network/platform delays par depend karti hai.
+2 minutes se zyada late start automatically catch up nahi hota.
+Partial publication fail ho toh koi stream stop nahi hoti; dono dashboards check
+karke manually continue/end karein. App automatic write retry nahi karta.
+Process restart ke baad interrupted writes needs_review banenge, duplicates nahi.
+Patrol timer app restart par recover hota hai only within a 2 minute grace window,
+aur sirf dono original broadcasts abhi LIVE hon tab camera command jayega.
+
+LOCAL DATA / UNDO
+Settings + IDs + log: %LOCALAPPDATA%\ISKCON-Live-Start
+Tokens/passwords: Windows Credential Manager, service ISKCON-Live-Start.
+OBS backups contain existing stream keys; local rakhein, chat mein upload na karein.
+Disable automation: Pause automation. Current live par koi stop command nahi.
+Remove startup shortcut: Daily schedule tab ka button.
+OBS FB target restore: OBS close karke latest appropriate backup ko original
+obs-multi-rtmp.json par copy karein; app enabled na ho.
+Autologon undo alag hai: Microsoft Autologon window > Disable.

@@ -1,0 +1,73 @@
+Live Desk v0.5.1 — validation and known limits
+
+Passed with mocked platform/camera services in Linux:
+- 83 Python tests: existing scheduler and OBS config protections; custom start
+  and end times; fixed-clock and after-live camera actions; overnight end and
+  preparation before midnight; one-shot start/end; failed camera does not cancel
+  authorized ending; cancelled/missed/ambiguous end behavior; old-journal manual-end
+  preservation; plan snapshots; enabled flags; editable grace allowance.
+- Reject invalid times, overlaps, and camera service/reboot presets.
+- Targeted end: exact recorded YouTube/Facebook IDs and OBS output only, changed
+  broadcast binding refused, partial platform end leaves OBS for manual review,
+  restarted output identity refused by duration/start timestamp check.
+- Preflight failure retains enabled intent until pause; diagnostics redact known
+  stored secrets and retain dated activity.
+- Existing HTTP pairing/session, rate limit, Host/Origin/CSRF, local-only credential
+  editing, concurrent action and settings preservation tests.
+- v0.4 launch tests: normal launch has no tray/stream flags; administrator task
+  invokes only configured OBS; another user, background logon, changed executable,
+  start-stream arguments, duplicate queued/running tasks, and task settings that
+  could time-limit/replace/stop OBS are rejected. Existing OBS is reused.
+- Python compilation. JavaScript syntax/UI checks below were performed for v0.3;
+  the dashboard web assets are unchanged in v0.4.
+- Chromium at 1440px and 390px: custom start/end/camera-step save, persistence
+  after reload, navigation with no horizontal document overflow, diagnostic file
+  download, and cancelled automation confirmation. No JavaScript errors.
+  Mobile schedule screenshot visually inspected.
+
+v0.5 updater checks:
+- Valid newer release staged without changing installed app; no downgrade.
+- HTTPS-only addresses/redirects, manifest/version/size and payload hash validation.
+- Archive traversal, Windows reserved filenames, duplicate names and tampering
+  rejected. Changed dependencies refused without running pip.
+- Paused automation and idle OBS required; active/unreachable OBS refused.
+- New dashboard operations blocked during installation; update controls require
+  a paired local PC session, correct Origin and CSRF token.
+- Same-path folder swap keeps previous app; failed swap and failed new-process
+  startup restore the previous app. No running process is killed for recovery.
+- Python compilation and JavaScript syntax pass. New Updates navigation and DOM
+  IDs reviewed. Native Windows/Tk and browser visual checks not run for v0.5.
+- GitHub raw-file feed is configured for the Live-Studio repository.
+  Check the public manifest/package separately after publishing.
+  Real Windows update/restart still needs a supervised test.
+
+Not verified on real Windows/OBS/YouTube/Facebook/camera in this environment:
+- Actual public start, end, camera movement, firewall/startup and locked capture.
+- Real Windows in-use folder renames, updater child-process restart and recovery.
+  Power loss between folder renames can require manual restoration from backup.
+- NEW v0.4: real Windows Task Scheduler/UAC permissions, PowerShell execution,
+  interactive administrator launch, foreground focus and elevated window restore.
+  Only mocked Windows launch tests run here; Windows policies may limit showing
+  an elevated window. OBS taskbar/tray remains the manual access path.
+  Disable OBS General > System Tray > Minimize to system tray when started.
+  Use the same logged-in Windows administrator account; never SYSTEM or a
+  different administrator identity. Setup targets standard Program Files OBS.
+- Platform token lifetime/permissions and firmware-specific camera responses.
+- Exact cause of the user's failed 04:30 run. Actual PC diagnostic report needed.
+
+No test makes a real platform/camera request. Supervise a short scheduled run
+before depending on a full unattended morning schedule.
+
+Operational constraints:
+- PC/app must run. Local LAN only; HTTP requires a trusted private network.
+- Saving a schedule does not enable it. Pause also pauses scheduled ends/camera.
+- Existing default end times remain blank. An older run never gains a new auto-end.
+- Prepared plans are protected; already-started plans retain their original times.
+- End/camera execution over 2 minutes late is skipped. Start allowance configurable.
+- OBS ownership is checked using recorded stream binding, plugin target settings,
+  output name and start timestamp inferred from duration. Changing the PC clock,
+  output restart or unsupported duration reporting may refuse auto-end. This is
+  not an OBS session UUID; supervise the first end and review any refusal.
+- A requested platform end can partially succeed. Ambiguous writes are not replayed.
+- Camera preset support is limited to ordinary positions 1–32 to avoid special
+  device commands. The selected preset/patrol must already exist on the camera.

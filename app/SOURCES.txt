@@ -1,0 +1,33 @@
+Primary integration references (reviewed September 2026):
+https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md
+https://github.com/sorayuki/obs-multi-rtmp/blob/master/src/push-widget.cpp
+https://github.com/sorayuki/obs-multi-rtmp/blob/master/src/output-config.cpp
+https://github.com/sorayuki/obs-multi-rtmp/blob/master/src/obs-multi-rtmp.cpp
+https://developers.google.com/youtube/v3/live/docs/liveBroadcasts
+https://developers.google.com/youtube/v3/live/docs/liveBroadcasts/insert
+https://developers.google.com/youtube/v3/live/docs/liveBroadcasts/transition
+https://developers.google.com/youtube/v3/docs/thumbnails/set
+https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/livevideo.py
+https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/page.py
+
+Camera ISAPI path is a compatibility assumption and must be tested on the
+user's exact firmware. No camera documentation or device connection was
+available to verify the endpoint during implementation.
+
+v0.3 scheduled ending / camera control references:
+YouTube liveBroadcasts.transition, complete status:
+https://developers.google.com/youtube/v3/live/docs/liveBroadcasts/transition
+Meta Live Video API, end_live_video=true:
+https://developers.facebook.com/documentation/live-video-api/getting-started
+OBS WebSocket v5 output duration, StopOutput and StopStream:
+https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md
+Hikvision PTZ capabilities and patrol/preset support:
+https://open.hikvision.com/hardware/v2/08%E5%8D%8F%E8%AE%AE%E9%80%8F%E4%BC%A0/%E4%BA%91%E5%8F%B0%E5%92%8C%E8%B7%9F%E9%9A%8F%E5%AE%9A%E4%BD%8D.html
+Hikvision ISAPI guide (vendor-authored PDF mirrored with SDK resources):
+https://github.com/loozhengyuan/hikvision-sdk/blob/master/resources/isapi.pdf
+Camera endpoint support still requires checking on the actual device/firmware.
+
+Visible OBS / Windows administrator launch (v0.4):
+https://obsproject.com/kb/launch-parameters
+https://learn.microsoft.com/en-us/windows/win32/taskschd/principal-logontype
+https://learn.microsoft.com/en-us/powershell/module/scheduledtasks/new-scheduledtaskprincipal

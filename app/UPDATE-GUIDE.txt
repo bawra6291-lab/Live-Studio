@@ -1,0 +1,64 @@
+ISKCON LIVE DESK — IN-APP UPDATES (v0.5.1)
+
+ONE-TIME UPGRADE
+An older app has no updater, so this version must be extracted/opened once.
+Pause automation when no live/recording is active. Close the old app, extract
+ISKCON-Live-Desk.zip to a permanent writable folder, then OPEN-LIVE-DESK.cmd.
+Click Start with Windows once to point the existing shortcut to this folder.
+Keep using the SAME Windows login. Existing settings, schedule, YT/FB tokens,
+OBS password and camera password remain outside the app folder and are reused.
+Existing optional administrator-OBS task remains installed.
+
+NORMAL FUTURE UPDATE
+Dashboard > Updates > Open update controls, or Windows launcher > App updates.
+Configure the maintainer's permanent HTTPS latest.json address once. Click
+Check for updates, then Download & install. The app downloads the release itself;
+no manual ZIP extraction or new version folder is required for future updates.
+Pause automation and finish all OBS outputs first. If idle status cannot be
+verified, installation is refused. OBS itself is never restarted by the updater.
+App files are swapped at the same folder path after the old process exits.
+The new app opens automatically; run Check connections and Enable automation.
+Phone pairing may be needed again after restart. Startup shortcut stays valid.
+
+ONLINE UPDATE ADDRESS
+https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/main/updates/latest.json
+
+This address is built into v0.5.1. Existing v0.5.0 users should paste it once
+into App updates, then Check for updates > Download & install.
+Repository: https://github.com/bawra6291-lab/Live-Studio
+The manifest address stays fixed. Each package lives at its versioned path so
+older downloads remain valid when a newer release is published.
+Chat attachments and ChatGPT Library links are not update feeds. Keep personal
+settings, diagnostics, tokens and OAuth files out of the public repository.
+
+ALTERNATIVE
+Install an update file lets you select an updater-ready ZIP already received
+from your app maintainer. This is an offline fallback; it still requires obtaining
+that file. v0.4 and older ZIPs are not updater packages.
+
+RECOVERY
+Before switching versions the app keeps a sibling ISKCON-Live-Start-previous-*
+folder. If the new process exits before the startup confirmation, the old folder
+is restored and reopened. If the new process is still running but confirmation
+is missing, it is NOT killed: inspect it and the status in App updates.
+Update result: %LOCALAPPDATA%\ISKCON-Live-Start\updates\last-result.json.
+If Windows/antivirus interrupts a folder move, close Live Desk, retain both
+folders, and restore the previous folder to the original app path. Settings and
+Windows Credential Manager remain separate. Do not delete those settings.
+A release requiring different Python dependencies is refused with a clear
+message; it may require a one-time dependency installer.
+
+RELEASE MAINTAINER
+1. Increment version.json to a higher three-part version (example 0.5.1).
+2. Update source and tests. Keep requirements unchanged for ordinary updates.
+3. Build using the new version in the base URL:
+   py tools\build_release.py --output ..\release --base-url https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/main/updates/NEW-VERSION --notes "Describe this update"
+4. Commit the ZIP to updates/NEW-VERSION/ISKCON-Live-Desk.zip and the generated
+   latest.json to updates/latest.json together on main. Preserve older packages.
+5. Verify the public manifest and package checksum before announcing the release.
+Do not publish any saved credentials, diagnostics or the LOCALAPPDATA directory.
+Updater uses verified HTTPS plus SHA-256 integrity checks, bounded downloads,
+path checks and exact archive file checks. Releases are not digitally signed;
+only use a source controlled by the maintainer. Anyone controlling that source
+can supply executable app updates. The updater never requests administrator
+privileges, runs pip, or installs a background service.
