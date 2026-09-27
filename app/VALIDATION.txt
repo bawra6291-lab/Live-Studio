@@ -1,7 +1,7 @@
-Live Desk v0.5.1 — validation and known limits
+Live Desk v0.5.2 — validation and known limits
 
 Passed with mocked platform/camera services in Linux:
-- 83 Python tests: existing scheduler and OBS config protections; custom start
+- 90 Python tests: existing scheduler and OBS config protections; custom start
   and end times; fixed-clock and after-live camera actions; overnight end and
   preparation before midnight; one-shot start/end; failed camera does not cancel
   authorized ending; cancelled/missed/ambiguous end behavior; old-journal manual-end
@@ -24,6 +24,20 @@ Passed with mocked platform/camera services in Linux:
   after reload, navigation with no horizontal document overflow, diagnostic file
   download, and cancelled automation confirmation. No JavaScript errors.
   Mobile schedule screenshot visually inspected.
+
+v0.5.2 replay-buffer fix:
+- OBS GetReplayBufferStatus returns InvalidResourceState (604) when the optional
+  replay buffer output is unavailable. That specific response is now treated as
+  unavailable, not as a fatal preparation error.
+- Real OBS response decoding exercised with mocked WebSocket replies. Stream,
+  recording, active replay buffer and plugin output still block new starts/updates.
+- Other status errors, connection failures and malformed output status still block.
+- Scheduler regression: 07:25 preparation and exactly one 07:30 start succeed in
+  a simulation with replay buffer unavailable. No real broadcast was created.
+- Closed-OBS updater check does not launch or connect to OBS. This provides a
+  path to install the fix through an older updater affected by this same check.
+- Diagnostic export/startup log now use version.json instead of a stale literal.
+- Full Windows live-start and updater/restart remain unverified.
 
 v0.5 updater checks:
 - Valid newer release staged without changing installed app; no downgrade.

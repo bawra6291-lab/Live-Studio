@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 from config import BASE, DEFAULTS
 from schedule_config import get_schedule,validate_schedule
 from core import SLOTS, Journal, Scheduler, atomic_json, now_ist, slot_time
+from updater import installed_version
 
 WEB = Path(__file__).parent / 'web'
 SECRET_FIELDS = {'obs_password', 'facebook_page_token', 'camera_password'}
@@ -35,7 +36,7 @@ class Controller:
         self.mobile_urls = []; self.desktop_url = ''; self.mobile_enabled = False
         self.started_at=now_ist().isoformat();self.last_tick=None;self.last_heartbeat=0
         self.previous_heartbeat=json.loads((self.base/'heartbeat.json').read_text('utf-8')) if (self.base/'heartbeat.json').exists() else None
-        self.log('Live Desk v0.5.1 opened. Saved enabled preference: '+str(bool(self.cfg.get('armed')))+'.')
+        self.log('Live Desk v'+installed_version(Path(__file__).parent)+' opened. Saved enabled preference: '+str(bool(self.cfg.get('armed')))+'.')
 
     def log(self, message):
         message = str(message)
@@ -183,7 +184,7 @@ class Controller:
             if log_path.exists():
                 with log_path.open('rb') as f:
                     f.seek(max(0,log_path.stat().st_size-64000));lines=f.read().decode('utf-8',errors='replace').splitlines()[-200:]
-            return {'version':'0.3','exported_at_ist':now_ist().isoformat(),'system':platform.system(),
+            return {'version':installed_version(Path(__file__).parent),'exported_at_ist':now_ist().isoformat(),'system':platform.system(),
                     'app_started_at':self.started_at,'armed_now':self.armed,'enabled_preference':bool(self.cfg.get('armed')),
                     'mode':self.mode,'last_tick':self.last_tick,'previous_session_heartbeat':self.previous_heartbeat,
                     'last_full_check':self.checked,'message':clean(self.message),'schedule':get_schedule(self.cfg),

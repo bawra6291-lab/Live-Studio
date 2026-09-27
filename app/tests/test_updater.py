@@ -111,5 +111,10 @@ class Updates(unittest.TestCase):
         with patch.dict(sys.modules,{'pythoncom':Mock()}),patch('obs_windows._processes',return_value={1}),patch('connections.OBS',return_value=obs):
             with self.assertRaises(u.UpdateError):u.check_obs_idle(c)
         obs.idle.assert_not_called()
+    def test_closed_obs_allows_install_check_without_launching_obs(self):
+        c=NS(cfg={},vault=Mock())
+        with patch.dict(sys.modules,{'pythoncom':Mock()}),patch('obs_windows._processes',return_value=set()),patch('connections.OBS') as obs:
+            u.check_obs_idle(c)
+        obs.assert_not_called()
 
 if __name__=='__main__':unittest.main()

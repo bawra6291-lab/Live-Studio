@@ -5,7 +5,11 @@ from urllib.parse import urlsplit
 from datetime import datetime
 from core import IST, SLOTS, title_for, atomic_json
 
-class SetupError(RuntimeError): pass
+class SetupError(RuntimeError):
+    def __init__(self, message, *, request_type=None, code=None):
+        super().__init__(message)
+        self.request_type=request_type
+        self.code=code
 
 class Vault:
     SERVICE='ISKCON-Live-Start'
@@ -66,14 +70,25 @@ class OBS:
                 if msg.get('op')==7 and msg['d'].get('requestId')==rid:
                     d=msg['d']
                     if not d['requestStatus']['result']:
-                        raise SetupError(f'OBS {kind} failed (code {d["requestStatus"].get("code")}).')
+                        code=d['requestStatus'].get('code')
+                        raise SetupError(f'OBS {kind} failed (code {code}).',request_type=kind,code=code)
                     return d.get('responseData',{})
         except SetupError:raise
         except Exception:
             self.close(); raise SetupError(f'OBS connection interrupted during {kind}. Check OBS before retrying.') from None
     def idle(self):
         for kind in ['GetStreamStatus','GetRecordStatus','GetReplayBufferStatus']:
-            if self.call(kind).get('outputActive'):raise SetupError('OBS streaming/recording/replay buffer is active. Leave it running; end it manually before a new session.')
+            try:status=self.call(kind)
+            except SetupError as exc:
+                # OBS returns InvalidResourceState when no replay buffer output exists.
+                # This is optional; do not treat a disabled replay buffer as an active one.
+                # All other request errors remain blocking, including 604 on stream/record.
+                if kind=='GetReplayBufferStatus' and exc.request_type==kind and exc.code==604:
+                    continue
+                raise
+            if type(status.get('outputActive')) is not bool:
+                raise SetupError(f'OBS {kind} returned no valid output status. Check OBS before retrying.')
+            if status['outputActive']:raise SetupError('OBS streaming/recording/replay buffer is active. Leave it running; end it manually before a new session.')
         if any(x.get('outputActive') for x in self.call('GetOutputList').get('outputs',[])):
             raise SetupError('An OBS output is active. It will not be interrupted.')
     def profile_file(self):

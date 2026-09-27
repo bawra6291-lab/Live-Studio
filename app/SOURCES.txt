@@ -31,3 +31,6 @@ Visible OBS / Windows administrator launch (v0.4):
 https://obsproject.com/kb/launch-parameters
 https://learn.microsoft.com/en-us/windows/win32/taskschd/principal-logontype
 https://learn.microsoft.com/en-us/powershell/module/scheduledtasks/new-scheduledtaskprincipal
+
+OBS replay status implementation (604 when optional replay buffer unavailable):
+https://github.com/obsproject/obs-websocket/blob/master/src/requesthandler/RequestHandler_Outputs.cpp

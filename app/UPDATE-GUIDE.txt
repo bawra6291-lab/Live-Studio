@@ -1,4 +1,4 @@
-ISKCON LIVE DESK — IN-APP UPDATES (v0.5.1)
+ISKCON LIVE DESK — IN-APP UPDATES (v0.5.2)
 
 ONE-TIME UPGRADE
 An older app has no updater, so this version must be extracted/opened once.
@@ -62,3 +62,12 @@ path checks and exact archive file checks. Releases are not digitally signed;
 only use a source controlled by the maintainer. Anyone controlling that source
 can supply executable app updates. The updater never requests administrator
 privileges, runs pip, or installs a background service.
+
+UPGRADING FROM 0.5.0 / 0.5.1 WITH REPLAY BUFFER UNAVAILABLE
+The old OBS idle check may reject installation with OBS open even when no output
+is running. Finish any active live/recording/replay normally, pause automation,
+then exit OBS through File > Exit (not just minimize to tray). Keep Live Desk
+open. Check for updates and install 0.5.2. Do not run Check connections or reopen
+OBS during the update. This avoids the old replay-status check because OBS is
+closed. After Live Desk restarts, Check connections may reopen OBS normally.
+Confirm Installed version 0.5.2 before enabling your saved future schedule.
