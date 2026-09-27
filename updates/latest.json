@@ -1,9 +1,9 @@
 {
   "app_id": "iskcon-live-desk",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "update_format": 1,
-  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/main/updates/0.5.2/ISKCON-Live-Desk.zip",
-  "size": 90928,
-  "sha256": "e116d665dec3309ed5750a061665cf5a9d07a95bef05c253c1ea9880a93ba0cb",
-  "notes": "Fix replay-buffer-unavailable error 604 blocking scheduled preparation and updates. Older updater users: finish outputs, pause automation, exit OBS, then install while Live Desk stays open. Settings and credentials are retained."
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/main/updates/0.5.3/ISKCON-Live-Desk.zip",
+  "size": 93980,
+  "sha256": "b8e35014d4e32ecb140b6a21b2cae8927d9aefc9ae3b8bf15007d02350dbb0b3",
+  "notes": "YouTube metadata preflight: required category and title checked before creating a broadcast; category fallback uses the program reference video. Failed writes retain the broadcast for review without automatic retry. Pause automation and inspect any existing incomplete YouTube event before testing."
 }

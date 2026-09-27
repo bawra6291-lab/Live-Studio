@@ -232,6 +232,29 @@ class YouTube:
         matches=[s for s in streams if s['cdn']['ingestionInfo']['streamName']==key]
         if len(matches)!=1:raise SetupError('OBS stream key does not match exactly one reusable stream on the connected YouTube channel.')
         return matches[0]
+    def video_template(self,source_id,reference_id,title,channel_id):
+        # videos.update requires BOTH title and categoryId, even for a live video.
+        # Resolve these before inserting a broadcast so an incomplete template
+        # cannot leave a new, unusable schedule behind.
+        def snippet(video_id):
+            items=self.list('videos',part='snippet',id=video_id)
+            if len(items)!=1 or items[0].get('id')!=video_id:
+                raise SetupError('YouTube metadata source is unavailable. Check the previous/reference video in Studio.')
+            value=items[0].get('snippet',{})
+            if value.get('channelId')!=channel_id:
+                raise SetupError('YouTube metadata source belongs to another channel.')
+            return value
+        original=snippet(source_id)
+        category=original.get('categoryId')
+        if not category and reference_id!=source_id:
+            category=snippet(reference_id).get('categoryId')
+        if not isinstance(category,str) or not re.fullmatch(r'[1-9][0-9]*',category):
+            raise SetupError('YouTube category is missing/invalid in the video template. Set Category on the previous/reference video in YouTube Studio, then retry after review. No new broadcast was created.')
+        if not isinstance(title,str) or not title.strip() or len(title)>100:
+            raise SetupError('YouTube metadata needs a non-empty title of at most 100 characters.')
+        metadata={k:v for k,v in original.items() if k in ('description','tags','defaultLanguage','defaultAudioLanguage')}
+        metadata.update(title=title,categoryId=category)
+        return original,metadata
     def prepare(self,slot,due,obs_key,persist):
         channel=self.owned_channel();self.no_other_live()
         previous=self.list('liveBroadcasts',part='id,snippet,status,contentDetails',broadcastStatus='completed',broadcastType='all',maxResults=50,max_pages=4,allow_partial=True)
@@ -258,18 +281,19 @@ class YouTube:
             if event['status']['privacyStatus']!='public':raise SetupError('Existing schedule is not public; check Studio.')
             if details.get('boundStreamId') not in (None,'',stream['id']):raise SetupError('Existing YouTube schedule uses another stream key.')
         else:
+            original,metadata=self.video_template(source['id'],slot['reference'],title,channel['id'])
             details={k:v for k,v in source.get('contentDetails',{}).items() if k in ('enableDvr','recordFromStart','enableEmbed','enableClosedCaptions','closedCaptionsType','latencyPreference','projection')}
             details.update(enableAutoStart=False,enableAutoStop=False,monitorStream={'enableMonitorStream':False,'broadcastStreamDelayMs':0})
             status={'privacyStatus':'public','selfDeclaredMadeForKids':source['status'].get('selfDeclaredMadeForKids',source['status'].get('madeForKids',False))}
             event=self.api('POST','liveBroadcasts',{'part':'snippet,status,contentDetails'},body={
                 'snippet':{'title':title,'description':source['snippet'].get('description',''),'scheduledStartTime':due.isoformat()},
                 'status':status,'contentDetails':details})
-            persist(yt_id=event['id'],title=title)
+            persist(yt_id=event['id'],title=title,stage='youtube_metadata')
             # Copy video metadata and the previous thumbnail; no new artwork or local thumbnail folder.
-            original=self.list('videos',part='snippet',id=source['id'])[0]['snippet']
-            metadata={k:v for k,v in original.items() if k in ('description','tags','categoryId','defaultLanguage','defaultAudioLanguage')}
-            metadata['title']=title
-            self.api('PUT','videos',{'part':'snippet'},body={'id':event['id'],'snippet':metadata})
+            try:
+                self.api('PUT','videos',{'part':'snippet'},body={'id':event['id'],'snippet':metadata})
+            except SetupError as exc:
+                raise SetupError(str(exc)+' Broadcast retained for review in YouTube Studio; title and categoryId were included. No automatic retry was sent.') from None
             thumbs=original.get('thumbnails',{})
             thumb=next((thumbs[k]['url'] for k in ('maxres','standard','high','medium','default') if k in thumbs),None)
             if not thumb:raise SetupError('Previous thumbnail could not be found. New broadcast retained for manual review.')

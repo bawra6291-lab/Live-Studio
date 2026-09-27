@@ -1,7 +1,7 @@
-Live Desk v0.5.2 — validation and known limits
+Live Desk v0.5.3 — validation and known limits
 
 Passed with mocked platform/camera services in Linux:
-- 90 Python tests: existing scheduler and OBS config protections; custom start
+- 97 Python tests: existing scheduler and OBS config protections; custom start
   and end times; fixed-clock and after-live camera actions; overnight end and
   preparation before midnight; one-shot start/end; failed camera does not cancel
   authorized ending; cancelled/missed/ambiguous end behavior; old-journal manual-end
@@ -24,6 +24,19 @@ Passed with mocked platform/camera services in Linux:
   after reload, navigation with no horizontal document overflow, diagnostic file
   download, and cancelled automation confirmation. No JavaScript errors.
   Mobile schedule screenshot visually inspected.
+
+v0.5.3 YouTube metadata preflight:
+- Read video metadata before inserting a new broadcast. Require title and categoryId
+  for videos.update. If the previous video's category is absent, use the same
+  program's verified reference category; do not invent a category.
+- Missing/unavailable/cross-channel metadata fails before creating a broadcast.
+- Mock HTTP tests cover the exact update body, category fallback, preflight failure,
+  and retaining the broadcast ID without retries after a rejected metadata write.
+- Existing matching schedules are not duplicated or overwritten. An existing
+  incomplete schedule still requires manual review in YouTube Studio.
+- The reported HTTP 400 invalidVideoMetadata could indicate a missing category;
+  the actual user's request payload was not available. This patch fixes that
+  known validation gap, but real YouTube acceptance still needs a supervised test.
 
 v0.5.2 replay-buffer fix:
 - OBS GetReplayBufferStatus returns InvalidResourceState (604) when the optional
