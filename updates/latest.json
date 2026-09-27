@@ -1,9 +1,9 @@
 {
   "app_id": "iskcon-live-desk",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "update_format": 1,
-  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/main/updates/0.5.3/ISKCON-Live-Desk.zip",
-  "size": 93980,
-  "sha256": "b8e35014d4e32ecb140b6a21b2cae8927d9aefc9ae3b8bf15007d02350dbb0b3",
-  "notes": "YouTube metadata preflight: required category and title checked before creating a broadcast; category fallback uses the program reference video. Failed writes retain the broadcast for review without automatic retry. Pause automation and inspect any existing incomplete YouTube event before testing."
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/main/updates/0.5.4/ISKCON-Live-Desk.zip",
+  "size": 95365,
+  "sha256": "a841e12fa309ea34cc6a3992a4452dde13d73f1df9bd3b25c0a10a532f8b8f45",
+  "notes": "Official stream protection: OBS must use the existing YouTube Official Livestream key; binding verified before metadata and live start. New-video metadata omits audio-language response fields and blank language values. Pause automation, finish active outputs and review incomplete broadcasts before testing. Real live acceptance remains to be tested."
 }

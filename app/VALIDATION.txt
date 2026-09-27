@@ -1,7 +1,7 @@
-Live Desk v0.5.3 — validation and known limits
+Live Desk v0.5.4 — validation and known limits
 
 Passed with mocked platform/camera services in Linux:
-- 97 Python tests: existing scheduler and OBS config protections; custom start
+- 102 Python tests: existing scheduler and OBS config protections; custom start
   and end times; fixed-clock and after-live camera actions; overnight end and
   preparation before midnight; one-shot start/end; failed camera does not cancel
   authorized ending; cancelled/missed/ambiguous end behavior; old-journal manual-end
@@ -24,6 +24,21 @@ Passed with mocked platform/camera services in Linux:
   after reload, navigation with no horizontal document overflow, diagnostic file
   download, and cancelled automation confirmation. No JavaScript errors.
   Mobile schedule screenshot visually inspected.
+
+v0.5.4 metadata filtering and Official stream binding:
+- New-video metadata requests use documented videos.update snippet fields only;
+  defaultAudioLanguage and blank defaultLanguage response values are not copied.
+- OBS's existing secret must match a stream titled YouTube Official Livestream.
+  A different title/key blocks preparation; no stream is created or key rotated.
+- New broadcasts are bound to that stream and the binding is read back before
+  metadata copying. Binding is checked again before sending OBS StartStream.
+- Mock tests cover omitted language fields, retained binding on metadata failure,
+  incorrect/unconfirmed binding, and a changed binding blocking live start.
+- The user's 0.5.3 invalidVideoMetadata persists despite title/category being sent.
+  The exact rejected payload is unavailable; language filtering addresses another
+  request defect, but real YouTube acceptance is not confirmed by these tests.
+- Existing incomplete broadcasts still need manual review; this release does not
+  automatically retry them, clear failed runs, or change their scheduled times.
 
 v0.5.3 YouTube metadata preflight:
 - Read video metadata before inserting a new broadcast. Require title and categoryId

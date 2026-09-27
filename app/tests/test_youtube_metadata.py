@@ -7,13 +7,13 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from connections import SetupError, YouTube
+from connections import SetupError, YouTube, Services
 from core import IST, SLOTS
 
 
 class Session:
     def __init__(self):
-        self.calls=[];self.fail_update=False;self.events=[]
+        self.calls=[];self.fail_update=False;self.events=[];self.ignore_bind=False
         self.original={'id':'previous','snippet':{
             'channelId':'channel','title':'26th Sept 2026 | Sandhya Arati',
             'description':'Previous description','tags':['Arati'],
@@ -40,7 +40,8 @@ class Session:
             ok=not self.fail_update
             out=kw['json'] if ok else {'error':{'errors':[{'reason':'invalidVideoMetadata'}]}}
         elif resource=='liveBroadcasts/bind':
-            self.events[0]['contentDetails']['boundStreamId']=p['streamId'];out={}
+            if not self.ignore_bind:self.events[0]['contentDetails']['boundStreamId']=p['streamId']
+            out={}
         elif resource=='thumbnails/set':out={}
         else:raise AssertionError((method,resource,p))
         return Mock(ok=ok,status_code=200 if ok else 400,json=lambda:out)
@@ -100,17 +101,67 @@ class MetadataTests(unittest.TestCase):
         with self.assertRaisesRegex(SetupError,'another channel'):self.prepare()
         self.assertEqual(self.writes(),[])
 
-    def test_failure_retains_id_and_does_not_retry_bind_or_upload(self):
+    def test_failure_retains_bound_event_and_does_not_retry_or_upload(self):
         self.wire.fail_update=True
         with self.assertRaisesRegex(SetupError,'Broadcast retained.*title and categoryId were included'):self.prepare()
         self.assertEqual([(x[0],x[1]) for x in self.writes()],
-                         [('POST','liveBroadcasts'),('PUT','videos')])
-        self.persist.assert_called_once_with(yt_id='new-event',
-            title='27th Sept 2026 | Sandhya Arati',stage='youtube_metadata')
+                         [('POST','liveBroadcasts'),('POST','liveBroadcasts/bind'),('PUT','videos')])
+        self.persist.assert_any_call(yt_id='new-event',yt_stream_id='stream',
+            title='27th Sept 2026 | Sandhya Arati',stage='youtube_bind')
+        self.assertEqual(self.wire.events[0]['contentDetails']['boundStreamId'],'stream')
+
+    def test_blank_language_and_audio_response_fields_not_replayed(self):
+        for language in ('',None,'   '):
+            with self.subTest(language=language):
+                self.setUp()
+                self.wire.original['snippet'].update(defaultLanguage=language,defaultAudioLanguage='',
+                    localized={'title':'Read-only title'},liveBroadcastContent='none')
+                self.prepare()
+                body=self.writes('PUT','videos')[0][2]['json']['snippet']
+                self.assertEqual(set(body),{'title','categoryId','description','tags'})
+
+    def test_binding_must_be_confirmed_before_metadata_or_thumbnail(self):
+        self.wire.ignore_bind=True
+        with self.assertRaisesRegex(SetupError,'did not confirm'):self.prepare()
+        self.assertEqual([(x[0],x[1]) for x in self.writes()],
+                         [('POST','liveBroadcasts'),('POST','liveBroadcasts/bind')])
+
+    def test_existing_wrong_key_schedule_is_not_rebound(self):
+        self.prepare();self.wire.calls.clear()
+        self.wire.events[0]['contentDetails']['boundStreamId']='another-stream'
+        with self.assertRaisesRegex(SetupError,'another stream key'):self.prepare()
+        self.assertEqual(self.writes(),[])
 
     def test_existing_schedule_is_not_duplicated_or_overwritten(self):
         self.prepare();self.wire.calls.clear();self.prepare()
         self.assertEqual(self.writes(),[])
+
+
+class StreamSelectionTests(unittest.TestCase):
+    def test_binding_change_after_preparation_blocks_obs_start(self):
+        service=Services({},None)
+        service.obs=Mock();service.yt=Mock();service.fb=Mock()
+        service.yt.stream_for_obs.return_value={'id':'official-stream'}
+        service.yt.event.return_value={'contentDetails':{'boundStreamId':'default-stream'}}
+        with self.assertRaisesRegex(SetupError,'binding changed'):
+            service.start({'yt_id':'event','yt_stream_id':'official-stream','fb_id':'fb-event'})
+        service.obs.start.assert_not_called()
+        service.yt.go.assert_not_called();service.fb.go.assert_not_called()
+
+    def test_requires_both_existing_obs_key_and_official_title(self):
+        for title,key,accepted in [('YouTube Official Livestream','same-secret',True),
+                ('Default stream key','same-secret',False),
+                ('YouTube Official Livestream','different-secret',False)]:
+            with self.subTest(title=title,key=key):
+                yt=YouTube({},None)
+                yt.list=Mock(return_value=[{'id':'existing-stream','snippet':{'title':title},
+                    'cdn':{'ingestionInfo':{'streamName':key}}}])
+                if accepted:self.assertEqual(yt.stream_for_obs('same-secret')['id'],'existing-stream')
+                else:
+                    with self.assertRaises(SetupError) as error:yt.stream_for_obs('same-secret')
+                    self.assertNotIn('same-secret',str(error.exception))
+                    self.assertNotIn('different-secret',str(error.exception))
+                self.assertIn('snippet',yt.list.call_args.kwargs['part'])
 
 
 if __name__=='__main__':unittest.main()

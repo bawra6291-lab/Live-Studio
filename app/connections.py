@@ -176,6 +176,7 @@ class OBS:
 
 class YouTube:
     SCOPES=['https://www.googleapis.com/auth/youtube.force-ssl']
+    STREAM_TITLE='YouTube Official Livestream'
     def __init__(self,cfg,vault):self.cfg,self.vault,self.session=cfg,vault,None
     def connect(self,interactive=False):
         from google.oauth2.credentials import Credentials
@@ -228,10 +229,21 @@ class YouTube:
         if any(x['id']!=allowed for x in items):raise SetupError('Another YouTube live is active. End it manually first.')
     def stream_for_obs(self,key):
         if not key:raise SetupError('OBS YouTube stream key could not be read locally.')
-        streams=self.list('liveStreams',part='id,cdn,status',mine='true',maxResults=50)
+        streams=self.list('liveStreams',part='id,snippet,cdn,status',mine='true',maxResults=50)
         matches=[s for s in streams if s['cdn']['ingestionInfo']['streamName']==key]
         if len(matches)!=1:raise SetupError('OBS stream key does not match exactly one reusable stream on the connected YouTube channel.')
+        if matches[0].get('snippet',{}).get('title','').strip()!=self.STREAM_TITLE:
+            raise SetupError('OBS must use the existing YouTube Official Livestream key. Select that same existing key in Studio and OBS; do not create or reset a key.')
         return matches[0]
+    def bind_stream(self,event,stream):
+        if event['contentDetails'].get('boundStreamId')!=stream['id']:
+            self.api('POST','liveBroadcasts/bind',{'id':event['id'],'streamId':stream['id'],'part':'id,contentDetails'})
+        verified=self.event(event['id'])
+        if verified['contentDetails'].get('boundStreamId')!=stream['id']:
+            raise SetupError('YouTube did not confirm the Official stream binding. Inspect Studio before retrying.')
+        if verified['status']['privacyStatus']!='public':
+            raise SetupError('YouTube API project restricted this broadcast to private. Resolve API access; it has not been made live.')
+        return verified
     def video_template(self,source_id,reference_id,title,channel_id):
         # videos.update requires BOTH title and categoryId, even for a live video.
         # Resolve these before inserting a broadcast so an incomplete template
@@ -252,7 +264,12 @@ class YouTube:
             raise SetupError('YouTube category is missing/invalid in the video template. Set Category on the previous/reference video in YouTube Studio, then retry after review. No new broadcast was created.')
         if not isinstance(title,str) or not title.strip() or len(title)>100:
             raise SetupError('YouTube metadata needs a non-empty title of at most 100 characters.')
-        metadata={k:v for k,v in original.items() if k in ('description','tags','defaultLanguage','defaultAudioLanguage')}
+        # Copy the documented videos.update snippet fields only. In particular,
+        # do not replay defaultAudioLanguage or empty optional language values
+        # from an older video's response into a new broadcast.
+        metadata={k:v for k,v in original.items() if k in ('description','tags') and v is not None}
+        language=original.get('defaultLanguage')
+        if isinstance(language,str) and language.strip():metadata['defaultLanguage']=language.strip()
         metadata.update(title=title,categoryId=category)
         return original,metadata
     def prepare(self,slot,due,obs_key,persist):
@@ -288,7 +305,9 @@ class YouTube:
             event=self.api('POST','liveBroadcasts',{'part':'snippet,status,contentDetails'},body={
                 'snippet':{'title':title,'description':source['snippet'].get('description',''),'scheduledStartTime':due.isoformat()},
                 'status':status,'contentDetails':details})
-            persist(yt_id=event['id'],title=title,stage='youtube_metadata')
+            persist(yt_id=event['id'],title=title,yt_stream_id=stream['id'],stage='youtube_bind')
+            event=self.bind_stream(event,stream)
+            persist(stage='youtube_metadata')
             # Copy video metadata and the previous thumbnail; no new artwork or local thumbnail folder.
             try:
                 self.api('PUT','videos',{'part':'snippet'},body={'id':event['id'],'snippet':metadata})
@@ -307,10 +326,7 @@ class YouTube:
             if len(r.content)>2*1024*1024:raise SetupError('Previous thumbnail exceeds YouTube upload limit.')
             self.api('POST','thumbnails/set',{'videoId':event['id'],'uploadType':'media'},data=r.content,content_type=r.headers.get('Content-Type','image/jpeg'))
         persist(yt_id=event['id'],title=title)
-        if event['contentDetails'].get('boundStreamId')!=stream['id']:
-            self.api('POST','liveBroadcasts/bind',{'id':event['id'],'streamId':stream['id'],'part':'id,contentDetails'})
-        verified=self.event(event['id'])
-        if verified['status']['privacyStatus']!='public':raise SetupError('YouTube API project restricted this broadcast to private. Resolve API access; it has not been made live.')
+        self.bind_stream(event,stream)
         return {'yt_id':event['id'],'yt_stream_id':stream['id'],'title':title}
     def event(self,id):
         out=self.list('liveBroadcasts',part='id,status,contentDetails,snippet',id=id)
@@ -443,6 +459,9 @@ class Services:
         # Verify that the reusable stream key has not been changed since preparation.
         if self.yt.stream_for_obs(self.obs.key())['id']!=record['yt_stream_id']:
             raise SetupError('OBS stream key changed after preparation.')
+        event=self.yt.event(record['yt_id'])
+        if event['contentDetails'].get('boundStreamId')!=record['yt_stream_id']:
+            raise SetupError('YouTube broadcast stream binding changed after preparation. Select the existing Official stream in Studio; no OBS start was sent.')
         self.obs.start()
         status=self.obs.call('GetStreamStatus')
         self.persist_run(obs_start_epoch=time.time()-status.get('outputDuration',0)/1000,stage='waiting_for_ingest')
