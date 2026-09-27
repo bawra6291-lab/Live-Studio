@@ -118,6 +118,14 @@ class OBS:
         if self.cfg['obs_scene'] not in names:raise SetupError('Configured program scene does not exist.')
     def key(self):
         return self.call('GetStreamServiceSettings')['streamServiceSettings'].get('key','')
+    def wait_profile(self,name):
+        # CreateProfile queues frontend work: its reply is not proof that the
+        # new profile is present/current yet. Never edit an active profile file.
+        for _ in range(40):
+            state=self.call('GetProfileList')
+            if name in state.get('profiles',[]) and state.get('currentProfileName')==name:return
+            time.sleep(.25)
+        raise SetupError('OBS profile switch was not confirmed within 10 seconds. Check OBS for an open dialog.')
     def prepare_fb_output(self,full_url):
         # The plugin creates its output only on Start. Generic StartOutput cannot replace this.
         # Save an exact backup; switch inactive profiles so the plugin reloads its new key.
@@ -139,31 +147,54 @@ class OBS:
         backup.write_bytes(raw)
         temp='ISKCON-Reload-'+uuid.uuid4().hex[:8]
         original=self.cfg['obs_profile']
-        changed=False
+        changed=False;stage='create temporary profile';restored=False
         try:
             self.call('CreateProfile',profileName=temp)
-            self.call('SetCurrentProfile',profileName=temp)
-            time.sleep(1)
-            data=json.loads(path.read_text('utf-8-sig'))
+            stage='wait for temporary profile'
+            self.wait_profile(temp)
+            self.idle()
+            # Switching away flushes the plugin's in-memory settings. Back up
+            # that freshest version, including any operator changes.
+            stage='read FB target'
+            raw=path.read_bytes();backup.write_bytes(raw)
+            data=json.loads(raw.decode('utf-8-sig'))
             target=next(x for x in data['targets'] if x.get('name')==self.cfg['fb_target'])
+            if any(x.get('sync-start') for x in data['targets'] if x['id']!=target['id']):
+                raise SetupError('Another Multiple RTMP target has sync-start enabled. Disable it before retrying.')
             target['service-param']['server']=server
             target['service-param']['key']=key
             target['sync-start']=True
             # sync-stop is preserved; v0.3 ending validates and addresses only this run.
-            atomic_json(path,data);changed=True
+            stage='write FB target';changed=True
+            atomic_json(path,data)
+            stage='restore original profile'
             self.call('SetCurrentProfile',profileName=original)
-            time.sleep(1)
+            self.wait_profile(original)
             self.check_profile()
+            stage='verify FB target'
+            _,_,loaded=self.plugin_target()
+            if loaded['service-param'].get('server')!=server or loaded['service-param'].get('key')!=key or not loaded.get('sync-start'):
+                raise SetupError('FB Live settings did not remain saved after the profile reload.')
+            stage='remove temporary profile'
+            self.idle()
             self.call('RemoveProfile',profileName=temp)
-        except Exception:
+        except Exception as exc:
             # Best effort restore only while inactive; never terminate an active output.
             try:
                 self.idle()
-                self.call('SetCurrentProfile',profileName=temp)
-                path.write_bytes(raw)
-                self.call('SetCurrentProfile',profileName=original)
+                if changed:
+                    self.call('SetCurrentProfile',profileName=temp)
+                    self.wait_profile(temp)
+                    self.idle()
+                    path.write_bytes(raw)
+                if self.call('GetProfileList').get('currentProfileName')!=original:
+                    self.call('SetCurrentProfile',profileName=original)
+                self.wait_profile(original)
+                self.check_profile();restored=True
             except Exception:pass
-            raise SetupError('FB output reload failed. A local backup was saved. Check the selected OBS profile and FB Live target before retrying.') from None
+            reason=str(exc) if type(exc) is SetupError else type(exc).__name__
+            recovery='Original profile restored.' if restored else 'Original profile restore could not be confirmed; select it manually in OBS.'
+            raise SetupError(f'FB output reload failed at {stage}: {reason} A local backup was saved. {recovery} No live start was sent.') from None
     def fb_sending(self):
         candidates=[x for x in self.call('GetOutputList').get('outputs',[]) if x.get('outputName','').startswith('multi-output')]
         if len(candidates)!=1:return False

@@ -1,9 +1,9 @@
 {
   "app_id": "iskcon-live-desk",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "update_format": 1,
-  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/main/updates/0.5.4/ISKCON-Live-Desk.zip",
-  "size": 95365,
-  "sha256": "a841e12fa309ea34cc6a3992a4452dde13d73f1df9bd3b25c0a10a532f8b8f45",
-  "notes": "Official stream protection: OBS must use the existing YouTube Official Livestream key; binding verified before metadata and live start. New-video metadata omits audio-language response fields and blank language values. Pause automation, finish active outputs and review incomplete broadcasts before testing. Real live acceptance remains to be tested."
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/main/updates/0.5.5/ISKCON-Live-Desk.zip",
+  "size": 96819,
+  "sha256": "80ce7a7317e3170915fe1470609b69375b24e22ae246ce094a4d66d5734e52fb",
+  "notes": "Facebook output reload: wait for OBS temporary profile creation and original profile return, preserve the latest local backup, verify target settings and report the exact failed step. Pause automation and finish active outputs before updating. Retained platform events require manual review; no automatic retry."
 }

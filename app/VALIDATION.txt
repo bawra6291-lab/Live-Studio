@@ -1,7 +1,7 @@
-Live Desk v0.5.4 — validation and known limits
+Live Desk v0.5.5 — validation and known limits
 
 Passed with mocked platform/camera services in Linux:
-- 102 Python tests: existing scheduler and OBS config protections; custom start
+- 106 Python tests: existing scheduler and OBS config protections; custom start
   and end times; fixed-clock and after-live camera actions; overnight end and
   preparation before midnight; one-shot start/end; failed camera does not cancel
   authorized ending; cancelled/missed/ambiguous end behavior; old-journal manual-end
@@ -24,6 +24,20 @@ Passed with mocked platform/camera services in Linux:
   after reload, navigation with no horizontal document overflow, diagnostic file
   download, and cancelled automation confirmation. No JavaScript errors.
   Mobile schedule screenshot visually inspected.
+
+v0.5.5 Facebook output reload:
+- OBS CreateProfile may reply before frontend profile creation finishes. Poll
+  GetProfileList for the new/current profile before editing the inactive file.
+- Wait for the original profile to return; verify the saved FB target server,
+  key and sync-start, without printing their values.
+- Back up the plugin settings flushed when switching away from the original
+  profile. Rollback writes only while inactive and on the temporary profile.
+- Errors identify the failed stage and retain safe OBS request/error details.
+  File/third-party exception values are not included; restoration is not claimed
+  unless the original profile was checked successfully.
+- Mock tests simulate delayed creation, creation timeout, profile-return failure,
+  backup restoration and file-error redaction. Real Windows/plugin reload still
+  needs a supervised check; the previous generic error did not reveal its cause.
 
 v0.5.4 metadata filtering and Official stream binding:
 - New-video metadata requests use documented videos.update snippet fields only;
