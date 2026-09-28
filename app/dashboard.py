@@ -8,6 +8,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 from config import BASE, DEFAULTS
+from workspace import load_settings, validate_settings, setup_steps, IDENTITY_FIELDS
 from schedule_config import get_schedule,validate_schedule
 from core import SLOTS, Journal, Scheduler, atomic_json, now_ist, slot_time
 from updater import installed_version
@@ -23,10 +24,10 @@ class Controller:
     def __init__(self, base=BASE, factory=None, vault=None):
         self.base = Path(base); self.base.mkdir(parents=True, exist_ok=True)
         self.path = self.base / 'settings.json'
-        self.cfg = {**DEFAULTS, **(json.loads(self.path.read_text('utf-8')) if self.path.exists() else {})}
+        self.cfg = load_settings(self.path)
         from connections import Services, Vault
         self.factory = factory or Services
-        self.vault = vault if vault is not None else Vault()
+        self.vault = vault if vault is not None else Vault(self.cfg['credential_service'])
         self.lock = threading.RLock(); self.stop = threading.Event()
         self.maintenance = False; self.open_updates = None
         self.worker = None; self.mode = ''; self.armed = False; self.closing = False
@@ -44,6 +45,7 @@ class Controller:
             for prefix, key in [('OBS connected.', 'obs'), ('YouTube channel verified:', 'youtube'),
                                 ('Facebook Page verified:', 'facebook'), ('Camera reachable;', 'camera')]:
                 if message.startswith(prefix): self.connections[key] = 'verified'
+            if message.startswith('Camera skipped;'):self.connections['camera']='skipped'
             row = {'time': now_ist().strftime('%Y-%m-%d %H:%M:%S'), 'message': message}
             self.logs.append(row)
             with (self.base/'activity.log').open('a', encoding='utf-8') as f:
@@ -68,6 +70,8 @@ class Controller:
             due,next_slot=future[0] if future else ((slot_time(now.date()+timedelta(days=1),active[0]),active[0]) if active else (now,{'name':'No programs enabled','at':'—'}))
             issue=next((x for x in slots if x.get('last_error') and (x['phase'] in ('needs_review','missed') or x['end_state'] in ('needs_review','missed') or 'needs_review' in x['camera_states'].values())),None)
             return {'now':now.isoformat(), 'date':now.strftime('%A, %d %B %Y'),
+                    'workspace_name':self.cfg['workspace_name'], 'setup_steps':setup_steps(self.cfg,self.checked),
+                    'destinations':{k:self.cfg.get(k,'') for k in ('youtube_channel_id','facebook_page_id','youtube_stream_title','camera_channel')},
                     'schedule':schedule,'grace_minutes':int(self.cfg.get('grace_minutes',2)),
                     'last_tick':self.last_tick,'started_at':self.started_at,'arm_requested':bool(self.cfg.get('armed')),
                     'armed':self.armed, 'busy':bool(self.maintenance or (self.worker and self.worker.is_alive())),
@@ -98,6 +102,9 @@ class Controller:
                     if not isinstance(values[key],str) or len(values[key])>2048: raise ValueError('Invalid settings value.')
                     cfg[key] = values[key].strip()
             if not 1 <= int(cfg['obs_port']) <= 65535: raise ValueError('OBS port must be 1–65535.')
+            validate_settings(cfg)
+            if any(cfg.get(k)!=self.cfg.get(k) for k in IDENTITY_FIELDS):
+                self.require_no_recent_runs()
             for key in SECRET_FIELDS:
                 value = values.get(key,'')
                 if not isinstance(value,str) or len(value)>12000: raise ValueError('Invalid credential.')
@@ -106,6 +113,14 @@ class Controller:
             atomic_json(self.path,cfg); self.cfg = cfg
             self.checked=None; self.connections={k:'unchecked' for k in self.connections}
             self.log('Settings saved. Blank secret fields kept their saved values.')
+
+    def require_no_recent_runs(self, slot_ids=None):
+        cutoff=(now_ist().date()-timedelta(days=1)).isoformat()
+        for key,rec in Journal(self.base/'journal.json').data.items():
+            if key[:10]<cutoff or (slot_ids is not None and key.split(':',1)[-1] not in slot_ids):continue
+            if rec.get('end_state')=='ended' or rec.get('phase')=='ended':continue
+            if rec.get('yt_id') or rec.get('fb_id') or rec.get('camera_states') or rec.get('phase') in ('preparing','starting'):
+                raise ValueError('A recent run still needs review. Keep its destination and program until it is ended; inspect OBS and both platforms.')
 
     def require_idle(self):
         if self.closing: raise ValueError('App is closing.')
@@ -133,6 +148,8 @@ class Controller:
             schedule=validate_schedule(data.get('schedule'))
             grace=data.get('grace_minutes',2)
             if type(grace)!=int or not 1<=grace<=15:raise ValueError('Late-start allowance must be 1–15 minutes.')
+            removed={s['id'] for s in get_schedule(self.cfg)}-{s['id'] for s in schedule}
+            self.require_no_recent_runs(removed)
             journal=Journal(self.base/'journal.json');now=now_ist()
             for day in [now.date()-timedelta(days=1),now.date(),now.date()+timedelta(days=1)]:
                 for slot in schedule:

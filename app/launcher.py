@@ -11,7 +11,7 @@ from dashboard import Controller, DashboardServer, lan_addresses
 class Launcher:
     def __init__(self, root):
         self.root=root; self.closing=False; self.mobile=None; self.updates_dialog=None
-        root.title('ISKCON Kolkata • Live Desk'); root.geometry('700x820');root.minsize(670,780)
+        root.title('Live Desk • Development preview'); root.geometry('700x820');root.minsize(670,780)
         root.configure(bg='#f5f4ef')
         self.controller=Controller()
         self.controller.open_updates=lambda:root.after(0,self.open_updates)
@@ -24,7 +24,7 @@ class Launcher:
         style.configure('TButton',font=('Segoe UI',10),padding=10,background='#e5a473',foreground='#243b32')
         style.configure('TCombobox',padding=8)
         header=tk.Frame(root,bg='#193d36',padx=30,pady=26);header.pack(fill='x')
-        tk.Label(header,text='ISKCON KOLKATA',font=('Segoe UI',10,'bold'),fg='#b9ccba',bg='#193d36').pack(anchor='w')
+        tk.Label(header,text=self.controller.cfg['workspace_name'],font=('Segoe UI',10,'bold'),fg='#b9ccba',bg='#193d36').pack(anchor='w')
         tk.Label(header,text='Live Desk',font=('Segoe UI',28,'bold'),fg='#fff5e6',bg='#193d36').pack(anchor='w',pady=(6,3))
         tk.Label(header,text='Your livestream PC. Connected to your phone.',font=('Segoe UI',11),fg='#c4d0bb',bg='#193d36').pack(anchor='w')
         body=tk.Frame(root,bg='#f5f4ef',padx=30,pady=20);body.pack(fill='both',expand=True)

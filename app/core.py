@@ -20,6 +20,10 @@ def date_prefix(day):
     return f'{n}{suffix} {month} {day.year}'
 
 def title_for(source_title, slot, day):
+    if slot.get('title_template'):
+        result=slot['title_template'].replace('{date}',date_prefix(day)).replace('{program}',slot['name'])
+        if not result.strip() or len(result)>100 or any(ord(c)<32 or c in '<>{}' for c in result):raise RuntimeError('Invalid expanded YouTube title.')
+        return result
     # Preserve the entire original program/channel suffix, replacing only its date.
     pattern = r'^\s*\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+\s+\d{4}\s*\|\s*'
     if not re.match(pattern, source_title, re.I):
@@ -85,7 +89,11 @@ class Scheduler:
         if not rec.get('plan'):
             # Old journals never gain newly configured ending/movement permissions.
             if rec and rec.get('phase') not in ('new','missed'):
-                plan=next(x for x in get_schedule({}) if x['id']==current['id']);due=slot_time(day,plan)
+                legacy=next((x for x in get_schedule({}) if x['id']==current['id']),None)
+                if legacy is None:
+                    put(phase='needs_review',last_error='Saved run has no original plan. Inspect platforms; no automatic action was sent.')
+                    return
+                plan=legacy;due=slot_time(day,plan)
             states={}
             if rec.get('phase')=='done':states['0']=rec.get('patrol_result','sent')
             if rec.get('phase')=='patrol_sending':states['0']='needs_review'
