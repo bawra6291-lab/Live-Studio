@@ -1,7 +1,5 @@
 name: Development validation
 on:
-  push:
-    branches: [codex/product-foundation]
   pull_request:
     branches: [main]
 permissions:

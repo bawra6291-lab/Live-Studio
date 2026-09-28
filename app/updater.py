@@ -210,7 +210,12 @@ def rename_when_released(source,target):
 
 def swap_folders(app_dir,stage):
     app_dir=Path(app_dir);stage=Path(stage)
-    if app_dir.is_symlink() or stage.is_symlink() or stage.parent!=app_dir.parent:
+    # Reject redirected endpoints before resolving Windows short-name aliases.
+    # prepare_update resolves its path; callers can still hold the 8.3 spelling.
+    if any(p.is_symlink() or (hasattr(p,'is_junction') and p.is_junction()) for p in (app_dir,stage)):
+        raise UpdateError('Unsafe installation directory.')
+    app_dir=app_dir.resolve();stage=stage.resolve()
+    if stage.parent!=app_dir.parent or stage==app_dir or not app_dir.is_dir() or not stage.is_dir():
         raise UpdateError('Unsafe installation directory.')
     backup=app_dir.with_name(app_dir.name+'-previous-'+uuid.uuid4().hex[:8])
     rename_when_released(app_dir,backup)

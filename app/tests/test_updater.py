@@ -68,6 +68,27 @@ class Updates(unittest.TestCase):
         stage,_=u.prepare_update(self.app,self.work,archive=self.package)
         backup=u.swap_folders(self.app,stage)
         self.assertEqual(u.installed_version(self.app),'0.6.0');self.assertEqual(u.installed_version(backup),'0.5.0')
+    def test_swap_normalizes_equivalent_parent_spellings(self):
+        stage,_=u.prepare_update(self.app,self.work,archive=self.package)
+        # On Windows TEMP can use RUNNER~1 while resolve returns runneradmin.
+        # A relative spelling reproduces the same mismatch on every platform.
+        relative_app=Path(os.path.relpath(self.app))
+        backup=u.swap_folders(relative_app,stage)
+        self.assertEqual(u.installed_version(self.app),'0.6.0')
+        self.assertEqual(u.installed_version(backup),'0.5.0')
+    def test_swap_rejects_same_folder_and_different_parent(self):
+        elsewhere=self.work/'stage';elsewhere.mkdir()
+        for stage in (self.app,elsewhere):
+            with self.subTest(stage=stage),patch.object(Path,'rename') as rename:
+                with self.assertRaisesRegex(u.UpdateError,'Unsafe'):u.swap_folders(self.app,stage)
+                rename.assert_not_called()
+        self.assertEqual(u.installed_version(self.app),'0.5.0')
+    def test_swap_rejects_links_before_resolving(self):
+        stage,_=u.prepare_update(self.app,self.work,archive=self.package)
+        for method in ('is_symlink','is_junction'):
+            with self.subTest(method=method),patch.object(Path,method,return_value=True,create=True),patch.object(Path,'resolve') as resolve,patch.object(Path,'rename') as rename:
+                with self.assertRaisesRegex(u.UpdateError,'Unsafe'):u.swap_folders(self.app,stage)
+                resolve.assert_not_called();rename.assert_not_called()
     def test_failed_swap_restores_original(self):
         stage,_=u.prepare_update(self.app,self.work,archive=self.package)
         rename=Path.rename
