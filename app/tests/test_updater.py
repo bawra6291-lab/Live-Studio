@@ -71,9 +71,9 @@ class Updates(unittest.TestCase):
     def test_swap_normalizes_equivalent_parent_spellings(self):
         stage,_=u.prepare_update(self.app,self.work,archive=self.package)
         # On Windows TEMP can use RUNNER~1 while resolve returns runneradmin.
-        # A relative spelling reproduces the same mismatch on every platform.
-        relative_app=Path(os.path.relpath(self.app))
-        backup=u.swap_folders(relative_app,stage)
+        # A dot-dot alias reproduces the mismatch even on a different drive.
+        alias_app=self.out/'..'/self.app.name
+        backup=u.swap_folders(alias_app,stage)
         self.assertEqual(u.installed_version(self.app),'0.6.0')
         self.assertEqual(u.installed_version(backup),'0.5.0')
     def test_swap_rejects_same_folder_and_different_parent(self):
