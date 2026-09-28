@@ -35,7 +35,7 @@ Use a separate test Windows user/PC or set `LIVE_DESK_DATA_DIR` to an empty test
 
 ## Release policy
 
-Development version: 0.6.0. No release ZIP, `updates/latest.json` or published update address is changed by this branch. Existing users remain on stable 0.5.5. Validate migration and rollback with an exported copy of settings and a supervised Windows run before a release.
+Development version: 0.6.0. An opt-in pilot ZIP, manifest and PC test guide are available under `updates/pilot/` on this development branch. The stable `main/updates/latest.json` feed is unchanged, so existing users remain on stable 0.5.5 unless they deliberately select the pilot feed. The package uses the exact passing CI source. Validate the real Windows installer handoff, migration, OBS and supervised platform start/end before any public/stable rollout.
 
 ## Validation
 
