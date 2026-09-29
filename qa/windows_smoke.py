@@ -22,6 +22,7 @@ pythoncom.CoInitialize()
 try:
     sid = obs_windows._sid()
     assert sid.startswith('S-1-'), 'Cannot identify the current Windows user.'
+    assert obs_windows._same_user(win32api.GetUserName(), sid), 'Task account name did not resolve to current SID.'
     session = win32ts.ProcessIdToSessionId(os.getpid())
     assert isinstance(session, int)
 finally:
@@ -29,5 +30,6 @@ finally:
 backend = type(keyring.get_keyring()).__module__
 assert 'Windows' in backend, 'Windows Credential Manager backend unavailable.'
 print(json.dumps({'tkinter': 'passed', 'windows_user_identity': 'passed',
+                  'task_account_name_resolution': 'passed',
                   'session_lookup': 'passed', 'credential_backend': backend,
                   'note': 'No OBS, UAC, scheduled task, credentials or live-platform operations tested.'}))
