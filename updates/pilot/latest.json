@@ -1,9 +1,9 @@
 {
   "app_id": "iskcon-live-desk",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "update_format": 1,
-  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.6.0/ISKCON-Live-Desk.zip",
-  "size": 104592,
-  "sha256": "c101713af39c9699287ffbfb98ce25a1d0bddb18d95e7722faeebfff570ad682",
-  "notes": "PILOT 0.6.0 for a supervised PC test. Preserves existing ISKCON settings and the Official stream selection. Adds configurable workspaces and programs, plus a Windows updater path fix. Pause automation and finish all live/recording before installing. After restart, run Check connections. Do not enable unattended automation until the PC live test passes."
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.6.1/ISKCON-Live-Desk.zip",
+  "size": 105182,
+  "sha256": "121e0419ba8d2e6fb2839a648a8a7c8158cc0ce9d5ba244d3d8127f8ffb6e7d6",
+  "notes": "PILOT 0.6.1: Fix OBS administrator launch when Windows returns an account name instead of a SID. Existing administrator setup can be reused after account identity is verified. Pause automation and finish live, recording and replay before installing. Saved connections, schedules and the Official YouTube stream selection are preserved. After restart, use Open / Show OBS while idle."
 }
