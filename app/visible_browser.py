@@ -78,24 +78,66 @@ RECORDER = r'''(() => {
 if(window.__liveDeskRecorder) return;
 window.__liveDeskRecorder=true;
 const forbidden=/password|passcode|secret|token|stream.?key|verification|one.?time|otp|email|sign.?in|log.?in/i;
-function target(e){
- let n=e.closest('button,input,textarea,select,a,[role="button"],[role="tab"],[contenteditable="true"]');
- if(!n) return null;
- const label=(n.getAttribute('aria-label')||n.labels?.[0]?.innerText||n.getAttribute('placeholder')||n.innerText||'').trim();
- if(forbidden.test(label+' '+n.id+' '+n.name+' '+n.type)||n.type==='password')return null;
- if(n.id && !/[0-9]{5}/.test(n.id)) return {css:'#'+CSS.escape(n.id),label:label.slice(0,160)};
- if(label && label.length<=160) return {tag:n.tagName.toLowerCase(),text:label};
- return null;
+const controls='button,input,textarea,select,a,[role="button"],[role="tab"],[contenteditable="true"],ytcp-button,tp-yt-paper-button';
+const roots=new Set(),seen=new WeakSet();
+let count=0,ignored=0,badge=null;
+function editable(n){return n.isContentEditable || ['INPUT','TEXTAREA','SELECT'].includes(n.tagName);}
+function label(n){return (n.getAttribute('aria-label')||n.labels?.[0]?.innerText||n.getAttribute('placeholder')||(editable(n)?'':n.innerText)||'').trim();}
+function emit(item){window.liveDeskCapture(JSON.stringify({...item,origin:location.origin}));}
+function show(){
+ if(!document.body)return;
+ if(!badge||!badge.isConnected){
+  badge=document.createElement('aside');badge.setAttribute('data-live-desk-recorder','true');
+  Object.assign(badge.style,{position:'fixed',top:'8px',left:'8px',zIndex:'2147483647',padding:'8px 12px',background:'#153e32',color:'#fff',font:'14px sans-serif',border:'2px solid #f8b36b',borderRadius:'6px',pointerEvents:'none'});
+  document.body.append(badge);
+ }
+ badge.textContent='LIVE DESK RECORDING • '+count+' captured on this page'+(ignored?' • '+ignored+' unsupported':'');
 }
-function send(kind,e){
- if(!window.__liveDeskRecorder) return;
- const loc=target(e.target);if(!loc)return;
- window.liveDeskCapture(JSON.stringify({kind,locator:loc,origin:location.origin}));
+function target(event){
+ const path=event.composedPath().filter(n=>n instanceof Element);
+ // Use the actual inner control, not the retargeted shadow host.
+ let n=path.find(n=>n.matches(controls));
+ const passive=!n;
+ if(!n && event.type==='click')n=path.find(n=>n.matches('span,div,yt-formatted-string')&&n.children.length===0);
+ if(!n || n.closest('[data-live-desk-recorder]'))return null;
+ if(n.type==='password'||forbidden.test(label(n)+' '+n.id+' '+n.name+' '+n.type))return null;
+ if(passive && (!label(n)||label(n).length>160||/EAA[A-Za-z0-9]{20}|ya29\.|[A-Za-z0-9_-]{50}/.test(label(n))))return null;
+ if(n.tagName==='SELECT'||n.type==='file')return null;
+ const text=label(n).slice(0,160);
+ let loc=null;
+ if(n.id && !/[0-9]{5}/.test(n.id))loc={css:'#'+CSS.escape(n.id),label:text};
+ else if(text && ['button','input','textarea','a','div','span','ytcp-button','tp-yt-paper-button','yt-formatted-string'].includes(n.tagName.toLowerCase()))loc={tag:n.tagName.toLowerCase(),text};
+ return loc?{locator:loc,passive,text}:null;
 }
-document.addEventListener('click',e=>{if(e.isTrusted)send('click',e)},true);
-document.addEventListener('change',e=>{if(e.isTrusted)send('fill',e)},true);
-document.addEventListener('focusout',e=>{if(e.isTrusted && e.target.isContentEditable)send('fill',e)},true);
-})();'''
+function capture(e){
+ if(!window.__liveDeskRecorder||!e.isTrusted||seen.has(e))return;
+ seen.add(e);
+ const actual=e.composedPath()[0];
+ if(e.type==='focusout' && !actual?.isContentEditable)return;
+ const found=target(e);
+ if(!found){ignored++;emit({kind:'skipped'});show();return;}
+ const kind=found.passive?'assert':e.type==='click'?'click':'fill';
+ emit({kind,locator:found.locator,...(kind==='assert'?{text:found.text}:{})});count++;show();
+}
+function scan(){
+ const pending=[document];
+ for(let i=0;i<pending.length;i++){
+  const root=pending[i];
+  if(!roots.has(root)){
+   roots.add(root);
+   for(const type of ['click','change','focusout'])root.addEventListener(type,capture,true);
+  }
+  for(const n of root.querySelectorAll('*'))if(n.shadowRoot)pending.push(n.shadowRoot);
+ }
+ show();
+}
+window.__liveDeskStopRecorder=()=>{
+ window.__liveDeskRecorder=false;clearInterval(timer);
+ for(const root of roots)for(const type of ['click','change','focusout'])root.removeEventListener(type,capture,true);
+ badge?.remove();
+};
+const timer=setInterval(scan,200);scan();emit({kind:'ready'});
+})();''' 
 
 
 def target_script(locator, body):
@@ -193,13 +235,27 @@ class Browser:
             if self.recording:
                 raise SetupError('Finish or discard the current recording first.')
             page = self.page(service)
+            script = None
             try:
                 page.call('Runtime.enable');page.call('Page.enable')
                 page.call('Runtime.addBinding', name='liveDeskCapture')
                 script = page.call('Page.addScriptToEvaluateOnNewDocument', source=RECORDER)['identifier']
                 self.guard();page.call('Page.bringToFront');page.call('Page.navigate', url=url)
+                deadline=time.monotonic()+25
+                while time.monotonic()<deadline:
+                    self.guard()
+                    state=page.evaluate("({url:location.href,ready:document.readyState,recorder:window.__liveDeskRecorder===true})")
+                    if state and state.get('url','').startswith(('http://','https://')) and origin(state['url'])==origin(url) and state['ready'] in ('interactive','complete'):
+                        if not state['recorder']:page.evaluate(RECORDER)
+                        if page.evaluate('window.__liveDeskRecorder===true'):break
+                    time.sleep(.2)
+                else:raise SetupError('Recorder did not become ready on the selected site. Sign in first; no recording was started.')
                 self.recording = (page, script, origin(url))
             except Exception:
+                try:
+                    page.evaluate('window.__liveDeskStopRecorder?.()')
+                    if script:page.call('Page.removeScriptToEvaluateOnNewDocument',identifier=script)
+                except Exception:pass
                 page.close();raise
 
     def finish_recording(self):
@@ -209,17 +265,23 @@ class Browser:
             page, script, allowed = self.recording
             self.recording = None
             try:
-                page.evaluate('window.__liveDeskRecorder=false')
+                page.evaluate('window.__liveDeskStopRecorder?.(); window.__liveDeskRecorder=false')
                 page.call('Page.removeScriptToEvaluateOnNewDocument', identifier=script)
                 steps = []
                 for event in page.events:
                     if event.get('name') != 'liveDeskCapture':continue
                     item = json.loads(event['payload'])
                     if origin(item.get('origin', '')) != allowed:continue
+                    if item.get('kind') not in ('click','fill','assert'):continue
                     step = {k:item[k] for k in ('kind','locator')}
                     if step['kind'] == 'fill':step['variable'] = ''
+                    if step['kind'] == 'assert':step['text']=item['text']
                     if not steps or step != steps[-1]:steps.append(step)
-                return steps[:80]
+                if not steps:
+                    raise SetupError('No actions were captured. The workflow was not saved. Check for the LIVE DESK RECORDING badge in the recording tab; use a harmless click test before recording another schedule.')
+                if len(steps)>80 or len(page.events)>=500:
+                    raise SetupError('Recording exceeded its limit and was not saved. Record a shorter workflow; do not replay a partial recording.')
+                return steps
             finally:
                 page.close()
 

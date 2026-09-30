@@ -126,5 +126,31 @@ class VisibleTests(unittest.TestCase):
         script=target_script({'css':'#x";alert(1)//'},'return {ok:true};')
         self.assertIn('"#x\\";alert(1)//"',script)
 
+    def test_empty_recording_is_error_and_clears_old_draft(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            v=Visible(tmp,threading.Event(),lambda _:None)
+            v.draft=recipe()['steps'];v.browser=Mock()
+            v.browser.finish_recording.side_effect=SetupError('No actions were captured.')
+            with self.assertRaisesRegex(SetupError,'No actions'):v.command({'action':'finish'}, {})
+            self.assertIsNone(v.draft)
+            self.assertEqual(v.status['state'],'needs_review')
+
+    def test_capture_filters_health_messages_and_keeps_identity_assertion(self):
+        b=Browser('/unused',ready=lambda:None);page=Mock()
+        page.events=[{'name':'liveDeskCapture','payload':json.dumps(item)} for item in [
+            {'kind':'ready','origin':'https://studio.youtube.com'},
+            {'kind':'skipped','origin':'https://studio.youtube.com'},
+            {'kind':'assert','origin':'https://studio.youtube.com','locator':{'css':'#channel'},'text':'Test Temple'}]]
+        b.recording=(page,'script',origin('https://studio.youtube.com'))
+        self.assertEqual(b.finish_recording(),[{'kind':'assert','locator':{'css':'#channel'},'text':'Test Temple'}])
+        self.assertIsNone(b.recording);page.close.assert_called_once()
+
+    def test_long_recording_is_not_silently_truncated(self):
+        b=Browser('/unused',ready=lambda:None);page=Mock()
+        page.events=[{'name':'liveDeskCapture','payload':json.dumps({'kind':'click','origin':'https://studio.youtube.com','locator':{'css':f'#step{i}'}})} for i in range(81)]
+        b.recording=(page,'script',origin('https://studio.youtube.com'))
+        with self.assertRaisesRegex(SetupError,'exceeded'):b.finish_recording()
+        page.close.assert_called_once()
+
 
 if __name__=='__main__':unittest.main()

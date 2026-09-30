@@ -20,7 +20,7 @@ def locator(value):
     if set(value).issubset({'css','label'}) and isinstance(value.get('css'),str) and 0<len(value['css'])<=200:
         if 'label' in value and (not isinstance(value['label'],str) or len(value['label'])>160):raise ValueError('Invalid target label.')
         return dict(value)
-    if (set(value)=={'tag','text'} and value['tag'] in ('button','input','textarea','select','a','div','span','ytcp-button','tp-yt-paper-button')
+    if (set(value)=={'tag','text'} and value['tag'] in ('button','input','textarea','select','a','div','span','ytcp-button','tp-yt-paper-button','yt-formatted-string')
             and isinstance(value['text'],str) and 0<len(value['text'])<=160):
         return dict(value)
     raise ValueError('Invalid visible target. Use a unique CSS selector or a supported recorded label.')
@@ -129,8 +129,12 @@ class Visible:
         action=data.get('action');flow=data.get('flow')
         if flow not in FLOWS and action!='finish':raise ValueError('Choose a workflow.')
         if action=='finish':
-            self.draft=self.browser.finish_recording()
-            self.update(state='recorded',message='Review every step and map text fields before saving. The recording is not automatically approved.')
+            self.draft=None
+            try:self.draft=self.browser.finish_recording()
+            except SetupError as exc:
+                self.update(state='needs_review',message=str(exc));raise
+            self.update(state='recorded',message=f'{len(self.draft)} steps captured. Review every step and map text fields before saving. The recording is not automatically approved.')
+            self.log(f'Visible recording finished: {len(self.draft)} steps captured. Review is required; no workflow saved yet.')
             return
         record={}
         if flow.startswith('youtube_') and data.get('reference'):record['reference']=data['reference']
@@ -145,8 +149,9 @@ class Visible:
             self.update(state='opened',message='Browser opened. Sign in manually and verify the account. No clicks were automated.')
         elif action=='record':
             if data.get('confirmed') is not True:raise ValueError('Confirm recording: your manual clicks can create public events or move a camera.')
+            self.draft=None
             self.browser.begin_recording(flow.split('_')[0],url)
-            self.update(state='recording',message='Recording real manual clicks. Passwords/input values are not recorded. Return here and finish when done.')
+            self.update(state='recording',message='Recorder ready. Use only the tab showing LIVE DESK RECORDING and confirm its captured count increases with a harmless click first. Passwords/input values are not recorded.')
         else:raise ValueError('Unknown browser action.')
 
     def execute(self, flow, cfg, values=None, record=None):

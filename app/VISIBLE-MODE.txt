@@ -1,4 +1,4 @@
-LIVE DESK 0.7.0 — CALIBRATED VISIBLE BROWSER MODE
+LIVE DESK 0.7.1 — CALIBRATED VISIBLE BROWSER MODE
 
 This opt-in development feature uses real Chrome/Edge input events. It is not
 preconfigured for every YouTube, Facebook or camera UI. Existing API mode stays
@@ -25,6 +25,11 @@ ONE-TIME CALIBRATION (AUTOMATION PAUSED)
    Recording does not make the site a sandbox: manual publishing, ending and
    camera moves have their normal real effects. Use an approved supervised test.
    Recording navigates back to the workflow entry page. Start after login.
+   Look for LIVE DESK RECORDING at the top-left of that tab. Make one harmless
+   click and verify its captured count rises before doing the full workflow.
+   The count is per page and resets on navigation. No badge means do not proceed.
+   An empty recording is now an error, not a successful workflow. Open shadow
+   controls and plain identity text clicks are captured; text clicks become checks.
 6. Capture a click on a visible account/Page identity element as well as the
    required workflow. Then Finish recording in Live Desk.
 7. Choose the recorded identity target and type its exact visible name/label.
