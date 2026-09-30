@@ -17,12 +17,27 @@ def clock(value,label):
     h,m=map(int,value.split(':'));return h*60+m
 
 def validate_schedule(raw):
-    if not isinstance(raw,list) or len(raw)!=4:raise ValueError('Keep all four program rows; switch unwanted programs off.')
-    output=[];seen=set()
+    if not isinstance(raw,list) or len(raw)>24:raise ValueError('Use at most 24 daily programs.')
+    output=[];seen=set();names=set()
     for row in raw:
         if not isinstance(row,dict):raise ValueError('Invalid program.')
-        base=next((s for s in SLOTS if s['id']==row.get('id')),None)
-        if not base or base['id'] in seen:raise ValueError('Invalid/duplicate program.')
+        legacy=next((s for s in SLOTS if s['id']==row.get('id')),{})
+        ident=row.get('id','')
+        if not isinstance(ident,str) or not re.fullmatch(r'[a-z][a-z0-9_-]{0,47}',ident) or ident in seen:raise ValueError('Invalid/duplicate program ID.')
+        name=row.get('name',legacy.get('name',''))
+        reference=row.get('reference',legacy.get('reference',''))
+        template=row.get('title_template','')
+        if not isinstance(name,str) or not name.strip() or len(name)>60 or any(ord(c)<32 for c in name):raise ValueError('Program name must be 1–60 characters.')
+        if name.strip().casefold() in names:raise ValueError('Give each program a different name.')
+        names.add(name.strip().casefold())
+        if not isinstance(reference,str) or not re.fullmatch(r'[A-Za-z0-9_-]{11}',reference):raise ValueError('Enter the 11-character YouTube reference livestream ID from your channel.')
+        if not isinstance(template,str) or len(template)>100:raise ValueError('Title template must be at most 100 characters.')
+        if template:
+            expanded=template.replace('{date}','28th Sept 2026').replace('{program}',name.strip())
+            if '{' in expanded or '}' in expanded or len(expanded)>100 or not expanded.strip() or any(ord(c)<32 or c in '<>' for c in expanded):raise ValueError('Use only {date} and {program}; the expanded title must be at most 100 characters.')
+        elif not legacy:raise ValueError('Enter a title template, for example {date} | {program}.')
+        base=dict(id=ident,name=name.strip(),reference=reference)
+        if template:base['title_template']=template
         seen.add(base['id']);start=clock(row.get('at'),base['name']+' start')
         enabled=row.get('enabled',True);next_day=row.get('end_next_day',False)
         if type(enabled)!=bool or type(next_day)!=bool:raise ValueError('Invalid enabled/next-day choice.')

@@ -1,0 +1,6 @@
+{
+  "name": "live-desk-dashboard-qa",
+  "private": true,
+  "scripts": {"test": "node dashboard.test.cjs"},
+  "devDependencies": {"playwright": "1.55.0"}
+}

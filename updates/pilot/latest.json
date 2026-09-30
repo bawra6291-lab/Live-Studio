@@ -1,0 +1,9 @@
+{
+  "app_id": "iskcon-live-desk",
+  "version": "0.7.1",
+  "update_format": 1,
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.7.1/ISKCON-Live-Desk.zip",
+  "size": 127041,
+  "sha256": "1ddb3a87f93533f16655709de3d5dec5d4901f8b941bcb6e18c0fea1799502b7",
+  "notes": "PILOT 0.7.1: Fixes missed clicks in open shadow controls and adds a LIVE DESK RECORDING badge with a per-page captured-step count. Recorder readiness is checked; empty/oversized recordings fail explicitly and cannot be saved as successful. Do a harmless click test before recording another schedule. Existing browser/site workflows still require operator calibration. Pause automation and finish any live, recording or replay before installing. Saved connections and Official stream selection are preserved."
+}

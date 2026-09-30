@@ -1,0 +1,50 @@
+name: Development validation
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: validation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  controller:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r app/requirements.txt
+      - run: python -m unittest discover -s app/tests -v
+      - run: python -m compileall -q app
+      - name: Windows native compatibility smoke check
+        if: runner.os == 'Windows'
+        run: python qa/windows_smoke.py
+  dashboard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --prefix qa
+      - run: node qa/node_modules/playwright/cli.js install --with-deps chromium
+      - run: npm test --prefix qa
+      - run: python -m pip install requests websocket-client
+      - run: node qa/visible-browser.test.cjs
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: dashboard-validation
+          path: qa/results/
+          retention-days: 7

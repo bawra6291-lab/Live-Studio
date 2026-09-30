@@ -1,0 +1,22 @@
+{
+  "version": "0.6.1",
+  "channel": "pilot",
+  "source_commit": "e4fe44467ed611c989a144e35df27d2a012fa854",
+  "ci_run": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/36501063046",
+  "archive_sha256": "121e0419ba8d2e6fb2839a648a8a7c8158cc0ce9d5ba244d3d8127f8ffb6e7d6",
+  "archive_size": 105182,
+  "files": 38,
+  "checks": {
+    "exact_source_match": true,
+    "archive_hashes": true,
+    "no_saved_settings_or_credentials_packaged": true,
+    "stable_0_5_5_updater_accepts_package": true,
+    "app_backup_created": true,
+    "packaged_migration_preserves_legacy_settings": true,
+    "paused_startup_without_worker": true
+  },
+  "limitations": [
+    "Package upgrade simulation ran in a temporary Linux directory.",
+    "Windows real updater handoff, UAC, OBS, platform live start/end and camera movement require a supervised PC test."
+  ]
+}

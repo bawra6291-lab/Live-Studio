@@ -24,6 +24,7 @@ class Service:
 class Tests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();Service.calls=0;Service.gate=None
+        atomic_json(Path(self.tmp.name)/'settings.json',{})  # Existing-install migration fixture.
         self.vault=Vault();self.c=Controller(self.tmp.name,Service,self.vault)
         self.server=DashboardServer(('127.0.0.1',0),self.c,'test-pairing-code')
         self.thread=threading.Thread(target=self.server.serve_forever,daemon=True);self.thread.start()
