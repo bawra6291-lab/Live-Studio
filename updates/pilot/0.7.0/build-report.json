@@ -1,0 +1,24 @@
+{
+  "version": "0.7.0",
+  "channel": "pilot",
+  "source_commit": "0cca7820d2a4ebc1c0755c9b914b72db6f878469",
+  "ci_run": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/36678628225",
+  "archive_sha256": "fce84449f75e645ef928e1478e84940fe310ea731b81ed5f671aae00c32cc60d",
+  "archive_size": 125012,
+  "files": 42,
+  "checks": {
+    "archive_matches_local_source": true,
+    "archive_hashes": true,
+    "no_operator_data_packaged": true,
+    "updater_0_6_1_stages_and_swaps": true,
+    "backup_created": true,
+    "legacy_migration_and_official_selection": true,
+    "default_api_mode_paused_startup": true
+  },
+  "limitations": [
+    "Package upgrade simulation uses a disposable Linux folder.",
+    "Browser fixture has no real accounts. Actual YouTube/Facebook/camera workflows must be recorded, reviewed and supervised on the operator PC.",
+    "Visible mode uses browser input for supported calibrated workflows; OBS still uses its existing WebSocket adapter.",
+    "No claim of completed real-platform live start/end/camera verification."
+  ]
+}

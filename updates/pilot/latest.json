@@ -1,9 +1,9 @@
 {
   "app_id": "iskcon-live-desk",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "update_format": 1,
-  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.6.1/ISKCON-Live-Desk.zip",
-  "size": 105182,
-  "sha256": "121e0419ba8d2e6fb2839a648a8a7c8158cc0ce9d5ba244d3d8127f8ffb6e7d6",
-  "notes": "PILOT 0.6.1: Fix OBS administrator launch when Windows returns an account name instead of a SID. Existing administrator setup can be reused after account identity is verified. Pause automation and finish live, recording and replay before installing. Saved connections, schedules and the Official YouTube stream selection are preserved. After restart, use Open / Show OBS while idle."
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.7.0/ISKCON-Live-Desk.zip",
+  "size": 125012,
+  "sha256": "fce84449f75e645ef928e1478e84940fe310ea731b81ed5f671aae00c32cc60d",
+  "notes": "PILOT 0.7.0: Adds opt-in Visible automation with a real Chrome/Edge workflow recorder and replay engine. You must record/review your actual site workflows first; this is not preconfigured for every account or camera. OBS stays visible with WebSocket control. API mode remains the default. Login/UAC stay manual. Read VISIBLE-MODE.txt. Pause automation and finish live, recording and replay before installing. Saved connections and Official stream selection are preserved."
 }

@@ -27,7 +27,7 @@ Use a separate test Windows user/PC or set `LIVE_DESK_DATA_DIR` to an empty test
 
 - This milestone is not multi-tenant cloud infrastructure. There are no team roles, internet relay, billing or central account system yet. Phone access remains on the same trusted LAN using the existing paired dashboard.
 - Public distribution needs production Google/Meta OAuth onboarding, application verification/review as applicable, signed Windows installation/updates, device enrollment, secure remote transport and tenant authorization. A credential namespace does not provide cloud tenant isolation.
-- Visible execution is not implemented. Current activity reflects real backend operations; the app does not simulate browser clicks. A future visible mode needs an interactive desktop agent and truthful per-step progress, with explicit handling of login/UAC prompts.
+- Version 0.7.0 adds opt-in real browser recording/replay and truthful progress for calibrated workflows. API mode remains the default. Browser actions need operator recording/review and real-site verification; no universal preconfigured site automation is claimed. OBS remains controlled via WebSocket with a visible window. Login/UAC and unsupported native/iframe/plugin workflows are manual or need adapters. See app/VISIBLE-MODE.txt.
 - Windows elevation, OBS plugin reload, lock/sleep recovery, expired credentials and platform error recovery still require end-to-end testing. Existing metadata/API errors are not claimed fixed by this product milestone.
 - Manual public broadcasts and uncertain partial runs require operator review. This branch does not automatically delete/retry them. Recent unended run records may block destination changes until they fall outside the scheduler's active day range; a reviewed reconciliation workflow is a separate milestone.
 - Program execution uses the existing scheduler and its timing windows. This is not an OS service and cannot operate while the PC is off or the desktop agent is closed.
@@ -35,7 +35,7 @@ Use a separate test Windows user/PC or set `LIVE_DESK_DATA_DIR` to an empty test
 
 ## Release policy
 
-Development version: 0.6.0. An opt-in pilot ZIP, manifest and PC test guide are available under `updates/pilot/` on this development branch. The stable `main/updates/latest.json` feed is unchanged, so existing users remain on stable 0.5.5 unless they deliberately select the pilot feed. The package uses the exact passing CI source. Validate the real Windows installer handoff, migration, OBS and supervised platform start/end before any public/stable rollout.
+Development version: 0.7.0. An opt-in pilot ZIP, manifest and PC test guide are available under `updates/pilot/` on this development branch. The stable `main/updates/latest.json` feed is unchanged, so existing users remain on stable 0.5.5 unless they deliberately select the pilot feed. The package uses the exact passing CI source. Validate the real Windows installer handoff, migration, OBS and supervised platform start/end before any public/stable rollout.
 
 ## Validation
 

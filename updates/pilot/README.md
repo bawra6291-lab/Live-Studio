@@ -1,6 +1,12 @@
-# Live Desk 0.6.1 — supervised pilot
+# Live Desk 0.7.0 — supervised pilot
 
 This is an opt-in test build from the development branch. It is not the stable release or the finished cloud/team product. The stable `main/updates/latest.json` feed remains unchanged.
+
+## New in 0.7.0: Visible browser workflows
+
+Open **Visible automation** on the PC. This version includes a real recorder/replayer for reviewed, calibrated site workflows, with local-only setup, an isolated Chrome/Edge profile and no captured text-field values. API mode stays the default. Platform writes have a single browser owner in Visible mode; API reads verify results. OBS uses its existing WebSocket adapter with its real window.
+
+Read [VISIBLE-MODE.txt](../../app/VISIBLE-MODE.txt) before recording: manual actions on the real sites can publish a live or move the camera. No real account/camera calibration or full live test has been performed by CI. Login/UAC, native dropdown/file upload, iframe/legacy plugin and unsupported entry-page flows require manual handling or a tested adapter. Do not enable unattended visible execution until calibration and supervised verification are complete.
 
 ## OBS administrator fix in 0.6.1
 
@@ -16,11 +22,11 @@ Windows Task Scheduler can return the principal as an account name even when set
 https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/latest.json
 ```
 
-4. **Check for updates**. New update source ka prompt aaye to URL check karke accept karein. **Version 0.6.1** aur **PILOT** notes dikhne chahiye.
+4. **Check for updates**. New update source ka prompt aaye to URL check karke accept karein. **Version 0.7.0** aur **PILOT** notes dikhne chahiye.
 5. **Download & install**. App restart hone dein. Folder ya shortcut manually delete/change na karein.
-6. Restart ke baad installed version **0.6.1** confirm karein. Automation paused hi rakhein.
+6. Restart ke baad installed version **0.7.0** confirm karein. Automation paused hi rakhein.
 
-If no update appears, do not repeatedly install: capture the Updates panel message and installed version. If your existing app is already 0.6.1 or newer, this package will not be offered as an upgrade.
+If no update appears, do not repeatedly install: capture the Updates panel message and installed version. If your existing app is already 0.7.0 or newer, this package will not be offered as an upgrade.
 
 ## Pehla check — koi live start nahi karna
 
@@ -50,9 +56,9 @@ Keep those backups until the PC test is complete. If rollback is needed after ed
 
 ## Build evidence
 
-- Source: `e4fe44467ed611c989a144e35df27d2a012fa854`.
-- [Passing Windows/Linux/browser checks](https://github.com/bawra6291-lab/Live-Studio/actions/runs/36501063046): 130 controller tests on each OS, Windows native smoke check, seven desktop/mobile browser flows with fake services.
-- `0.6.1/build-report.json` records the package digest, exact source match and a temporary-directory upgrade simulation from 0.5.5. It does not claim a real Windows installer handoff or real platform testing.
+- Source: `0cca7820d2a4ebc1c0755c9b914b72db6f878469`.
+- [Passing Windows/Linux/browser checks](https://github.com/bawra6291-lab/Live-Studio/actions/runs/36678628225): 144 controller tests on each OS, Windows native smoke check, eight desktop/mobile browser flows with fake services, plus real Chromium recorder/replay against a local fixture.
+- `0.7.0/build-report.json` records the package digest, exact source match and a temporary-directory upgrade simulation from 0.6.1. It does not claim a real Windows installer handoff or real platform testing.
 - Package contents include no operator settings, logs or credentials. Checksums detect corruption; this is not a signed production installer.
 
 Later pilot updates can use the same opt-in address. Moving to a public/stable release remains a separate decision after the supervised PC test.
