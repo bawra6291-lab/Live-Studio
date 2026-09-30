@@ -29,6 +29,8 @@ class Controller:
         self.factory = factory or Services
         self.vault = vault if vault is not None else Vault(self.cfg['credential_service'])
         self.lock = threading.RLock(); self.stop = threading.Event()
+        from visible import Visible
+        self.visible=Visible(self.base,self.stop,self.log)
         self.maintenance = False; self.open_updates = None
         self.worker = None; self.mode = ''; self.armed = False; self.closing = False
         self.logs = deque(maxlen=160); self.message = 'Ready. Check connections before enabling daily starts.'
@@ -71,6 +73,7 @@ class Controller:
             issue=next((x for x in slots if x.get('last_error') and (x['phase'] in ('needs_review','missed') or x['end_state'] in ('needs_review','missed') or 'needs_review' in x['camera_states'].values())),None)
             return {'now':now.isoformat(), 'date':now.strftime('%A, %d %B %Y'),
                     'workspace_name':self.cfg['workspace_name'], 'setup_steps':setup_steps(self.cfg,self.checked),
+                    'visible':self.visible.snapshot(local),
                     'destinations':{k:self.cfg.get(k,'') for k in ('youtube_channel_id','facebook_page_id','youtube_stream_title','camera_channel')},
                     'schedule':schedule,'grace_minutes':int(self.cfg.get('grace_minutes',2)),
                     'last_tick':self.last_tick,'started_at':self.started_at,'arm_requested':bool(self.cfg.get('armed')),
@@ -91,6 +94,27 @@ class Controller:
             self.armed = False; self.cfg['armed'] = False; atomic_json(self.path, self.cfg)
             self.message = 'Paused: future starts, scheduled ends and camera actions are stopped. An operation already underway may finish.'
             self.log(self.message)
+
+    def save_visible(self,data):
+        with self.lock:
+            self.require_idle();self.require_no_recent_runs()
+            if data.get('confirmed') is not True:raise ValueError('Review and confirm the visible workflow or mode before saving.')
+            self.visible.save(data)
+
+    def visible_browser(self,data):
+        with self.lock:
+            self.require_idle()
+            self.mode='visible_setup';self.error=False
+            cfg=dict(self.cfg)
+            def work():
+                try:self.visible.command(data,cfg)
+                except Exception as exc:
+                    message=safe_error(exc)
+                    self.visible.update(state='needs_review',message=message)
+                    self.log(message)
+                finally:
+                    with self.lock:self.mode=''
+            self.worker=threading.Thread(target=work,daemon=True);self.worker.start()
 
     def save(self, values):
         with self.lock:
@@ -212,12 +236,19 @@ class Controller:
         if mode not in ('check','arm','youtube'):raise ValueError('Unknown action.')
         with self.lock:
             self.require_idle()
+            if self.visible.browser.recording:raise ValueError('Finish the visible workflow recording first.')
+            if mode=='arm' and self.visible.config['mode']=='visible':self.visible.ready(self.cfg)
             if mode=='arm' and not any(s['enabled'] for s in get_schedule(self.cfg)):raise ValueError('Enable at least one program in Schedule.')
             self.stop.clear();self.mode=mode;self.error=False
             self.message='Checking connections…' if mode!='youtube' else 'Complete Google sign-in on the Windows PC.'
             self.connections={k:'unchecked' for k in self.connections};self.checked=None
             if mode=='arm':self.cfg['armed']=True;atomic_json(self.path,self.cfg)
             cfg=dict(self.cfg)
+            def factory():
+                if self.visible.config['mode']=='visible' and mode=='arm':
+                    from visible import VisibleServices
+                    return VisibleServices(cfg,self.vault,self.log,self.visible)
+                return self.factory(cfg,self.vault,self.log)
             def work():
                 service=None
                 try:
@@ -226,7 +257,7 @@ class Controller:
                         channel=service.yt.owned_channel();self.log('YouTube channel verified: '+channel['snippet']['title'])
                     else:
                         while not self.stop.is_set():
-                            service=self.factory(cfg,self.vault,self.log)
+                            service=factory()
                             try:service.check();break
                             except Exception as exc:
                                 if mode!='arm':raise
@@ -353,6 +384,10 @@ class Handler(BaseHTTPRequestHandler):
             elif path=='/api/settings':
                 if not self.local():return self.reply(403,{'error':'Change credentials on the Windows PC.'})
                 c.save(data)
+            elif path in ('/api/visible/save','/api/visible/browser'):
+                if not self.local():return self.reply(403,{'error':'Configure browser workflows on the Windows PC.'})
+                if path.endswith('/save'):c.save_visible(data)
+                else:c.visible_browser(data)
             elif path=='/api/action':
                 action=data.get('action')
                 if action=='pause':c.pause()

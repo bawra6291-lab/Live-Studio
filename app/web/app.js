@@ -9,7 +9,7 @@ async function api(path,data){const options={cache:'no-store',signal:AbortSignal
 function showLogin(){$('app').hidden=true;$('login').hidden=false;online=false;state=null;csrf='';formLoaded=false;scheduleLoaded=false;}
 async function pair(code){await api('/api/login',{code});$('pair-code').value='';$('pair-error').textContent='';await refresh();}
 $('pair-form').addEventListener('submit',async event=>{event.preventDefault();const b=event.submitter;b.disabled=true;try{await pair($('pair-code').value.trim());}catch(e){$('pair-error').textContent=e.message;}finally{b.disabled=false;}});
-function navigate(view){if(!['overview','schedule','connections','activity','mobile','updates'].includes(view))view='overview';document.querySelectorAll('.view').forEach(n=>n.hidden=n.id!=='view-'+view);document.querySelectorAll('[data-view]').forEach(n=>{n.classList.toggle('active',n.dataset.view===view);if(n.dataset.view===view)n.setAttribute('aria-current','page');else n.removeAttribute('aria-current');});$('page-title').textContent={overview:'Live overview',schedule:'Daily schedule',connections:'Connections',activity:'Activity',mobile:'Mobile access',updates:'App updates'}[view];history.replaceState(null,'','#'+view);}
+function navigate(view){if(!['overview','schedule','connections','activity','mobile','updates','visible'].includes(view))view='overview';document.querySelectorAll('.view').forEach(n=>n.hidden=n.id!=='view-'+view);document.querySelectorAll('[data-view]').forEach(n=>{n.classList.toggle('active',n.dataset.view===view);if(n.dataset.view===view)n.setAttribute('aria-current','page');else n.removeAttribute('aria-current');});$('page-title').textContent={overview:'Live overview',schedule:'Daily schedule',connections:'Connections',activity:'Activity',mobile:'Mobile access',updates:'App updates',visible:'Visible automation'}[view];history.replaceState(null,'','#'+view);}
 document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>navigate(b.dataset.view));document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>navigate(b.dataset.go));
 function makeSlots(target,full){const parent=$(target);parent.replaceChildren();for(const s of state.slots){const row=el('div','slot'+(s.name===state.next.name?' next':''));const time=el('div','slot-time',s.at);time.append(el('small','','IST'));const name=el('div');name.append(el('div','slot-name',s.name),el('div','slot-dest',full&&s.last_error?s.last_error:(s.end_at?'End '+s.end_at+(s.end_next_day?' +1 day':'')+' · YouTube + Facebook':'Manual end · YouTube + Facebook')));const status=el('span','slot-state'+(s.phase==='needs_review'||s.end_state==='needs_review'?' attention':['live','done'].includes(s.phase)?' confirmed':''),s.end_state==='needs_review'?'End needs review':labels[s.phase]||s.phase);row.append(time,name,status);parent.append(row);}}
 function render(){
@@ -27,9 +27,9 @@ function render(){
  $('remote-settings').hidden=state.local;$('settings-form').hidden=!state.local;
  if(state.local&&!formLoaded){const grid=$('settings-fields');grid.replaceChildren();for(const [key,label,type] of fields){const wrap=el('div','field'),l=el('label','',label),input=el('input');input.id='field-'+key;input.name=key;input.type=type||'text';input.autocomplete='off';input.value=type==='password'?'':state.settings[key]||'';if(type==='password')input.placeholder='Saved value retained when blank';l.htmlFor=input.id;wrap.append(l,input);grid.append(wrap);}formLoaded=true;}
  const addresses=$('phone-addresses');addresses.replaceChildren();if(!state.local)addresses.textContent='This phone is paired. Controls are available in Overview.';else if(!state.mobile_enabled)addresses.textContent='Mobile access is currently off. Enable it from the Windows launcher.';else{addresses.append(el('b','','Phone address'));state.mobile_urls.forEach(url=>{const p=el('p'),a=el('a','',url);a.href=url;p.append(a);addresses.append(p);});if(!state.mobile_urls.length)addresses.append(el('p','','Check the Windows launcher for your network address.'));}
- updateButtons();updateClock();
+ renderVisible();updateButtons();updateClock();
 }
-function updateButtons(){const busy=!online||pending;for(const id of ['arm','check','check-settings','retry','save-settings','connect-youtube','save-schedule','reload-schedule'])$(id).disabled=busy||!!state?.busy;$('pause').disabled=busy||!(state?.armed||state?.busy);document.querySelectorAll('#schedule-form input,#schedule-form select,#schedule-form button').forEach(i=>i.disabled=busy||!!state?.busy);document.querySelectorAll('#settings-form input').forEach(i=>i.disabled=busy||!!state?.busy);}
+function updateButtons(){updateVisibleButtons();const busy=!online||pending;for(const id of ['arm','check','check-settings','retry','save-settings','connect-youtube','save-schedule','reload-schedule'])$(id).disabled=busy||!!state?.busy;$('pause').disabled=busy||!(state?.armed||state?.busy);document.querySelectorAll('#schedule-form input,#schedule-form select,#schedule-form button').forEach(i=>i.disabled=busy||!!state?.busy);document.querySelectorAll('#settings-form input').forEach(i=>i.disabled=busy||!!state?.busy);}
 function updateClock(){if(!state)return;const now=new Date(Date.parse(state.now)+(Date.now()-state.received));$('clock').replaceChildren(document.createTextNode(now.toLocaleTimeString('en-GB',{timeZone:'Asia/Kolkata'})+' '),el('small','','IST'));const diff=Math.max(0,Date.parse(state.next.due)-now.getTime()),mins=Math.floor(diff/60000),h=Math.floor(mins/60),m=mins%60;$('countdown').textContent=!state.schedule.some(s=>s.enabled)?'Add and enable a program in Schedule to get started.':(state.armed?'Starts in ':'Next program in ')+(h?h+'h ':'')+m+'m'+(state.armed?'':' · enable automation to run this schedule');}
 async function refresh(){try{const out=await api('/api/state');state={...out,received:Date.now()};csrf=out.csrf;online=true;render();}catch(e){if(state){online=false;$('offline').hidden=false;$('link-state').textContent='○ PC disconnected';$('link-state').className='badge';updateButtons();}else if(!$('login').hidden){}else showLogin();}}
 function confirmAction(title,message){return new Promise(resolve=>{const d=$('confirm-dialog');$('confirm-title').textContent=title;$('confirm-text').textContent=message;const finish=value=>{d.oncancel=null;$('confirm-ok').onclick=null;$('confirm-cancel').onclick=null;d.close();resolve(value);};$('confirm-ok').onclick=()=>finish(true);$('confirm-cancel').onclick=()=>finish(false);d.oncancel=e=>{e.preventDefault();finish(false);};d.showModal();$('confirm-cancel').focus();});}
@@ -76,3 +76,47 @@ $('export-diagnostics').onclick=async()=>{try{const data=await api('/api/diagnos
 (async()=>{const fragment=location.hash.slice(1);if(fragment.startsWith('pair=')){history.replaceState(null,'','/');try{await pair(decodeURIComponent(fragment.slice(5)));}catch(e){showLogin();$('pair-error').textContent=e.message;}}else{navigate(fragment||'overview');await refresh();}setInterval(refresh,3000);setInterval(updateClock,1000);})();
 
 $('open-updates').onclick=async()=>{try{await api('/api/updates/open',{});toast('Update controls opened in the Windows launcher.');}catch(e){toast(e.message);}};
+
+const visibleFlows=[['youtube_prepare','YouTube — create schedule'],['facebook_prepare','Facebook — create live event'],['youtube_go','YouTube — Go live'],['facebook_go','Facebook — Go live'],['youtube_end','YouTube — End live'],['facebook_end','Facebook — End live'],['camera_patrol_start','Camera — Start patrol'],['camera_patrol_stop','Camera — Stop patrol'],['camera_preset','Camera — Go to preset']];
+let visibleLoaded=false,visibleDraftSignature='',visibleSteps=[],visibleIdentity=null;
+for(const [value,label] of visibleFlows){const option=el('option','',label);option.value=value;$('visible-flow').append(option);}
+function visibleLabel(loc){return loc.css?(loc.label?loc.label+' · ':'')+loc.css:loc.tag+' · '+loc.text;}
+function buildVisibleSteps(steps,identity=null){
+ visibleSteps=steps.map(s=>({...s,locator:{...s.locator}}));visibleIdentity=identity;
+ const targets=$('visible-identity-target');targets.replaceChildren();
+ const unique=[];for(const step of visibleSteps){if(!unique.some(loc=>JSON.stringify(loc)===JSON.stringify(step.locator)))unique.push(step.locator);}
+ if(identity&&!unique.some(loc=>JSON.stringify(loc)===JSON.stringify(identity.locator)))unique.unshift(identity.locator);
+ unique.forEach(loc=>{const option=el('option','',visibleLabel(loc));option.value=JSON.stringify(loc);targets.append(option);});
+ if(identity){targets.value=JSON.stringify(identity.locator);$('visible-identity-text').value=identity.text;}else $('visible-identity-text').value='';
+ const root=$('visible-steps');root.replaceChildren();
+ visibleSteps.forEach((step,index)=>{
+  const row=el('div','visible-step');row.append(el('p','',`${index+1}. ${visibleLabel(step.locator)}`));
+  const kind=selectField(row,'Action','kind',step.kind,[['click','Click'],['fill','Type run data'],['assert','Check result']]);
+  const variable=selectField(row,'Text field value','variable',step.variable||'',[['','Choose variable'],['title','Program title'],['description','Reference description'],['date','Date — YYYY-MM-DD'],['time','Time — HH:MM'],['number','Camera number']]);
+  const text=inputField(row,'Expected visible result','text','text',step.text||'');
+  const update=()=>{step.kind=kind.value;step.variable=variable.value;step.text=text.value;variable.parentElement.hidden=kind.value!=='fill';text.parentElement.hidden=kind.value!=='assert';};
+  kind.onchange=variable.onchange=text.oninput=update;update();
+  const remove=el('button','text-button','Remove step');remove.type='button';remove.onclick=()=>{const saved=targets.value?{locator:JSON.parse(targets.value),text:$('visible-identity-text').value}:null;buildVisibleSteps(visibleSteps.filter((_,i)=>i!==index),saved);updateVisibleButtons();};row.append(remove);root.append(row);
+ });
+}
+function renderVisible(){
+ const v=state.visible;if(!v)return;
+ $('visible-status').textContent=(v.mode==='visible'?'VISIBLE BROWSER MODE · ':'API MODE · ')+(v.status?.message||'Idle');
+ $('visible-configured').textContent='Configured: '+(v.configured.length?v.configured.map(k=>visibleFlows.find(([id])=>id===k)?.[1]||k).join(', '):'No workflows yet');
+ $('visible-local').hidden=!state.local;$('visible-remote').hidden=state.local;
+ if(!visibleLoaded&&state.local){$('visible-mode').value=v.mode;buildVisibleSteps(v.recipes?.[$('visible-flow').value]?.steps||[],v.recipes?.[$('visible-flow').value]?.identity||null);visibleLoaded=true;}
+ if(state.local&&v.draft){const signature=JSON.stringify(v.draft);if(signature!==visibleDraftSignature){visibleDraftSignature=signature;buildVisibleSteps(v.draft);}}
+}
+function updateVisibleButtons(){
+ const blocked=!online||pending||!!state?.busy||!state?.local;
+ for(const id of ['visible-save-mode','visible-open','visible-record','visible-save-recipe','visible-mode','visible-flow','visible-reference','visible-identity-target','visible-identity-text'])$(id).disabled=blocked||!!state?.visible?.recording;
+ $('visible-finish').disabled=blocked||!state?.visible?.recording;
+ document.querySelectorAll('#visible-steps input,#visible-steps select,#visible-steps button').forEach(n=>n.disabled=blocked||!!state?.visible?.recording);
+}
+$('visible-flow').onchange=()=>{visibleDraftSignature=JSON.stringify(state.visible.draft);const r=state.visible.recipes?.[$('visible-flow').value];buildVisibleSteps(r?.steps||[],r?.identity||null);};
+async function visibleRequest(path,data){if(!online||pending)return;pending=true;updateButtons();try{await api(path,data);await refresh();}catch(e){toast(e.message);}finally{pending=false;updateButtons();}}
+$('visible-open').onclick=()=>visibleRequest('/api/visible/browser',{action:'open',flow:$('visible-flow').value,reference:$('visible-reference').value.trim()});
+$('visible-record').onclick=async()=>{if(await confirmAction('Record this real workflow?','You will perform real actions in the opened browser. These can create public broadcasts, start/end live or move the camera. Sign in first. Record only an intentional supervised workflow. Passwords and text values are not recorded.'))visibleRequest('/api/visible/browser',{action:'record',flow:$('visible-flow').value,reference:$('visible-reference').value.trim(),confirmed:true});};
+$('visible-finish').onclick=()=>visibleRequest('/api/visible/browser',{action:'finish'});
+$('visible-save-mode').onclick=async()=>{if(await confirmAction('Save execution mode?','Visible mode requires a reviewed workflow for each scheduled operation and an unlocked PC. API mode remains available. Saving does not start automation.'))visibleRequest('/api/visible/save',{mode:$('visible-mode').value,confirmed:true});};
+$('visible-save-recipe').onclick=async()=>{if(!$('visible-identity-target').value)return toast('Record an identity target first.');if(await confirmAction('Approve this recorded workflow?','Review targets, remove unwanted actions, and map every input field. Live automation will replay these actual clicks when you enable it. Test under supervision.'))visibleRequest('/api/visible/save',{confirmed:true,flow:$('visible-flow').value,recipe:{identity:{locator:JSON.parse($('visible-identity-target').value),text:$('visible-identity-text').value},steps:visibleSteps}});};

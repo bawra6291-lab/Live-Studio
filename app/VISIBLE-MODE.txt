@@ -1,0 +1,77 @@
+LIVE DESK 0.7.0 — CALIBRATED VISIBLE BROWSER MODE
+
+This opt-in development feature uses real Chrome/Edge input events. It is not
+preconfigured for every YouTube, Facebook or camera UI. Existing API mode stays
+the default. No dependency installation is added to the 0.6.1 update.
+
+WHAT YOU SEE
+OBS stays on the logged-in Windows desktop. Its existing WebSocket adapter
+controls outputs; the app does not pretend to click native OBS buttons.
+YouTube/Facebook creation, publish and end operations in Visible mode use your
+reviewed browser workflows. API reads verify identity, stream binding and result.
+Camera actions use their recorded UI workflow and require a final visible result
+check. That check is not visual proof of the camera's final physical position.
+Passwords, OAuth/security prompts and UAC are handled manually by you.
+
+ONE-TIME CALIBRATION (AUTOMATION PAUSED)
+1. Update normally while OBS/live/recording/replay are idle. Leave API mode on.
+2. Open Visible automation on the Windows dashboard (not the phone).
+3. Choose a workflow. For YouTube preparation enter the reference livestream ID.
+4. Open site / sign in. A separate Live Desk Chrome/Edge profile opens. Log in
+   manually, select the correct channel/Page and verify the identity. Existing
+   normal Chrome cookies are not read or copied. Keep this browser open.
+5. Choose Record my actions only when you intend to perform the real workflow.
+   Recording does not make the site a sandbox: manual publishing, ending and
+   camera moves have their normal real effects. Use an approved supervised test.
+   Recording navigates back to the workflow entry page. Start after login.
+6. Capture a click on a visible account/Page identity element as well as the
+   required workflow. Then Finish recording in Live Desk.
+7. Choose the recorded identity target and type its exact visible name/label.
+   This is checked on the entry page before replay. Remove exploratory clicks
+   and account-menu clicks that are not part of the desired workflow.
+8. Map every text field to program title, reference description, ISO date,
+   24-hour time or camera number. Input values were deliberately not recorded.
+   Only ordinary compatible text fields are supported. Review date/time locale.
+9. Convert an appropriate last step to Check result and enter exact expected
+   visible text. This is mandatory for camera workflows. Save reviewed workflow.
+10. Repeat for required operations: YouTube/Facebook preparation and Go live;
+    both End live flows if automatic endings are configured; each camera action
+    used by your saved plans. Separate workflows begin at their entry pages.
+11. After calibration choose Visible browser workflows -> Save mode. It cannot
+    arm without required recipes. Keep Windows unlocked. Review a short future
+    test schedule and explicitly enable it. Watch both platforms, OBS and Activity.
+
+ENTRY PAGES
+YouTube preparation begins at the selected reference livestream control room.
+Go live/End live begin at the exact recorded event control room.
+Facebook begins at Live Producer with the configured Page or exact video ID.
+Camera workflows begin at the configured camera base address. Login must already
+be valid. Redirected/unsupported entry pages fail safely and need adapter work.
+
+LIMITS THAT MUST NOT BE HIDDEN
+- No built-in selectors are guessed for your unobserved account or camera UI.
+- Native dropdown selection, file upload, cross-origin iframe and legacy camera
+  plugins are not automatically replayed. An unsupported workflow needs a tested
+  adapter before it can be used unattended. Standard clicks/custom UI controls,
+  ordinary text inputs/contenteditable fields and explicit result checks work.
+- Use the website's supported Reuse settings flow for description/thumbnail.
+  The adapter verifies title/time/description and exact Official stream binding;
+  it does not compare thumbnail image pixels or automatically upload a file.
+- UI changes, duplicate/covered targets, login redirect, locked desktop or timeout
+  stop the operation for review. No blind API fallback or repeat publish is sent.
+- Date input variables are YYYY-MM-DD / HH:MM. Calendar widgets that require
+  special interaction need calibration/adapter support, not fixed date clicks.
+- The dedicated browser stays open; close only that window before reopening it
+  from a newly restarted Live Desk if its old debug profile is already in use.
+- Steps are not automatically a trusted success. The scheduler verifies platform
+  live/end states. Camera UI confirmation still needs visual operator testing.
+- Current plans continue to require both YouTube and Facebook. Public broadcasts
+  remain public. Recording/replay is local-PC-only; phones see redacted progress.
+- Pausing stops future input; an already sent click may have taken effect. Inspect
+  OBS and both platforms before a manual retry. Login state and keys are not logs.
+
+This release is a usable recorder/executor framework for calibrated supported
+pages, not a claim that every requested site workflow is already calibrated or
+that the owner's real live start/end/camera test passed. Until the actual account
+pages and camera firmware have been tested, use API mode for existing operation
+and keep visible-mode tests supervised. Do not create a new YouTube stream key.
