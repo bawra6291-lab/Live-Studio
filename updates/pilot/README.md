@@ -1,6 +1,12 @@
-# Live Desk 0.7.0 — supervised pilot
+# Live Desk 0.7.1 — supervised pilot
 
 This is an opt-in test build from the development branch. It is not the stable release or the finished cloud/team product. The stable `main/updates/latest.json` feed remains unchanged.
+
+## Recorder repair in 0.7.1
+
+A reported recording returned no steps. The previous recorder used the retargeted DOM element, which can miss controls inside open shadow roots; it also silently accepted an empty result. The recorder now follows the composed event path, listens inside dynamically discovered open shadow roots, captures simple identity text as a result check and excludes editable text from target labels. A LIVE DESK RECORDING badge shows the captured count on the current page. The count resets on navigation. Empty or oversized recordings fail explicitly; Save is disabled without captured steps. This repairs a tested capture gap; the exact cause of the operator's empty session cannot be established from a screenshot alone.
+
+After updating while idle, leave automation paused. Open the old reference, start recording and check that the badge appears. Click a harmless existing control such as Dismiss, then Finish recording. Confirm that a step appears before attempting a full workflow. Do not create another public schedule for this diagnostic. An active live must finish before installing the update.
 
 ## New in 0.7.0: Visible browser workflows
 
@@ -22,16 +28,16 @@ Windows Task Scheduler can return the principal as an account name even when set
 https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/latest.json
 ```
 
-4. **Check for updates**. New update source ka prompt aaye to URL check karke accept karein. **Version 0.7.0** aur **PILOT** notes dikhne chahiye.
+4. **Check for updates**. New update source ka prompt aaye to URL check karke accept karein. **Version 0.7.1** aur **PILOT** notes dikhne chahiye.
 5. **Download & install**. App restart hone dein. Folder ya shortcut manually delete/change na karein.
-6. Restart ke baad installed version **0.7.0** confirm karein. Automation paused hi rakhein.
+6. Restart ke baad installed version **0.7.1** confirm karein. Automation paused hi rakhein.
 
-If no update appears, do not repeatedly install: capture the Updates panel message and installed version. If your existing app is already 0.7.0 or newer, this package will not be offered as an upgrade.
+If no update appears, do not repeatedly install: capture the Updates panel message and installed version. If your existing app is already 0.7.1 or newer, this package will not be offered as an upgrade.
 
 ## Pehla check — koi live start nahi karna
 
-1. **Connections** mein existing OBS profile, collection, scene, Facebook target and camera address check karein. Migrated ISKCON setup mein Facebook Page `113962385367196` aur stream key name **YouTube Official Livestream** rehna chahiye. Legacy channel-ID field blank ho sakta hai; the existing reference ownership check is retained.
-2. Stream key ke secret value ko reset ya replace na karein. OBS aur YouTube Studio mein wahi existing Official stream selected rahe.
+1. **Connections** mein existing OBS profile, collection, scene, Facebook target and camera address check karein. Migrated ISKCON setup mein apni pehle se configured Facebook Page aur existing stream-key selection rehni chahiye. Legacy channel-ID field blank ho sakta hai; the existing reference ownership check is retained.
+2. Stream key ke secret value ko reset ya replace na karein. OBS aur YouTube Studio mein wahi existing existing stream selected rahe.
 3. **Check connections** click karein. This can open/show OBS, but it does not create/start a broadcast or move the camera.
 4. **Activity** mein OBS, YouTube and Facebook verification dekhein. Camera actions configured hain to unki availability check hogi; no actions hone par camera check skipped dikhna sahi hai.
 5. PC launcher ka **Open / Show OBS** click karke dekhein ki OBS window accessible hai. Administrator/task error aaye to exact text note karein; repeatedly rerun setup or start another OBS copy na karein.
@@ -50,15 +56,15 @@ A passed connection check does not prove real live start/end, UAC prompting, cam
 
 ## What is preserved
 
-Legacy Windows settings and Credential Manager service are retained. The migration saves `settings.before-workspace-migration.json`, and the updater keeps a previous-app folder. Existing OBS profile, Page selection, schedule and the Official stream-key name are covered by tests. No valid existing credential is replaced by this pilot. Expired/revoked credentials can still require reconnecting.
+Legacy Windows settings and Credential Manager service are retained. The migration saves `settings.before-workspace-migration.json`, and the updater keeps a previous-app folder. Existing OBS profile, Page selection, schedule and the existing stream-key name are covered by tests. No valid existing credential is replaced by this pilot. Expired/revoked credentials can still require reconnecting.
 
 Keep those backups until the PC test is complete. If rollback is needed after editing programs, review settings and any active/partial broadcasts first; switching the feed back alone does not downgrade the app.
 
 ## Build evidence
 
-- Source: `0cca7820d2a4ebc1c0755c9b914b72db6f878469`.
-- [Passing Windows/Linux/browser checks](https://github.com/bawra6291-lab/Live-Studio/actions/runs/36678628225): 144 controller tests on each OS, Windows native smoke check, eight desktop/mobile browser flows with fake services, plus real Chromium recorder/replay against a local fixture.
-- `0.7.0/build-report.json` records the package digest, exact source match and a temporary-directory upgrade simulation from 0.6.1. It does not claim a real Windows installer handoff or real platform testing.
+- Source: `1d259a37a296f887b54ef8d68e60b6ac9326435a`.
+- [Passing Windows/Linux/browser checks](https://github.com/bawra6291-lab/Live-Studio/actions/runs/36714689006): 147 controller tests on each OS, Windows native smoke check, eight desktop/mobile browser flows with fake services, plus real Chromium recorder/replay against a local fixture with dynamically inserted shadow controls, contenteditable, password exclusion and empty-recording rejection.
+- `0.7.1/build-report.json` records the package digest, exact source match and a temporary-directory upgrade simulation from 0.7.0. It does not claim a real Windows installer handoff or real platform testing.
 - Package contents include no operator settings, logs or credentials. Checksums detect corruption; this is not a signed production installer.
 
 Later pilot updates can use the same opt-in address. Moving to a public/stable release remains a separate decision after the supervised PC test.

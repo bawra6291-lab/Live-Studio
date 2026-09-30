@@ -1,0 +1,25 @@
+{
+  "version": "0.7.1",
+  "channel": "pilot",
+  "source_commit": "1d259a37a296f887b54ef8d68e60b6ac9326435a",
+  "ci_run": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/36714689006",
+  "archive_sha256": "1ddb3a87f93533f16655709de3d5dec5d4901f8b941bcb6e18c0fea1799502b7",
+  "archive_size": 127041,
+  "files": 42,
+  "checks": {
+    "archive_matches_local_source": true,
+    "archive_hashes": true,
+    "no_operator_data_packaged": true,
+    "updater_0_7_0_stages_and_swaps": true,
+    "backup_created": true,
+    "legacy_migration_and_official_selection": true,
+    "default_api_mode_paused_startup": true,
+    "archive_matches_committed_source": true
+  },
+  "limitations": [
+    "Package upgrade simulation uses a disposable Linux folder.",
+    "Real Chromium fixture covers open shadow controls, not the actual operator YouTube page. Exact cause of the operator empty recording remains unconfirmed.",
+    "Operator must first verify the recording badge and captured count with harmless clicks. No additional public schedule is needed for that test.",
+    "No real broadcast or camera was operated."
+  ]
+}
