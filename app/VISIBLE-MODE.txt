@@ -17,6 +17,7 @@ ONE-TIME CALIBRATION (AUTOMATION PAUSED)
 1. Update normally while OBS/live/recording/replay are idle. Leave API mode on.
 2. Open Visible automation on the Windows dashboard (not the phone).
 3. Choose a workflow. For YouTube preparation enter the reference livestream ID.
+   For Go live/End recording enter the actual test video ID (YouTube/Facebook).
 4. Open site / sign in. A separate Live Desk Chrome/Edge profile opens. Log in
    manually, select the correct channel/Page and verify the identity. Existing
    normal Chrome cookies are not read or copied. Keep this browser open.

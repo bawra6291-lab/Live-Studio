@@ -132,7 +132,14 @@ class Visible:
             self.draft=self.browser.finish_recording()
             self.update(state='recorded',message='Review every step and map text fields before saving. The recording is not automatically approved.')
             return
-        url=self.address(flow,cfg,{'reference':data.get('reference')} if data.get('reference') else None)
+        record={}
+        if flow.startswith('youtube_') and data.get('reference'):record['reference']=data['reference']
+        if flow in ('facebook_go','facebook_end') and data.get('facebook_event'):record['fb_id']=data['facebook_event']
+        if action=='record' and flow.startswith('youtube_') and not record.get('reference'):
+            raise ValueError('Enter the actual YouTube reference/test video ID before recording this workflow.')
+        if action=='record' and flow in ('facebook_go','facebook_end') and not record.get('fb_id'):
+            raise ValueError('Enter the actual Facebook test video ID before recording Go live or End live.')
+        url=self.address(flow,cfg,record)
         if action=='open':
             self.browser.navigate(flow.split('_')[0],url)
             self.update(state='opened',message='Browser opened. Sign in manually and verify the account. No clicks were automated.')
