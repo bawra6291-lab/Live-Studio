@@ -75,3 +75,15 @@ pages, not a claim that every requested site workflow is already calibrated or
 that the owner's real live start/end/camera test passed. Until the actual account
 pages and camera firmware have been tested, use API mode for existing operation
 and keep visible-mode tests supervised. Do not create a new YouTube stream key.
+
+Facebook preparation must leave an UNPUBLISHED manual-Go-live draft. The read-only
+check rejects automatic publishing before OBS starts. If the account UI cannot
+produce this supported state, that workflow needs an adapter change; no API write
+is silently substituted. YouTube's thumbnail reuse must be reviewed on the page.
+
+Technical references used for the browser implementation:
+https://developer.chrome.com/blog/remote-debugging-port
+https://chromedevtools.github.io/devtools-protocol/tot/Input/
+https://chromedevtools.github.io/devtools-protocol/tot/Page/
+https://chromedevtools.github.io/devtools-protocol/tot/Runtime/
+https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/livevideo.py

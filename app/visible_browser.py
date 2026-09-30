@@ -295,6 +295,9 @@ return {ok:true,x,y,text:(n.getAttribute('aria-label')||n.labels?.[0]?.innerText
                     page.call('Input.dispatchMouseEvent', type='mouseReleased', x=point['x'], y=point['y'], button='left', clickCount=1)
                     if step['kind']=='fill':
                         check_origin()
+                        focused=page.evaluate(target_script(loc,"return {ok:n===n.getRootNode().activeElement && n.type!=='password'};"))
+                        if not focused or not focused.get('ok'):
+                            raise SetupError('The selected input lost focus. No text was sent to another field.')
                         page.call('Input.dispatchKeyEvent', type='keyDown', key='a', code='KeyA', windowsVirtualKeyCode=65, modifiers=2)
                         page.call('Input.dispatchKeyEvent', type='keyUp', key='a', code='KeyA', windowsVirtualKeyCode=65, modifiers=2)
                         page.call('Input.insertText', text=str(values[step['variable']]))

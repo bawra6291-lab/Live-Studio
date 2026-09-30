@@ -184,7 +184,12 @@ class VisibleServices(Services):
     def ui(self,flow,values=None,record=None):
         self.visible.execute(flow,self.cfg,values,record)
 
+    def desktop_guard(self):
+        if self.visible.stop.is_set():raise SetupError('Visible operation paused before the next OBS/platform step.')
+        self.visible.browser.ready()
+
     def start(self,record):
+        self.desktop_guard()
         try:super().start(record)
         except Exception:
             self.visible.update(state='needs_review',message='Start needs review. Inspect OBS and both real platform pages; do not replay blindly.')
@@ -192,6 +197,7 @@ class VisibleServices(Services):
         self.visible.update(state='verified',message='YouTube and Facebook LIVE confirmed through API reads after real browser actions.')
 
     def end(self,record,persist):
+        self.desktop_guard()
         try:super().end(record,persist)
         except Exception:
             self.visible.update(state='needs_review',message='End needs review. Inspect the recorded broadcasts and OBS outputs.')
@@ -204,6 +210,13 @@ class VisibleServices(Services):
         self.log('Visible browser mode selected: platform clicks use reviewed workflows; OBS uses WebSocket with its real window. Keep Windows unlocked.')
 
     def prepare(self,slot,due,persist):
+        try:return self.prepare_visible(slot,due,persist)
+        except Exception:
+            self.visible.update(state='needs_review',message='Preparation needs review. A browser action may have created an event. Inspect both platforms before retrying.')
+            raise
+
+    def prepare_visible(self,slot,due,persist):
+        self.desktop_guard()
         self.obs.close();self.obs.connect(launch=True);self.obs.idle();self.obs.check_profile()
         self.fb.identity();self.fb.no_other_live();channel=self.yt.owned_channel();self.yt.no_other_live()
         for action in slot.get('camera_actions',[]):self.cam.check_action(action)
@@ -239,7 +252,9 @@ class VisibleServices(Services):
             existing=[x for x in self.fb.recent() if x.get('title')==title and x.get('status') in ('UNPUBLISHED','SCHEDULED_UNPUBLISHED','SCHEDULED_LIVE')]
         if len(existing)!=1:raise SetupError('Visible Facebook preparation did not produce exactly one event on the verified Page. Inspect the Page; no automatic retry.')
         fb_id=existing[0]['id'];persist(fb_id=fb_id)
-        detail=self.fb.api('GET',fb_id,{'fields':'secure_stream_url'})
+        detail=self.fb.api('GET',fb_id,{'fields':'secure_stream_url,is_manual_mode,status'})
+        if detail.get('status')!='UNPUBLISHED' or detail.get('is_manual_mode') is not True:
+            raise SetupError('Visible Facebook draft must use manual Go live, with automatic publishing disabled. Review Live Producer before OBS starts.')
         if not detail.get('secure_stream_url'):raise SetupError('Facebook stream destination is not available for the visible event.')
         self.obs.prepare_fb_output(detail['secure_stream_url'])
         self.visible.update(state='verified',message='Both prepared events verified by API reads. OBS target configured through the existing local adapter.')

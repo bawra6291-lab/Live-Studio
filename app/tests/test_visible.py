@@ -78,6 +78,21 @@ class VisibleTests(unittest.TestCase):
             with self.assertRaises(SetupError):b.ensure()
             launch.assert_not_called()
 
+    def test_missing_run_variable_refuses_before_browser_input(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            v=Visible(tmp,threading.Event(),lambda _:None)
+            v.save({'flow':'youtube_go','recipe':recipe()})
+            v.browser=Mock()
+            with self.assertRaisesRegex(SetupError,'unavailable'):v.execute('youtube_go',{},record={'yt_id':'abcdefghijk'})
+            v.browser.run.assert_not_called()
+
+    def test_locked_desktop_refuses_before_browser_launch(self):
+        ready=Mock(side_effect=SetupError('locked'))
+        b=Browser('/unused',ready=ready)
+        with patch('visible_browser.subprocess.Popen') as launch:
+            with self.assertRaisesRegex(SetupError,'locked'):b.ensure()
+            launch.assert_not_called()
+
     def test_identity_mismatch_prevents_clicks(self):
         b=Browser('/unused',ready=lambda:None)
         page=Mock()
