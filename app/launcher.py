@@ -14,6 +14,7 @@ class Launcher:
         root.title('Live Desk • Development preview'); root.geometry('700x820');root.minsize(670,780)
         root.configure(bg='#f5f4ef')
         self.controller=Controller()
+        self.controller.remote.start()
         self.controller.open_updates=lambda:root.after(0,self.open_updates)
         self.server=DashboardServer(('127.0.0.1',8865),self.controller)
         self.controller.desktop_url='http://127.0.0.1:8865'
@@ -90,13 +91,14 @@ class Launcher:
     def obs_finished(self,result):
         self.obs_status.set(result);self.obs_button.configure(state='normal')
     def show_code(self):
-        messagebox.showinfo('Pair this phone',f'Pairing code (case-sensitive):\n\n{self.server.pair_code}\n\nShare only with the person controlling this livestream PC.\nA new code is generated whenever this Windows app restarts.')
+        messagebox.showinfo('Pair this phone',f'Pairing code (case-sensitive):\n\n{self.server.pair_code}\n\nPhone codes expire after 30 minutes. Generate a fresh code in the dashboard’s Mobile access panel.\nShare only with the intended operator or viewer.')
     def enable_mobile(self):
         ip=self.network.get()
         if ip not in lan_addresses():
             messagebox.showerror('Network','No matching local network address. Connect the PC to Wi-Fi/Ethernet and reopen the app.');return
         try:
             mobile=DashboardServer((ip,8866),self.controller,self.server.pair_code)
+            mobile.pair_expires=self.server.pair_expires;mobile.pair_role=self.server.pair_role
             mobile.allowed_hosts={ip}
             threading.Thread(target=mobile.serve_forever,daemon=True).start();self.mobile=mobile
             with self.controller.lock:
@@ -126,6 +128,7 @@ class Launcher:
         try:self.startup_path().unlink(missing_ok=True);messagebox.showinfo('Startup removed','Automatic app launch removed. Current automation is unchanged.')
         except OSError:messagebox.showerror('Startup','Could not remove shortcut. Check Windows permissions.')
     def update_status(self):
+        self.code.set(self.server.pair_code)
         if self.closing:return
         with self.controller.lock:self.status.set(self.controller.message)
         self.root.after(1000,self.update_status)
@@ -145,6 +148,11 @@ class Launcher:
 
 def main():
     if os.name!='nt':raise SystemExit('Run launcher.py on the Windows livestream PC.')
+    # The installer checks this named mutex before replacing the bundled runtime.
+    import ctypes
+    from ctypes import wintypes
+    ctypes.windll.kernel32.CreateMutexW.restype=wintypes.HANDLE
+    installation_mutex=ctypes.windll.kernel32.CreateMutexW(None,False,'LiveDeskController-v1')
     root=tk.Tk();root.withdraw();instance=socket.socket()
     try:instance.bind(('127.0.0.1',47639))
     except OSError:

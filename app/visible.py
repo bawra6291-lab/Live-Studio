@@ -208,9 +208,9 @@ class VisibleServices(Services):
             raise
         self.visible.update(state='verified',message='YouTube and Facebook LIVE confirmed through API reads after real browser actions.')
 
-    def end(self,record,persist):
+    def end(self,record,persist,*,manual=False):
         self.desktop_guard()
-        try:super().end(record,persist)
+        try:super().end(record,persist,manual=manual)
         except Exception:
             self.visible.update(state='needs_review',message='End needs review. Inspect the recorded broadcasts and OBS outputs.')
             raise

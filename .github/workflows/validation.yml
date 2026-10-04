@@ -22,6 +22,7 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install -r app/requirements.txt
       - run: python -m unittest discover -s app/tests -v
+      - run: python qa/test_remote.py -v
       - run: python -m compileall -q app
       - name: Windows native compatibility smoke check
         if: runner.os == 'Windows'
@@ -48,3 +49,33 @@ jobs:
           name: dashboard-validation
           path: qa/results/
           retention-days: 7
+  windows-installer:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r app/requirements.txt
+      - name: Build private runtime and per-user installer
+        run: python packaging/build_windows.py --output installer-artifacts
+      - name: Install, validate relocated runtime, and uninstall
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem installer-artifacts/Live-Desk-*-Setup.exe).FullName
+          $target = Join-Path $env:RUNNER_TEMP 'LiveDeskInstallTest'
+          $process = Start-Process $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$target") -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Installer failed: $($process.ExitCode)" }
+          & "$target/runtime/python.exe" -E -s -c "import tkinter,win32api,keyring,requests,websocket,google_auth_oauthlib; r=tkinter.Tk(); r.withdraw(); r.destroy()"
+          if ($LASTEXITCODE -ne 0) { throw 'Installed runtime validation failed' }
+          $uninstaller = (Get-ChildItem "$target/unins*.exe").FullName
+          $process = Start-Process $uninstaller -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw 'Uninstaller failed' }
+      - uses: actions/upload-artifact@v5
+        with:
+          name: unsigned-windows-pilot-installer
+          path: |
+            installer-artifacts/Live-Desk-*-Setup.exe
+            installer-artifacts/stage/runtime-dependencies.txt
+          retention-days: 14

@@ -79,12 +79,13 @@ class Scheduler:
                 self.run_slot(slot,day,now)
     def run_slot(self,current,day,now):
         from copy import deepcopy
-        from schedule_config import action_time,end_time,get_schedule
+        from schedule_config import action_time,end_time,get_schedule,occurs_on
         rec=self.journal.get(current,day)
-        if not current['enabled'] and not rec.get('plan'):return
+        if rec.get('phase') in ('reviewed','ended'):return
+        if not rec.get('plan') and not occurs_on(current,day):return
         plan=rec.get('plan',current);due=slot_time(day,plan)
         clocks=[action_time(day,a,rec) for a in plan['camera_actions'] if a['timing']=='clock']
-        if now<min([due-timedelta(minutes=5)]+clocks):return
+        if now<min([due-timedelta(minutes=plan.get('prepare_minutes',5))]+clocks):return
         def put(**kw):return self.journal.put(current,day,**kw)
         if not rec.get('plan'):
             # Old journals never gain newly configured ending/movement permissions.
@@ -109,7 +110,7 @@ class Scheduler:
             if now>due+timedelta(seconds=self.grace):
                 rec=put(phase='missed',last_error=f'Start window passed: scheduled {due.isoformat()}, worker reached it at {now.isoformat()}.')
                 self.log(plan['name']+': skipped; start window passed. Check app launch time, pause state and PC/network availability.')
-            elif now>=due-timedelta(minutes=5):
+            elif now>=due-timedelta(minutes=plan.get('prepare_minutes',5)):
                 try:
                     if phase=='new':
                         put(phase='preparing',stage='prepare',attempt_at=now.isoformat())

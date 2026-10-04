@@ -6,10 +6,11 @@ from datetime import datetime
 from core import IST, SLOTS, title_for, atomic_json
 
 class SetupError(RuntimeError):
-    def __init__(self, message, *, request_type=None, code=None):
+    def __init__(self, message, *, request_type=None, code=None, retryable=True):
         super().__init__(message)
         self.request_type=request_type
         self.code=code
+        self.retryable=retryable
 
 class Vault:
     SERVICE='ISKCON-Live-Start'
@@ -219,7 +220,7 @@ class YouTube:
             try:creds.refresh(Request())
             except Exception:creds=None
         if not creds or not creds.valid:
-            if not interactive:raise SetupError('YouTube login is missing/expired. Use Connect YouTube locally.')
+            if not interactive:raise SetupError('YouTube login is missing/expired. Use Connect YouTube locally.',retryable=False)
             from google_auth_oauthlib.flow import InstalledAppFlow
             flow=InstalledAppFlow.from_client_secrets_file(self.cfg['google_client_file'],self.SCOPES)
             creds=flow.run_local_server(port=0,access_type='offline',prompt='consent',timeout_seconds=180)
@@ -237,7 +238,7 @@ class YouTube:
         except Exception:raise SetupError(f'YouTube {resource}: connection/response failed. Check Studio before retrying a write.') from None
         if not r.ok:
             reason=out.get('error',{}).get('errors',[{}])[0].get('reason','request_failed')
-            raise SetupError(f'YouTube {resource}: HTTP {r.status_code}, {reason}.')
+            raise SetupError(f'YouTube {resource}: HTTP {r.status_code}, {reason}.',retryable=r.status_code in (429,500,502,503,504))
         return out
     def list(self,resource,max_pages=40,allow_partial=False,**params):
         result=[]
@@ -392,7 +393,7 @@ class Facebook:
         version=self.cfg.get('graph_version','v23.0')
         if not re.fullmatch(r'v\d+\.0',version):raise SetupError('Invalid Graph API version.')
         token=self.vault.get('facebook_page_token')
-        if not token:raise SetupError('Facebook Page access token missing. It must be configured locally.')
+        if not token:raise SetupError('Facebook Page access token missing. It must be configured locally.',retryable=False)
         try:
             r=requests.request(method,f'https://graph.facebook.com/{version}/{path}',
                 headers={'Authorization':'Bearer '+token},
@@ -401,7 +402,9 @@ class Facebook:
         except Exception:raise SetupError('Facebook connection/response failed. Check Live Producer before retrying a write.') from None
         if not r.ok or 'error' in out:
             err=out.get('error',{})
-            raise SetupError(f'Facebook API denied/failed request (code {err.get("code",r.status_code)}, subcode {err.get("error_subcode",0)}). Check Page token, live eligibility and app permissions.')
+            if err.get('code')==190:
+                raise SetupError('Facebook Page token expired or invalid. Replace the Page token in Connections on this PC, save and check connections. Automation is paused.',retryable=False)
+            raise SetupError(f'Facebook API denied/failed request (code {err.get("code",r.status_code)}, subcode {err.get("error_subcode",0)}). Check Page token, live eligibility and app permissions.',retryable=bool(err.get('is_transient')) or r.status_code in (429,500,502,503,504))
         return out
     def identity(self):
         page=self.PAGE
@@ -565,9 +568,11 @@ class Services:
         if not status.get('outputActive'):return
         if expected is None or 'outputDuration' not in status or abs(time.time()-status['outputDuration']/1000-expected)>2:
             raise SetupError('OBS output was restarted or its identity cannot be verified. End manually.')
-    def end(self,record,persist):
+    def end(self,record,persist,*,manual=False):
         # Exact recorded IDs only. Never address whichever broadcast happens to be live.
-        if not record.get('plan',{}).get('end_at'):raise SetupError('No scheduled end is authorized for this run.')
+        if not manual and not record.get('plan',{}).get('end_at'):raise SetupError('No scheduled end is authorized for this run.')
+        if manual and not all(record.get(k) for k in ('yt_id','fb_id','yt_stream_id','obs_start_epoch','fb_output_name','fb_target_fingerprint')):
+            raise SetupError('This run lacks verified output ownership. End it manually in OBS and the platform dashboards.')
         self.fb.identity();self.yt.owned_channel()
         self.yt.no_other_live(record['yt_id']);self.fb.no_other_live(record['fb_id'])
         event=self.yt.event(record['yt_id'])

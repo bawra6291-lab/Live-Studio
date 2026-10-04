@@ -1,6 +1,6 @@
 """Validated daily plans. Existing installations keep manual ending by default."""
 from copy import deepcopy
-from datetime import timedelta
+from datetime import date, timedelta
 import re
 from core import SLOTS, slot_time
 
@@ -15,6 +15,32 @@ def get_schedule(cfg):
 def clock(value,label):
     if not isinstance(value,str) or not re.fullmatch(r'(?:[01]\d|2[0-3]):[0-5]\d',value):raise ValueError(label+' must use HH:MM (24-hour IST).')
     h,m=map(int,value.split(':'));return h*60+m
+
+def calendar_date(value):
+    if not isinstance(value,str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}',value):raise ValueError('Use calendar dates in YYYY-MM-DD format.')
+    try:return date.fromisoformat(value)
+    except ValueError:raise ValueError('Invalid calendar date.') from None
+
+def occurs_on(slot,day):
+    if not slot.get('enabled',True) or day.isoformat() in slot.get('skip_dates',[]):return False
+    repeat=slot.get('repeat','daily')
+    if repeat=='once':return day.isoformat()==slot.get('on_date')
+    return repeat=='daily' or day.weekday() in slot.get('weekdays',[])
+
+def upcoming(schedule,now,days=32,limit=100):
+    """Pure calendar preview: no platform calls, credentials or resource creation."""
+    rows=[]
+    for offset in range(days):
+        day=now.date()+timedelta(days=offset)
+        for slot in schedule:
+            due=slot_time(day,slot)
+            if occurs_on(slot,day) and due>=now:
+                rows.append({'id':slot['id'],'name':slot['name'],'due':due.isoformat(),
+                    'prepare_at':(due-timedelta(minutes=slot.get('prepare_minutes',5))).isoformat(),
+                    'end_at':end_time(day,slot).isoformat() if end_time(day,slot) else None,
+                    'camera_actions':slot['camera_actions'],'at':slot['at']})
+        if len(rows)>=limit:break
+    return sorted(rows,key=lambda row:row['due'])[:limit]
 
 def validate_schedule(raw):
     if not isinstance(raw,list) or len(raw)>24:raise ValueError('Use at most 24 daily programs.')
@@ -38,6 +64,20 @@ def validate_schedule(raw):
         elif not legacy:raise ValueError('Enter a title template, for example {date} | {program}.')
         base=dict(id=ident,name=name.strip(),reference=reference)
         if template:base['title_template']=template
+        repeat=row.get('repeat','daily');lead=row.get('prepare_minutes',5)
+        if repeat not in ('daily','weekdays','once'):raise ValueError('Choose daily, selected weekdays or one date.')
+        if type(lead)!=int or not 5<=lead<=60:raise ValueError('Preparation must begin 5–60 minutes before start.')
+        # Omit default fields to preserve frozen legacy plans byte-for-byte.
+        if repeat!='daily':base['repeat']=repeat
+        if lead!=5:base['prepare_minutes']=lead
+        if repeat=='once':base['on_date']=calendar_date(row.get('on_date')).isoformat()
+        if repeat=='weekdays':
+            weekdays=row.get('weekdays')
+            if not isinstance(weekdays,list) or not weekdays or any(type(d)!=int or not 0<=d<=6 for d in weekdays):raise ValueError('Select at least one weekday (Monday=0, Sunday=6).')
+            base['weekdays']=sorted(set(weekdays))
+        skip=row.get('skip_dates',[])
+        if not isinstance(skip,list) or len(skip)>366:raise ValueError('Use at most 366 skipped dates.')
+        if skip:base['skip_dates']=sorted(set(calendar_date(d).isoformat() for d in skip))
         seen.add(base['id']);start=clock(row.get('at'),base['name']+' start')
         enabled=row.get('enabled',True);next_day=row.get('end_next_day',False)
         if type(enabled)!=bool or type(next_day)!=bool:raise ValueError('Invalid enabled/next-day choice.')
@@ -75,14 +115,17 @@ def validate_schedule(raw):
             action_times.add(key)
             clean.append(dict(kind=kind,number=number,timing=timing,delay_seconds=delay,at=at,next_day=nd,only_if_live=only))
         output.append({**base,'at':row['at'],'enabled':enabled,'end_at':end,'end_next_day':next_day,'camera_actions':clean})
-    active=sorted((s for s in output if s['enabled']),key=lambda s:s['at'])
-    for i,s in enumerate(active):
-        start=clock(s['at'],'Start');n=active[(i+1)%len(active)]
-        following=clock(n['at'],'Start')+(1440 if i==len(active)-1 else 0)
-        if following-start<6:raise ValueError('Start times must be at least 6 minutes apart to allow preparation.')
-        if s['end_at']:
-            end=clock(s['end_at'],'End')+(1440 if s['end_next_day'] else 0)
-            if end>following-5:raise ValueError('End the previous run at least 5 minutes before the next start.')
+    # 400 days covers weekly patterns even after the maximum 366 exceptions.
+    # Include far-future one-off dates and their neighbours as well.
+    from core import now_ist
+    anchor=now_ist().date();days={anchor+timedelta(days=i) for i in range(-1,400)}
+    for s in output:
+        if s.get('repeat')=='once':days.update(calendar_date(s['on_date'])+timedelta(days=i) for i in (-1,0,1))
+    events=sorted(((slot_time(d,s),s) for d in days for s in output if occurs_on(s,d)),key=lambda x:(x[0],x[1]['id']))
+    for (due,s),(following,n) in zip(events,events[1:]):
+        prep=following-timedelta(minutes=n.get('prepare_minutes',5))
+        if prep<=due:raise ValueError('Start times must leave room for the next program’s preparation (at least 6 minutes with default preparation).')
+        if s['end_at'] and end_time(due.date(),s)>prep:raise ValueError('End the previous run before the next preparation begins (5 minutes before start by default).')
     return sorted(output,key=lambda s:s['at'])
 
 def end_time(day,slot):

@@ -23,7 +23,11 @@ Use a separate test Windows user/PC or set `LIVE_DESK_DATA_DIR` to an empty test
 4. Choose start/end times, opt into camera actions only if wanted, enable the program checkbox and save. Times are IST in this milestone. YouTube and Facebook broadcasts are public.
 5. Pass Check connections, inspect the intended OBS scene, then supervise a short scheduled test before unattended use. A connection check does not test starting, ending or camera movement.
 
-## Boundaries and next milestones
+## Current completion record
+
+See [WORK-COMPLETION.md](WORK-COMPLETION.md) for the 0.8.0 implementation, external release gates and explicit remaining product limits. Calendar/recovery, credential-free backup, LAN device roles, optional self-hosted HTTPS relay and bundled Windows installer are now implemented.
+
+## Original foundation boundaries (superseded where noted above)
 
 - This milestone is not multi-tenant cloud infrastructure. There are no team roles, internet relay, billing or central account system yet. Phone access remains on the same trusted LAN using the existing paired dashboard.
 - Public distribution needs production Google/Meta OAuth onboarding, application verification/review as applicable, signed Windows installation/updates, device enrollment, secure remote transport and tenant authorization. A credential namespace does not provide cloud tenant isolation.
@@ -35,7 +39,7 @@ Use a separate test Windows user/PC or set `LIVE_DESK_DATA_DIR` to an empty test
 
 ## Release policy
 
-Development version: 0.7.0. An opt-in pilot ZIP, manifest and PC test guide are available under `updates/pilot/` on this development branch. The stable `main/updates/latest.json` feed is unchanged, so existing users remain on stable 0.5.5 unless they deliberately select the pilot feed. The package uses the exact passing CI source. Validate the real Windows installer handoff, migration, OBS and supervised platform start/end before any public/stable rollout.
+Development version: 0.8.0. An opt-in pilot ZIP, manifest and PC test guide are available under `updates/pilot/` on this development branch. The stable `main/updates/latest.json` feed is unchanged, so existing users remain on stable 0.5.5 unless they deliberately select the pilot feed. The package uses the exact passing CI source. Validate the real Windows installer handoff, migration, OBS and supervised platform start/end before any public/stable rollout.
 
 ## Validation
 
