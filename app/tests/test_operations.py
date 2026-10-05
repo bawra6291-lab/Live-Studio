@@ -77,6 +77,28 @@ class Recovery(unittest.TestCase):
         self.assertTrue(inspect_run(service,{'yt_id':'abcdefghijk','fb_id':'12345'})['can_review'])
         service.obs.call.side_effect=lambda kind:{'outputActive':False} if kind=='GetStreamStatus' else {'outputs':[{'outputActive':True}]}
         self.assertFalse(inspect_run(service,{})['can_review'])
+    def test_operator_end_requires_complete_output_ownership(self):
+        from connections import Services
+        from test_custom_schedule import TargetedEnding
+        service,record,calls=TargetedEnding().setup_service()
+        record['plan']['end_at']=''
+        with self.assertRaises(SetupError):service.end(record,Mock(),manual=True)
+        self.assertEqual(calls,[])
+        record['fb_target_fingerprint']='owned'
+        with patch('connections.time.time',return_value=1000):service.end(record,Mock(),manual=True)
+        self.assertTrue(any(c[0]=='obs' and c[1]=='StopStream' for c in calls))
+    def test_review_requires_fresh_inactive_read_and_retains_ids(self):
+        with tempfile.TemporaryDirectory() as d:
+            c=Controller(d,Service,Vault());slot=get_schedule({})[0]
+            from core import now_ist
+            day=now_ist().date();j=Journal(c.base/'journal.json');j.put(slot,day,phase='needs_review',plan=slot,yt_id='abcdefghijk')
+            key=j.key(slot,day)
+            with patch('dashboard.inspect_run',return_value={'can_review':False}):
+                c.review_run({'action':'review','key':key,'confirmed':True});c.worker.join(3)
+            self.assertEqual(Journal(j.path).data[key]['phase'],'needs_review')
+            with patch('dashboard.inspect_run',return_value={'can_review':True}):
+                c.review_run({'action':'review','key':key,'confirmed':True});c.worker.join(3)
+            rec=Journal(j.path).data[key];self.assertEqual(rec['phase'],'reviewed');self.assertEqual(rec['yt_id'],'abcdefghijk');self.assertEqual(rec['audit'][0]['previous_phase'],'needs_review')
     def test_auth_failure_does_not_retry_forever(self):
         class Expired(Service):
             attempts=0

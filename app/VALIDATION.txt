@@ -1,3 +1,13 @@
+Live Desk v0.8.0 pilot
+
+Calendar, recovery, backups, LAN device roles, optional relay and bundled installer
+are covered by the current development validation workflow. See the versioned
+pilot build-report.json for the exact tested commit and checks. No real public
+broadcast, camera motion, operator-PC upgrade or production hosting is claimed.
+
+Historical validation notes follow. Their version-specific counts and unverified
+items are historical; use the current build report for this package.
+
 Live Desk v0.5.5 — validation and known limits
 
 Passed with mocked platform/camera services in Linux:

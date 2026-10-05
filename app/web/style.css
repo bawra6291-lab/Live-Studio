@@ -11,3 +11,10 @@
 
 .setup-steps{padding-left:24px;line-height:1.65}.setup-steps li{padding:8px 0}.setup-done{color:var(--green,#245c42)}.brand-sub{max-width:140px;overflow-wrap:anywhere}
 .visible-step{border:1px solid #ced8c9;border-radius:10px;margin:12px 0;padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:14px}.visible-step>p{grid-column:1/-1;overflow-wrap:anywhere;color:#193d36}#visible-local .inline{margin:20px 0;flex-wrap:wrap}#visible-local select{min-height:42px;padding:9px;max-width:100%;color:#193d36;background:#fff;border:1px solid #bbcabb;border-radius:6px}#view-visible p{line-height:1.6;color:#35513f}#visible-local hr{margin:28px 0;border:0;border-top:1px solid #d7dfd2}@media(max-width:540px){.visible-step{grid-template-columns:1fr}#visible-local .inline button{width:100%}}
+
+/* Recovery and device controls remain readable outside settings grids. */
+#backup-tools>label,#remote-tools>label{display:block;margin:18px 0}
+#device-tools>button,#device-tools>select{margin:8px 8px 8px 0}
+#run-history .secondary,#run-history .primary{display:inline-block;margin:8px 8px 8px 0}
+.calendar-preview>summary{cursor:pointer;font-weight:700;font-size:18px}
+#upcoming-runs>.panel{margin:0;padding:16px 0;border:0;border-bottom:1px solid var(--line,#d9ddd3);border-radius:0}

@@ -68,6 +68,10 @@ class Remote(unittest.TestCase):
         for i,fields in enumerate([{'boot':agent.boot,'expires':time.time()-1},{'boot':'b'*32,'expires':time.time()+45}]):
             self.assertEqual(agent.execute({'id':str(i)*32,'action':'arm',**fields})['status'],'rejected')
         c.run.assert_not_called()
+    def test_corrupt_remote_ledger_does_not_break_local_controller(self):
+        c=Mock();c.base=Path(self.tmp.name);path=c.base/'remote-command-ledger.json';path.write_text('{broken')
+        agent=Agent(c);result=agent.execute({'id':'f'*32,'boot':agent.boot,'expires':time.time()+45,'action':'pause'})
+        self.assertEqual(result['status'],'rejected');c.pause.assert_not_called();self.assertEqual(path.read_text(),'{broken')
     def test_origin_validation(self):
         self.assertEqual(remote_origin('https://relay.example/'),'https://relay.example')
         for value in ['http://relay.example','https://user:pw@relay.example','https://relay.example/path','https://relay.example?token=secret']:

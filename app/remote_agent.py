@@ -17,10 +17,15 @@ class Agent:
     def __init__(self,controller):
         self.controller=controller;self.boot=secrets.token_hex(16);self.stop=threading.Event();self.thread=None
         self.path=controller.base/'remote-command-ledger.json'
-        self.seen=json.loads(self.path.read_text('utf-8')) if self.path.exists() else {}
+        self.ledger_error=False
+        try:
+            self.seen=json.loads(self.path.read_text('utf-8')) if self.path.exists() else {}
+            if not isinstance(self.seen,dict):raise ValueError('Invalid command ledger')
+        except (OSError,ValueError):self.seen={};self.ledger_error=True
         self.status='Not connected';self.ack=None;self.last_seen=None
     def execute(self,command):
         ident=command.get('id');status='rejected';message='Command rejected'
+        if self.ledger_error:return {'id':ident,'status':'rejected','message':'Remote command ledger needs local review'}
         if not isinstance(ident,str) or len(ident)!=32:return None
         if ident in self.seen:return {'id':ident,'status':'rejected','message':'Already received; not replayed'}
         # Persist receipt before execution. Crash/timeout never repeats a live operation.
@@ -46,6 +51,7 @@ class Agent:
     def work(self):
         import requests
         while not self.stop.is_set():
+            if self.ledger_error:self.status='Remote command ledger needs local review; local automation is available';return
             c=self.controller
             with c.lock:enabled=c.cfg.get('remote_enabled',False);address=c.cfg.get('remote_url','')
             if not enabled:self.status='Disabled';self.stop.wait(3);continue
@@ -63,6 +69,6 @@ class Agent:
                 if data.get('command'):
                     # An operator can disable remote access while a network request is in flight.
                     with c.lock:
-                        if c.cfg.get('remote_enabled') and not self.stop.is_set():self.ack=self.execute(data['command'])
+                        if c.cfg.get('remote_enabled') and c.cfg.get('remote_url')==address and c.vault.get('remote_agent_token')==token and not self.stop.is_set():self.ack=self.execute(data['command'])
             except Exception:self.status='Remote connection unavailable; local automation continues'
             self.stop.wait(3)

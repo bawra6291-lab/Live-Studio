@@ -404,6 +404,12 @@ class DashboardServer(ThreadingHTTPServer):
             if item and item['expires']>time.monotonic():return item
             self.sessions.pop(token,None)
         return None
+    def server_close(self):
+        if hasattr(self,'auth_lock'):
+            with self.auth_lock:self.sessions.clear()
+            with self.controller.lock:
+                if self in self.controller.servers:self.controller.servers.remove(self)
+        super().server_close()
 
 class Handler(BaseHTTPRequestHandler):
     server_version='ISKCON-Dashboard'
