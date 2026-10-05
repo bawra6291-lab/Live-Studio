@@ -48,6 +48,10 @@ class Agent:
         if self.thread and self.thread.is_alive():return
         self.stop.clear();self.thread=threading.Thread(target=self.work,daemon=True);self.thread.start()
     def close(self):self.stop.set()
+    def public_snapshot(self):
+        state=self.controller.snapshot(False)
+        fields=('workspace_name','now','armed','busy','mode','message','error','connections','checked','next','slots','last_tick','app_version')
+        return {key:state[key] for key in fields if key in state}
     def work(self):
         import requests
         while not self.stop.is_set():
@@ -59,12 +63,13 @@ class Agent:
             try:
                 if not token:raise ValueError('Save an agent enrollment token on this PC.')
                 url=remote_origin(address)
-                response=requests.post(url+'/api/agent/poll',headers={'Authorization':'Bearer '+token},json={'boot':self.boot,'snapshot':c.snapshot(False),'ack':self.ack},timeout=(5,10),allow_redirects=False)
+                response=requests.post(url+'/api/agent/poll',headers={'Authorization':'Bearer '+token},json={'boot':self.boot,'snapshot':self.public_snapshot(),'ack':self.ack},timeout=(5,10),allow_redirects=False)
                 if response.status_code in (401,403):
                     self.status='Enrollment expired or revoked. Re-enroll locally.'
                     with c.lock:c.cfg['remote_enabled']=False;atomic_json(c.path,c.cfg)
                     continue
-                response.raise_for_status();data=response.json();self.ack=None
+                if response.status_code!=200:raise ValueError('Unexpected relay response')
+                data=response.json();self.ack=None
                 self.last_seen=time.time();self.status='Connected'
                 if data.get('command'):
                     # An operator can disable remote access while a network request is in flight.

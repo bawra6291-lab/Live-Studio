@@ -72,6 +72,9 @@ class Remote(unittest.TestCase):
         c=Mock();c.base=Path(self.tmp.name);path=c.base/'remote-command-ledger.json';path.write_text('{broken')
         agent=Agent(c);result=agent.execute({'id':'f'*32,'boot':agent.boot,'expires':time.time()+45,'action':'pause'})
         self.assertEqual(result['status'],'rejected');c.pause.assert_not_called();self.assertEqual(path.read_text(),'{broken')
+    def test_agent_filters_history_and_credentials_before_network_serialization(self):
+        c=Mock();c.base=Path(self.tmp.name);c.snapshot.return_value={'armed':False,'logs':['x'*100000],'runs':[{'private':'data'}],'settings':{'password':'secret'},'visible':{'recipes':{'password':'secret'}}}
+        agent=Agent(c);self.assertEqual(agent.public_snapshot(),{'armed':False})
     def test_origin_validation(self):
         self.assertEqual(remote_origin('https://relay.example/'),'https://relay.example')
         for value in ['http://relay.example','https://user:pw@relay.example','https://relay.example/path','https://relay.example?token=secret']:
