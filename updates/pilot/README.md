@@ -1,8 +1,12 @@
-# Live Desk 0.7.1 — supervised pilot
+# Live Desk 0.8.0 — supervised pilot
 
 This is an opt-in test build from the development branch. It is not the stable release or the finished cloud/team product. The stable `main/updates/latest.json` feed remains unchanged.
 
-## Recorder repair in 0.7.1
+## New in 0.8.0
+
+Calendar recurrence and preview, recorded-run recovery and targeted ending, credential-free settings backup/restore, LAN device roles/revocation, an optional self-hosted HTTPS relay, and a bundled Windows installer are implemented. See [the 0.8.0 guide](0.8.0/README.md) and [completion record](../../WORK-COMPLETION.md). The relay requires separate hosting and enrollment; internet access is off by default.
+
+## Recorder repair retained from 0.7.1
 
 A reported recording returned no steps. The previous recorder used the retargeted DOM element, which can miss controls inside open shadow roots; it also silently accepted an empty result. The recorder now follows the composed event path, listens inside dynamically discovered open shadow roots, captures simple identity text as a result check and excludes editable text from target labels. A LIVE DESK RECORDING badge shows the captured count on the current page. The count resets on navigation. Empty or oversized recordings fail explicitly; Save is disabled without captured steps. This repairs a tested capture gap; the exact cause of the operator's empty session cannot be established from a screenshot alone.
 
@@ -28,11 +32,11 @@ Windows Task Scheduler can return the principal as an account name even when set
 https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/latest.json
 ```
 
-4. **Check for updates**. New update source ka prompt aaye to URL check karke accept karein. **Version 0.7.1** aur **PILOT** notes dikhne chahiye.
+4. **Check for updates**. New update source ka prompt aaye to URL check karke accept karein. **Version 0.8.0** aur **PILOT** notes dikhne chahiye.
 5. **Download & install**. App restart hone dein. Folder ya shortcut manually delete/change na karein.
-6. Restart ke baad installed version **0.7.1** confirm karein. Automation paused hi rakhein.
+6. Restart ke baad installed version **0.8.0** confirm karein. Automation paused hi rakhein.
 
-If no update appears, do not repeatedly install: capture the Updates panel message and installed version. If your existing app is already 0.7.1 or newer, this package will not be offered as an upgrade.
+If no update appears, do not repeatedly install: capture the Updates panel message and installed version. If your existing app is already 0.8.0 or newer, this package will not be offered as an upgrade.
 
 ## Pehla check — koi live start nahi karna
 
@@ -62,9 +66,9 @@ Keep those backups until the PC test is complete. If rollback is needed after ed
 
 ## Build evidence
 
-- Source: `1d259a37a296f887b54ef8d68e60b6ac9326435a`.
-- [Passing Windows/Linux/browser checks](https://github.com/bawra6291-lab/Live-Studio/actions/runs/36714689006): 147 controller tests on each OS, Windows native smoke check, eight desktop/mobile browser flows with fake services, plus real Chromium recorder/replay against a local fixture with dynamically inserted shadow controls, contenteditable, password exclusion and empty-recording rejection.
-- `0.7.1/build-report.json` records the package digest, exact source match and a temporary-directory upgrade simulation from 0.7.0. It does not claim a real Windows installer handoff or real platform testing.
-- Package contents include no operator settings, logs or credentials. Checksums detect corruption; this is not a signed production installer.
+- Tested source: `ff60ccc15f151dbddcf3510907751976411fd9c5`.
+- [Passing Windows/Linux/browser/installer checks](https://github.com/bawra6291-lab/Live-Studio/actions/runs/37294294299): 162 app tests and 12 relay/agent tests on each OS, Windows native smoke check, nine desktop/mobile browser flows, real Chromium recorder/replay fixture, bundled-runtime validation, silent installer install/uninstall.
+- [0.8.0 build report](0.8.0/build-report.json) records the package digest, exact committed source match and temporary-directory upgrade simulation from 0.7.1, preserving the sibling runtime and prior-app backup.
+- No operator settings, logs, credentials or browser sessions are packaged. Checksums detect corruption; the pilot is unsigned. Real operator-PC/site/camera validation, relay deployment, production OAuth onboarding and publisher signing remain external gates.
 
-Later pilot updates can use the same opt-in address. Moving to a public/stable release remains a separate decision after the supervised PC test.
+Later pilot updates use this same opt-in address. Stable main remains unchanged until separately approved for production rollout.

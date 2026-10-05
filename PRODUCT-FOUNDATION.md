@@ -27,13 +27,13 @@ Use a separate test Windows user/PC or set `LIVE_DESK_DATA_DIR` to an empty test
 
 See [WORK-COMPLETION.md](WORK-COMPLETION.md) for the 0.8.0 implementation, external release gates and explicit remaining product limits. Calendar/recovery, credential-free backup, LAN device roles, optional self-hosted HTTPS relay and bundled Windows installer are now implemented.
 
-## Original foundation boundaries (superseded where noted above)
+## Boundaries and release gates
 
-- This milestone is not multi-tenant cloud infrastructure. There are no team roles, internet relay, billing or central account system yet. Phone access remains on the same trusted LAN using the existing paired dashboard.
-- Public distribution needs production Google/Meta OAuth onboarding, application verification/review as applicable, signed Windows installation/updates, device enrollment, secure remote transport and tenant authorization. A credential namespace does not provide cloud tenant isolation.
+- Optional workspace-scoped HTTPS relay, owner/operator/viewer authorization and PC enrollment are supplied under remote/. It is not deployed by default and has no billing, self-service account onboarding or independent production security/load certification. LAN control remains available without hosting.
+- Broad public distribution still needs production Google/Meta OAuth onboarding and approval, publisher-signed installation/update delivery and production deployment validation. The optional relay has separate tenant-scoped authorization; local Credential Manager namespaces alone are not tenant isolation.
 - Version 0.7.0 adds opt-in real browser recording/replay and truthful progress for calibrated workflows. API mode remains the default. Browser actions need operator recording/review and real-site verification; no universal preconfigured site automation is claimed. OBS remains controlled via WebSocket with a visible window. Login/UAC and unsupported native/iframe/plugin workflows are manual or need adapters. See app/VISIBLE-MODE.txt.
 - Windows elevation, OBS plugin reload, lock/sleep recovery, expired credentials and platform error recovery still require end-to-end testing. Existing metadata/API errors are not claimed fixed by this product milestone.
-- Manual public broadcasts and uncertain partial runs require operator review. This branch does not automatically delete/retry them. Recent unended run records may block destination changes until they fall outside the scheduler's active day range; a reviewed reconciliation workflow is a separate milestone.
+- Manual public broadcasts and uncertain partial runs require operator review. The new Run history panel provides read-only inspection, targeted ending and fresh inactive-state checks before marking reviewed. It does not delete or blindly retry ambiguous broadcasts.
 - Program execution uses the existing scheduler and its timing windows. This is not an OS service and cannot operate while the PC is off or the desktop agent is closed.
 - General time zones, optional single-platform streaming, additional camera vendors and multiple workspaces on one machine are later work.
 
