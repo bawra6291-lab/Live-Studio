@@ -1,8 +1,10 @@
-# Completion record — 0.8.2 pilot
+# Completion record — 0.8.3 pilot
 
 This document distinguishes implemented software from external acceptance gates. It does not claim zero defects or production certification.
 
 ## Implemented in this increment
+
+- 0.8.3 browser-only recovery fix: the unresolved-run guard previously blocked even a browser connection choice. Local browser-only saving is now allowed while idle and paused, with explicit preservation of execution mode, recipes, destinations and run journal. Changing mode/recipes remains guarded. The UI provides Save browser only and identifies an unsaved browser choice. HTTP tests reproduce the operator's blocked-save state and prove retained journal/settings, rejected mode/recipe mutations, and pause/local/confirmation boundaries.
 
 - 0.8.2 normal Chrome connection: local browser choice, explicit Connect/Disconnect, Chrome-managed consent, one retained loopback browser WebSocket, flattened page sessions and one managed tab per service. Reads only standard stable Chrome's DevToolsActivePort marker; no HTTP discovery dependency or copying website/profile secrets. Rejects absent/denied/lost connection without a replacement launch or blind replay. Existing personal tabs and browser windows remain open. Connections are not restored automatically after app/browser restart. Actual Windows inspect permission and signed-in platform acceptance remains a supervised operator gate.
 

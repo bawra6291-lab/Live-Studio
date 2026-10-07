@@ -1,4 +1,4 @@
-LIVE DESK 0.8.2 — CALIBRATED VISIBLE BROWSER MODE
+LIVE DESK 0.8.3 — CALIBRATED VISIBLE BROWSER MODE
 
 This opt-in development feature uses real Chrome/Edge input events. It is not
 preconfigured for every YouTube, Facebook or camera UI. Existing API mode stays
@@ -19,7 +19,7 @@ ONE-TIME CALIBRATION (AUTOMATION PAUSED)
 3. Choose a workflow. For YouTube preparation enter the reference livestream ID.
    For Go live/End recording enter the actual test video ID (YouTube/Facebook).
 4. To use your normal logged-in Chrome, select My running Chrome (existing login)
-   and Save mode & browser. Keep that Chrome open, enable Allow remote debugging
+   and Save browser only. Keep that Chrome open, enable Allow remote debugging
    at chrome://inspect/#remote-debugging, then Connect my Chrome in Live Desk.
    Chrome 144+ asks permission: allow only the connection you just requested.
    Live Desk reads only Chrome's local debug marker, never copies your cookies
@@ -33,6 +33,10 @@ ONE-TIME CALIBRATION (AUTOMATION PAUSED)
    profile and needs its own website sign-in. That mode remains available.
    Select the correct channel/Page before recording. Site sessions can expire;
    Google OAuth consent for API verification is separate from browser sign-in.
+   Browser-only saving is allowed while a recent run needs review, provided
+   automation is paused and no worker/recording is active. It leaves that run,
+   destination, frozen plan, recipes and execution mode unchanged. Changing mode
+   or recipes still requires unresolved recent runs to be reviewed first.
 5. Choose Record my actions only when you intend to perform the real workflow.
    Recording does not make the site a sandbox: manual publishing, ending and
    camera moves have their normal real effects. Use an approved supervised test.

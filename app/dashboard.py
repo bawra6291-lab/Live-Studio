@@ -103,8 +103,15 @@ class Controller:
 
     def save_visible(self,data):
         with self.lock:
-            self.require_idle();self.require_no_recent_runs()
+            self.require_idle()
+            if self.armed:raise ValueError('Pause automation before changing browser or workflow settings.')
             if data.get('confirmed') is not True:raise ValueError('Review and confirm the visible workflow or mode before saving.')
+            # Browser transport selection does not alter destinations, recipes,
+            # execution mode or the frozen plan of an unresolved run. Permit it
+            # so the operator can connect/inspect Chrome during recovery.
+            browser_only=('browser_source' in data and set(data)<= {'browser_source','mode','confirmed'}
+                          and data.get('mode',self.visible.config['mode'])==self.visible.config['mode'])
+            if not browser_only:self.require_no_recent_runs()
             self.visible.save(data)
 
     def visible_browser(self,data):

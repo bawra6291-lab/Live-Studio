@@ -62,7 +62,10 @@ async function noOverflow(page){assert.ok(await page.evaluate(()=>document.docum
   await desktop.locator('#visible-browser-source').selectOption('running_chrome');
   await desktop.waitForResponse(r=>r.url().endsWith('/api/state'));
   assert.equal(await desktop.locator('#visible-browser-source').inputValue(),'running_chrome');
-  await desktop.locator('#visible-save-mode').click();const savedBrowser=desktop.waitForResponse(r=>r.url().endsWith('/api/visible/save'));await confirm(desktop);assert.equal((await savedBrowser).status(),200);
+  await desktop.locator('#visible-chrome-status').filter({hasText:'Browser choice has not been saved'}).waitFor();
+  // Saving only the browser must not commit an unsaved execution-mode choice.
+  await desktop.locator('#visible-mode').selectOption('visible');
+  const savedBrowser=desktop.waitForResponse(r=>r.url().endsWith('/api/visible/save'));await desktop.locator('#visible-save-browser').click();assert.equal((await savedBrowser).status(),200);
   await desktop.waitForFunction(()=>!document.getElementById('visible-connect-chrome').disabled);
   assert.equal((await state(desktop)).visible.browser_source,'running_chrome');
   assert.equal((await state(desktop)).visible.chrome_connected,false);
