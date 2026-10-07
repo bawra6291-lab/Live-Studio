@@ -23,6 +23,8 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install -r app/requirements.txt
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
       - name: Install Android platform and build tools
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
       - name: Address and origin restriction tests
