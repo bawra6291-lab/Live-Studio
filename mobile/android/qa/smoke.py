@@ -35,8 +35,12 @@ def tap(node):
 
 def click(label, contains=False): tap(find(label, contains=contains))
 
-def type_into(node, text):
+def type_into(node, text, clear=False):
     tap(node)
+    time.sleep(.5)
+    if clear:
+        adb('shell','input','keyevent','123')
+        adb('shell','input','keyevent', *(['67'] * 64))
     adb('shell','input','text',text)
     adb('shell','input','keyevent','4') # Android Back dismisses the IME
     time.sleep(.5)
@@ -69,10 +73,7 @@ try:
     click('Connect this device',contains=True)
     find('Incorrect pairing code',contains=True,enabled=False)
     passed('Installed APK loads pairing; incorrect code rejected')
-    edit=find(klass='android.widget.EditText');tap(edit)
-    adb('shell','input','keyevent','123')
-    for _ in range(5):adb('shell','input','keyevent','67')
-    type_into(edit,'qa-pairing')
+    type_into(find(klass='android.widget.EditText'),'qa-pairing',clear=True)
     click('Connect this device',contains=True)
     find('Live overview',contains=True);shot('android-overview.png')
     assert_state(False,[])
