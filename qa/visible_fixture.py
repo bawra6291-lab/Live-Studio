@@ -139,9 +139,15 @@ while time.monotonic()<deadline:
     if page.evaluate('Boolean(document.querySelector("#account") && window.__liveDeskRecorder)'):break
     time.sleep(.1)
 click('#account');click('#title');page.call('Input.insertText',text='normal-chrome-private-value');click('#save')
+# Exercise opaque-frame bookkeeping through the actual browser binding/socket,
+# mixed with legitimate user input. These are fixture events, never a platform.
+page.evaluate("liveDeskCapture(JSON.stringify({kind:'ready',origin:'null'})); liveDeskCapture(JSON.stringify({kind:'skipped',origin:'null'}))")
+assert any(json.loads(e['payload']).get('origin')=='null' for e in normal.recording[0].events)
 captured=normal.finish_recording()
 assert any(s['kind']=='fill' for s in captured)
 assert 'normal-chrome-private-value' not in json.dumps(captured)
+assert any(s['kind']=='click' and s['locator'].get('css')=='#save' for s in captured)
+print('PASS opaque-frame recorder health events retain real managed-tab actions without weakening action-origin validation')
 normal.run('fixture',url,recipe,{'title':'Existing browser scheduled title'},lambda *a:None)
 assert managed.evaluate('window.savedTitle')=='Existing browser scheduled title'
 assert managed.evaluate('window.trustedClick') is True

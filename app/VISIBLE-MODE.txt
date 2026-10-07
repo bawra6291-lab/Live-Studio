@@ -1,4 +1,4 @@
-LIVE DESK 0.8.3 — CALIBRATED VISIBLE BROWSER MODE
+LIVE DESK 0.8.4 — CALIBRATED VISIBLE BROWSER MODE
 
 This opt-in development feature uses real Chrome/Edge input events. It is not
 preconfigured for every YouTube, Facebook or camera UI. Existing API mode stays
@@ -46,6 +46,10 @@ ONE-TIME CALIBRATION (AUTOMATION PAUSED)
    The count is per page and resets on navigation. No badge means do not proceed.
    An empty recording is now an error, not a successful workflow. Open shadow
    controls and plain identity text clicks are captured; text clicks become checks.
+   Blank/opaque-frame ready/skipped bookkeeping no longer discards captured
+   site actions when finishing. Actual actions still require the allowed HTTP(S)
+   origin. A failed finish in an older build does not leave a recoverable draft;
+   after upgrading, verify a harmless click before recording another event.
 6. Capture a click on a visible account/Page identity element as well as the
    required workflow. Then Finish recording in Live Desk.
 7. Choose the recorded identity target and type its exact visible name/label.
@@ -89,7 +93,8 @@ LIMITS THAT MUST NOT BE HIDDEN
   profile is retained. Do not delete it or switch browser profiles to solve login.
 - My running Chrome expects the standard Windows stable Chrome User Data debug
   marker. Other channels/custom profile roots are not auto-discovered. The Chrome
-  inspect permission flow on the actual operator PC still needs verification;
+  operator confirmed the inspect connection and a signed-in Facebook tab on
+  8 October 2026; this does not validate every recorded site workflow.
   CI validates the same browser WebSocket transport against a localhost fixture.
   When multiple Chrome accounts/profiles are open, verify the account in the
   managed tab. An authenticated browser does not imply the correct Page/channel.

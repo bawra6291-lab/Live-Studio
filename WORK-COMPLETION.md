@@ -1,8 +1,10 @@
-# Completion record — 0.8.3 pilot
+# Completion record — 0.8.4 pilot
 
 This document distinguishes implemented software from external acceptance gates. It does not claim zero defects or production certification.
 
 ## Implemented in this increment
+
+- 0.8.4 recording-finish repair: opaque/blank-frame ready/skipped messages were origin-validated before being recognized as bookkeeping, causing the reported HTTP(S) address error and discarding the review draft. Filter those non-action messages first; real action origins are still validated and foreign-origin actions excluded. Regressions reproduce the old exception, retain valid identity/fill/click steps, reject an empty health-only session and refuse an opaque-origin action. The actual browser-socket fixture mixes opaque health messages with trusted input. The operator has now confirmed normal Chrome connection and signed-in Facebook navigation; complete site recipes remain unverified.
 
 - 0.8.3 browser-only recovery fix: the unresolved-run guard previously blocked even a browser connection choice. Local browser-only saving is now allowed while idle and paused, with explicit preservation of execution mode, recipes, destinations and run journal. Changing mode/recipes remains guarded. The UI provides Save browser only and identifies an unsaved browser choice. HTTP tests reproduce the operator's blocked-save state and prove retained journal/settings, rejected mode/recipe mutations, and pause/local/confirmation boundaries.
 

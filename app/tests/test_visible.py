@@ -294,5 +294,42 @@ class VisibleTests(unittest.TestCase):
         with self.assertRaisesRegex(SetupError,'exceeded'):b.finish_recording()
         page.close.assert_called_once()
 
+    def test_opaque_frame_health_events_do_not_discard_valid_recording(self):
+        b=Browser('/unused',ready=lambda:None);page=Mock()
+        items=[
+            {'kind':'ready','origin':'null'},
+            {'kind':'skipped','origin':'null'},
+            {'kind':'ready'},
+            {'kind':'ready','origin':'about:blank'},
+            {'kind':'click','origin':'https://other.example','locator':{'css':'#foreign'}},
+            {'kind':'assert','origin':'https://www.facebook.com','locator':{'css':'#account'},'text':'Test Temple'},
+            {'kind':'fill','origin':'https://www.facebook.com','locator':{'css':'#title'}},
+            {'kind':'click','origin':'https://www.facebook.com','locator':{'css':'#prepare'}}]
+        page.events=[{'name':'liveDeskCapture','payload':json.dumps(item)} for item in items]
+        b.recording=(page,'script',origin('https://www.facebook.com/live/producer/'))
+        self.assertEqual(b.finish_recording(),[
+            {'kind':'assert','locator':{'css':'#account'},'text':'Test Temple'},
+            {'kind':'fill','locator':{'css':'#title'},'variable':''},
+            {'kind':'click','locator':{'css':'#prepare'}}])
+        self.assertIsNone(b.recording);page.close.assert_called_once()
+
+    def test_opaque_frame_health_only_is_still_empty_recording(self):
+        b=Browser('/unused',ready=lambda:None);page=Mock()
+        page.events=[{'name':'liveDeskCapture','payload':json.dumps({'kind':'ready','origin':'null'})}]
+        b.recording=(page,'script',origin('https://www.facebook.com'))
+        with self.assertRaisesRegex(SetupError,'No actions were captured'):
+            b.finish_recording()
+        self.assertIsNone(b.recording);page.close.assert_called_once()
+
+    def test_opaque_origin_action_still_refuses_recording(self):
+        b=Browser('/unused',ready=lambda:None);page=Mock()
+        page.events=[{'name':'liveDeskCapture','payload':json.dumps(item)} for item in [
+            {'kind':'click','origin':'https://www.facebook.com','locator':{'css':'#valid'}},
+            {'kind':'click','origin':'null','locator':{'css':'#unsupported'}}]]
+        b.recording=(page,'script',origin('https://www.facebook.com'))
+        with self.assertRaisesRegex(SetupError,'HTTP'):
+            b.finish_recording()
+        self.assertIsNone(b.recording);page.close.assert_called_once()
+
 
 if __name__=='__main__':unittest.main()

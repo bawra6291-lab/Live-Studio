@@ -483,8 +483,11 @@ class Browser:
                 for event in page.events:
                     if event.get('name') != 'liveDeskCapture':continue
                     item = json.loads(event['payload'])
-                    if origin(item.get('origin', '')) != allowed:continue
+                    # The startup script also runs in blank/opaque frames.
+                    # Their ready/skipped messages are bookkeeping, not actions:
+                    # filter them before validating a replayable site's origin.
                     if item.get('kind') not in ('click','fill','assert'):continue
+                    if origin(item.get('origin', '')) != allowed:continue
                     step = {k:item[k] for k in ('kind','locator')}
                     if step['kind'] == 'fill':step['variable'] = ''
                     if step['kind'] == 'assert':step['text']=item['text']
