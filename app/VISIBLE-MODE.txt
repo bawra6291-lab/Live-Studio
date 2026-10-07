@@ -1,4 +1,4 @@
-LIVE DESK 0.8.4 — CALIBRATED VISIBLE BROWSER MODE
+LIVE DESK 0.8.5 — CALIBRATED VISIBLE BROWSER MODE
 
 This opt-in development feature uses real Chrome/Edge input events. It is not
 preconfigured for every YouTube, Facebook or camera UI. Existing API mode stays

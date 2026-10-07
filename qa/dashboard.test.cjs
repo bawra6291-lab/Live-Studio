@@ -58,6 +58,13 @@ async function noOverflow(page){assert.ok(await page.evaluate(()=>document.docum
  });
  await test('Visible mode controls are local, default API and retain unsaved values',async()=>{
   await view(desktop,'visible');await desktop.locator('#visible-local').waitFor({state:'visible'});assert.equal(await desktop.locator('#visible-mode').inputValue(),'api');await desktop.locator('#visible-identity-text').fill('Unsaved identity');await desktop.waitForResponse(r=>r.url().endsWith('/api/state'));assert.equal(await desktop.locator('#visible-identity-text').inputValue(),'Unsaved identity');await noOverflow(desktop);await desktop.screenshot({path:path.join(output,'visible-desktop.png'),fullPage:true});
+  // The owner's setup controls must remain readable on narrow windows too,
+  // not just in the remote status-only mobile view.
+  for(const width of [980,390,320]){
+   await desktop.setViewportSize({width,height:1000});await noOverflow(desktop);
+   await desktop.locator('.visible-setup-grid').screenshot({path:path.join(output,'visible-owner-'+width+'.png')});
+  }
+  await desktop.setViewportSize({width:1440,height:1000});
   assert.equal(await desktop.locator('#visible-connect-chrome').isDisabled(),true);
   await desktop.locator('#visible-browser-source').selectOption('running_chrome');
   await desktop.waitForResponse(r=>r.url().endsWith('/api/state'));

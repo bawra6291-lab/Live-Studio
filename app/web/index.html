@@ -36,12 +36,24 @@
     <div id="visible-status" class="notice" role="status"></div><p id="visible-configured" class="hint"></p>
     <p>Keep Windows unlocked. Recording your manual actions can create public broadcasts or move the camera. This is a calibrated workflow tool, not a preconfigured robot for every website. Test it under supervision.</p>
     <div id="visible-local">
-     <div class="settings-grid"><label class="field">Execution mode<select id="visible-mode"><option value="api">API automation (existing mode)</option><option value="visible">Visible browser workflows</option></select></label><label class="field">Browser<select id="visible-browser-source"><option value="dedicated">Separate Live Desk browser</option><option value="running_chrome">My running Chrome (existing login)</option></select></label><div class="field"><span>Applies after saving</span><button id="visible-save-mode" class="secondary">Save mode &amp; browser</button></div></div>
-     <button id="visible-save-browser" class="secondary">Save browser only</button><p id="visible-chrome-status" class="hint" role="status"></p>
-     <div class="inline"><button id="visible-connect-chrome" class="secondary">Connect my Chrome</button><button id="visible-disconnect-chrome" class="secondary">Disconnect Chrome control</button></div>
-     <p class="hint">For your normal Chrome: keep its logged-in window open, enable “Allow remote debugging” at chrome://inspect/#remote-debugging, save “My running Chrome”, then Connect my Chrome. Accept Chrome's permission prompt for this connection. This gives browser control and access to signed-in pages. After restarting Chrome or Live Desk, connect again locally. You can revoke access on that Chrome settings page.</p>
+     <div class="visible-setup-grid">
+      <section class="visible-setup-card" aria-labelledby="visible-mode-heading">
+       <h3 id="visible-mode-heading">Automation mode</h3>
+       <label class="field">Execution mode<select id="visible-mode"><option value="api">API automation (existing mode)</option><option value="visible">Visible browser workflows</option></select></label>
+       <div class="visible-save-row"><button id="visible-save-mode" class="secondary">Save mode &amp; browser</button></div>
+       <p class="hint">Applies after saving. Visible mode needs reviewed workflows before you enable automation.</p>
+      </section>
+      <section class="visible-setup-card" aria-labelledby="visible-browser-heading">
+       <h3 id="visible-browser-heading">Chrome connection</h3>
+       <label class="field">Browser<select id="visible-browser-source"><option value="dedicated">Separate Live Desk browser</option><option value="running_chrome">My running Chrome (existing login)</option></select></label>
+       <div class="visible-save-row"><button id="visible-save-browser" class="secondary">Save browser only</button></div>
+       <p id="visible-chrome-status" class="visible-connection-status" role="status"></p>
+       <div class="inline visible-connect-row"><button id="visible-connect-chrome" class="secondary">Connect my Chrome</button><button id="visible-disconnect-chrome" class="secondary">Disconnect Chrome control</button></div>
+      </section>
+     </div>
+     <details class="visible-browser-help"><summary>How to connect your existing Chrome</summary><p class="hint">Keep your logged-in Chrome window open. Enable “Allow remote debugging” at chrome://inspect/#remote-debugging, save “My running Chrome”, then Connect my Chrome. Accept Chrome's permission prompt for this connection. After restarting Chrome or Live Desk, connect again locally. You can revoke access on that Chrome settings page.</p></details>
      <hr><h3>One-time workflow recording</h3><p>My running Chrome opens a managed site tab in your existing browser and uses its current login; it never launches a replacement browser. Separate Live Desk browser uses its own persistent sign-in profile. Site sessions can still expire, and the correct account must be selected. Finish login before recording. Ordinary text-field values are never captured: map each field after recording.</p>
-     <div class="settings-grid"><label class="field">Workflow<select id="visible-flow"></select></label><label class="field">YouTube video ID (reference for preparation; test event for Go live / End)<input id="visible-reference" maxlength="11" autocomplete="off"></label><label class="field">Facebook test video ID (for recording Go live / End)<input id="visible-facebook-event" maxlength="70" autocomplete="off"></label></div>
+     <div class="settings-grid"><label class="field visible-workflow-field">Workflow<select id="visible-flow"></select></label><label class="field">YouTube video ID (reference for preparation; test event for Go live / End)<input id="visible-reference" maxlength="11" autocomplete="off"></label><label class="field">Facebook test video ID (for recording Go live / End)<input id="visible-facebook-event" maxlength="70" autocomplete="off"></label></div>
      <div class="inline"><button id="visible-open" class="secondary">Open site / sign in</button><button id="visible-record" class="primary">Record my actions</button><button id="visible-finish" class="secondary">Finish recording</button></div>
      <h3>Review targets and text fields</h3><p class="hint">Select the account/Page name element you recorded as the identity check. It must be visible on the entry page before clicks. Remove any exploratory or unwanted clicks. Input fields must use a run variable, never a password or fixed date.</p>
      <div class="settings-grid"><label class="field">Identity target<select id="visible-identity-target"></select></label><label class="field">Exact visible account / Page text<input id="visible-identity-text" maxlength="200" autocomplete="off"></label></div>

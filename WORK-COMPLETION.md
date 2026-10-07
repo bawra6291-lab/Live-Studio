@@ -1,8 +1,10 @@
-# Completion record — 0.8.4 pilot
+# Completion record — 0.8.5 pilot
 
 This document distinguishes implemented software from external acceptance gates. It does not claim zero defects or production certification.
 
 ## Implemented in this increment
+
+- 0.8.5 visible setup layout: group execution-mode selection with its Save action and browser selection with browser-only Save, connection status and Connect/Disconnect actions. Labels sit above full-width fields in setup, recording and review. Workflow selection has its own row, related platform IDs share the following row, and Chrome setup guidance is expandable. Setup cards stack in narrow windows; existing action IDs and save behavior remain intact. The existing dashboard flow captures owner-view screenshots at desktop and narrow widths and checks overflow.
 
 - 0.8.4 recording-finish repair: opaque/blank-frame ready/skipped messages were origin-validated before being recognized as bookkeeping, causing the reported HTTP(S) address error and discarding the review draft. Filter those non-action messages first; real action origins are still validated and foreign-origin actions excluded. Regressions reproduce the old exception, retain valid identity/fill/click steps, reject an empty health-only session and refuse an opaque-origin action. The actual browser-socket fixture mixes opaque health messages with trusted input. The operator has now confirmed normal Chrome connection and signed-in Facebook navigation; complete site recipes remain unverified.
 
