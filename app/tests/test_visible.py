@@ -78,6 +78,59 @@ class VisibleTests(unittest.TestCase):
             with self.assertRaises(SetupError):b.ensure()
             launch.assert_not_called()
 
+    def test_restarted_controller_attaches_without_launch_or_marker_deletion(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            marker=Path(tmp)/'visible-browser-profile'/'DevToolsActivePort'
+            marker.parent.mkdir();marker.write_text('45678\n/devtools/browser/session-one\n')
+            b=Browser(tmp,ready=lambda:None)
+            b.endpoint=Mock(return_value={'webSocketDebuggerUrl':'ws://127.0.0.1:45678/devtools/browser/session-one'})
+            with patch('visible_browser.subprocess.Popen') as launch:
+                b.ensure();b.ensure()
+            launch.assert_not_called()
+            self.assertEqual(b.port,45678)
+            self.assertIn('session-one',marker.read_text())
+
+    def test_attach_rejects_wrong_browser_identity_or_nonlocal_endpoint(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            marker=Path(tmp)/'DevToolsActivePort'
+            marker.write_text('45678\n/devtools/browser/expected\n')
+            b=Browser(tmp,ready=lambda:None);b.port=12345
+            for address in ('ws://127.0.0.1:45678/devtools/browser/other',
+                            'ws://example.com:45678/devtools/browser/expected',
+                            'ws://127.0.0.1:45679/devtools/browser/expected'):
+                b.endpoint=Mock(return_value={'webSocketDebuggerUrl':address})
+                self.assertFalse(b.attach(marker));self.assertEqual(b.port,12345)
+
+    def test_unresponsive_running_browser_does_not_launch_duplicate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            b=Browser(tmp,ready=lambda:None);b.process=Mock();b.process.poll.return_value=None
+            with patch('visible_browser.subprocess.Popen') as launch:
+                with self.assertRaisesRegex(SetupError,'No second browser'):b.ensure()
+            launch.assert_not_called()
+
+    def test_site_tab_is_rediscovered_after_app_restart_without_new_tab(self):
+        b=Browser('/unused',ready=lambda:None);b.ensure=lambda:None
+        b.sites['facebook']=origin('https://www.facebook.com/live/producer/')
+        targets=[{'type':'page','id':'other','url':'https://studio.youtube.com/','webSocketDebuggerUrl':'ws://other'},
+                 {'type':'service_worker','id':'worker','url':'https://www.facebook.com/','webSocketDebuggerUrl':'ws://worker'},
+                 {'type':'page','id':'logged-in','url':'https://www.facebook.com/live/producer/v2/','webSocketDebuggerUrl':'ws://local'}]
+        b.endpoint=Mock(return_value=targets)
+        with patch('visible_browser.CDP') as cdp:b.page('facebook')
+        cdp.assert_called_once_with('ws://local')
+        b.endpoint.assert_called_once_with('/json/list')
+        self.assertEqual(b.tabs['facebook'],'logged-in')
+
+    def test_browser_selection_prefers_per_user_chrome_over_system_edge(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            system=Path(tmp)/'system';local=Path(tmp)/'local'
+            for exe in (system/'Microsoft/Edge/Application/msedge.exe',local/'Google/Chrome/Application/chrome.exe'):
+                exe.parent.mkdir(parents=True);exe.touch()
+            b=Browser(Path(tmp)/'data',ready=lambda:None)
+            b.attach=Mock(side_effect=[False,True])
+            with patch.dict('os.environ',{'PROGRAMFILES':str(system),'LOCALAPPDATA':str(local)},clear=True),patch('visible_browser.subprocess.Popen') as launch:
+                b.ensure()
+            self.assertEqual(launch.call_args.args[0][0],str(local/'Google/Chrome/Application/chrome.exe'))
+
     def test_missing_run_variable_refuses_before_browser_input(self):
         with tempfile.TemporaryDirectory() as tmp:
             v=Visible(tmp,threading.Event(),lambda _:None)

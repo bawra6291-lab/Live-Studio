@@ -164,6 +164,7 @@ class Browser:
         self.process = None
         self.port = None
         self.tabs = {}
+        self.sites = {}
         self.recording = None
 
     def guard(self):
@@ -171,22 +172,53 @@ class Browser:
             raise SetupError('Visible operation paused. Inspect the page before resuming; no automatic replay was sent.')
         self.ready()
 
+    def attach(self, marker):
+        """Reconnect only to the browser identified by our persistent profile."""
+        previous = self.port
+        attached = False
+        try:
+            lines = marker.read_text().splitlines()
+            if len(lines) != 2 or not lines[0].isdigit():return False
+            port = int(lines[0])
+            if not 1 <= port <= 65535 or not re.fullmatch(r'/devtools/browser/[A-Za-z0-9-]+', lines[1]):return False
+            self.port = port
+            info = self.endpoint('/json/version')
+            address = urlsplit(info.get('webSocketDebuggerUrl', ''))
+            if (address.scheme != 'ws' or address.hostname not in ('127.0.0.1', 'localhost')
+                    or address.port != port or address.path != lines[1]
+                    or address.username or address.password or address.query or address.fragment):return False
+            if previous != port:self.tabs = {}
+            attached = True
+            return True
+        except (OSError, ValueError, TypeError, KeyError):
+            return False
+        except Exception:
+            # A stale profile marker or closed endpoint is not an attached browser.
+            return False
+        finally:
+            # Keep a port only after its browser identity has been verified.
+            if not attached:self.port = previous
+
     def ensure(self):
         self.guard()
-        if self.process and self.process.poll() is None:
-            return
-        candidates = []
-        for name in ('PROGRAMFILES', 'PROGRAMFILES(X86)', 'LOCALAPPDATA'):
-            root = os.environ.get(name)
-            if root:
-                candidates += [Path(root)/'Google/Chrome/Application/chrome.exe',
-                               Path(root)/'Microsoft/Edge/Application/msedge.exe']
-        exe = next((p for p in candidates if p.is_file()), None)
-        if exe is None:
-            raise SetupError('Install Chrome or Microsoft Edge on this Windows PC for visible mode.')
         profile = self.base/'visible-browser-profile'
         profile.mkdir(parents=True, exist_ok=True)
         marker = profile/'DevToolsActivePort'
+        # Chrome's launcher may exit while the real browser stays open. Reattach
+        # before spawning, including after Live Desk itself has restarted.
+        if self.attach(marker):return
+        if self.process and self.process.poll() is None:
+            raise SetupError('The existing Live Desk browser is not responding. Keep its profile; close only that browser window normally, then retry. No second browser was opened.')
+        roots = []
+        for name in ('PROGRAMFILES', 'PROGRAMFILES(X86)', 'LOCALAPPDATA'):
+            root = os.environ.get(name)
+            if root:roots.append(Path(root))
+        # Prefer Chrome even when it is installed per-user and Edge is system-wide.
+        candidates = [root/relative for relative in ('Google/Chrome/Application/chrome.exe',
+            'Microsoft/Edge/Application/msedge.exe') for root in roots]
+        exe = next((p for p in candidates if p.is_file()), None)
+        if exe is None:
+            raise SetupError('Install Chrome or Microsoft Edge on this Windows PC for visible mode.')
         marker.unlink(missing_ok=True)
         self.process = subprocess.Popen([str(exe), '--remote-debugging-address=127.0.0.1',
             '--remote-debugging-port=0', '--user-data-dir='+str(profile.resolve()),
@@ -194,10 +226,7 @@ class Browser:
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for _ in range(60):
             self.guard()
-            if marker.exists():
-                lines = marker.read_text().splitlines()
-                if lines and lines[0].isdigit():
-                    self.port = int(lines[0]); self.tabs = {}; return
+            if self.attach(marker):return
             if self.process.poll() is not None:
                 break
             time.sleep(.2)
@@ -207,22 +236,30 @@ class Browser:
         import requests
         with requests.Session() as session:
             session.trust_env = False
-            response = session.request(method, f'http://127.0.0.1:{self.port}'+path, timeout=5)
+            response = session.request(method, f'http://127.0.0.1:{self.port}'+path, timeout=5, allow_redirects=False)
             response.raise_for_status()
+            if response.status_code != 200:raise SetupError('The local browser endpoint did not return a valid response.')
             return response.json()
 
     def page(self, service):
         self.ensure()
         targets = self.endpoint('/json/list')
-        target = next((t for t in targets if t.get('id') == self.tabs.get(service)), None)
+        target = next((t for t in targets if t.get('type') == 'page' and t.get('id') == self.tabs.get(service)), None)
+        if target is None and service in self.sites:
+            for candidate in targets:
+                try:matches = origin(candidate.get('url', '')) == self.sites[service]
+                except SetupError:matches = False
+                if candidate.get('type') == 'page' and matches:
+                    target = candidate;break
         if target is None:
             target = self.endpoint('/json/new?about:blank', 'PUT')
-            self.tabs[service] = target['id']
+        self.tabs[service] = target['id']
         return CDP(target['webSocketDebuggerUrl'])
 
     def navigate(self, service, url):
         origin(url)
         with self.lock:
+            self.sites[service] = origin(url)
             page = self.page(service)
             try:
                 self.guard();page.call('Page.enable');page.call('Page.bringToFront')
@@ -234,6 +271,7 @@ class Browser:
         with self.lock:
             if self.recording:
                 raise SetupError('Finish or discard the current recording first.')
+            self.sites[service] = origin(url)
             page = self.page(service)
             script = None
             try:
@@ -289,6 +327,7 @@ class Browser:
         """Never retries a dispatched write; caller verifies the external result."""
         with self.lock:
             if self.recording:raise SetupError('Finish recording before running visible automation.')
+            self.sites[service] = origin(url)
             page = self.page(service)
             try:
                 self.guard();page.call('Page.enable');page.call('Page.bringToFront')

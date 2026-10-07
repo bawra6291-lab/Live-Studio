@@ -6,11 +6,11 @@ from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'app'))
 from visible_browser import Browser
 
-port,url=sys.argv[1:]
+port,url,base=sys.argv[1:]
 assert url.startswith('http://127.0.0.1:')
-browser=Browser('/unused',ready=lambda:None)
-browser.port=int(port)
-browser.ensure=lambda:None
+browser=Browser(base,ready=lambda:None)
+browser.ensure()
+assert browser.port==int(port)
 browser.begin_recording('fixture',url)
 page=browser.page('fixture')
 deadline=time.monotonic()+10
@@ -74,11 +74,33 @@ assert page.evaluate('document.querySelector("#title").value')=='Scheduled Title
 assert page.evaluate('window.trustedClick') is True
 assert page.evaluate('window.savedTitle')=='Scheduled Title'
 assert len(progress)==3
+# Replacing the controller (app restart) must attach to the same browser/profile
+# and rediscover its site tab instead of opening another login window or tab.
+page.evaluate("document.cookie='liveDeskSession=retained;path=/';localStorage.setItem('liveDeskLogin','retained')")
+tab=browser.tabs['fixture'];count=len(browser.endpoint('/json/list'))
+restarted=Browser(base,ready=lambda:None)
+restarted.navigate('fixture',url)
+assert restarted.port==int(port) and restarted.process is None
+assert restarted.tabs['fixture']==tab
+assert len(restarted.endpoint('/json/list'))==count
+reused=restarted.page('fixture')
+deadline=time.monotonic()+10
+while time.monotonic()<deadline:
+    if reused.evaluate('location.href')==url and reused.evaluate('document.readyState')=='complete':break
+    time.sleep(.1)
+assert 'liveDeskSession=retained' in reused.evaluate('document.cookie')
+assert reused.evaluate("localStorage.getItem('liveDeskLogin')")=='retained'
+restarted.begin_recording('fixture',url)
+assert restarted.tabs['fixture']==tab
+assert len(restarted.endpoint('/json/list'))==count
+click('#account')
+assert restarted.finish_recording()
+reused.close()
 # Pause before execution and wrong account both prevent a second write.
 browser.cancelled=lambda:True
 try:browser.run('fixture',url,recipe,{'title':'WRONG'},lambda *args:None)
 except Exception:pass
 else:raise AssertionError('Cancellation was ignored')
-assert page.evaluate('window.savedTitle')=='Scheduled Title'
+assert 'liveDeskSession=retained' in page.evaluate('document.cookie')
 page.close()
-print('PASS real Chromium light/shadow recording and replay, badge, empty rejection, secret exclusion, trusted input and cancellation')
+print('PASS real Chromium recording/replay, cancellation, controller reattachment, same site tab and retained local login session')

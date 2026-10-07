@@ -1,8 +1,10 @@
-# Completion record — 0.8.0 pilot
+# Completion record — 0.8.1 pilot
 
 This document distinguishes implemented software from external acceptance gates. It does not claim zero defects or production certification.
 
 ## Implemented in this increment
+
+- 0.8.1 browser-session repair: reconnect to the browser identified by the persistent Live Desk profile before launching, reuse an existing same-site tab after a controller restart, refuse duplicate launch when the existing process is unresponsive, and prefer per-user Chrome over system Edge. Local Chromium regression checks the same target ID, unchanged tab count and retained test-site cookie/local storage through reattachment and recording. This does not attach to the normal default Chrome profile or guarantee that external sites never expire sessions.
 
 - Calendar: daily, selected weekdays or a single date, skipped dates, 5–60 minute preparation lead, collision checks including overnight and far-future one-off runs, upcoming preparation/start/end preview. Existing IST daily plans remain compatible and frozen prepared plans remain unchanged.
 - Recovery: persisted run history, exact recorded platform links, read-only inspection, fresh inactive-state check before marking reviewed, audit preservation and cancellation of remaining actions for reviewed runs. Explicit end for the recorded run reuses exact platform/output ownership checks; changed outputs refuse automatic stopping. No automatic deletion of ambiguous broadcasts.
