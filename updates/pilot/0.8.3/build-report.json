@@ -1,0 +1,43 @@
+{
+  "version": "0.8.3",
+  "channel": "pilot",
+  "source_commit": "5e55495a048d0ae9264dad41a8a3b5f3109a6008",
+  "source_tree": "ef52e122ba102d1983c74af3d0ca9ca984490bff",
+  "archive_sha256": "0ed3266af17b0303fc50a756a40a1edc9714df8004364dbc02f58ae0e221d2a4",
+  "archive_size": 148353,
+  "files": 45,
+  "ci_run": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/37674103570",
+  "checks": {
+    "archive_matches_committed_source": true,
+    "archive_hashes": true,
+    "no_operator_data_packaged": true,
+    "updater_0_8_2_stages_and_swaps": true,
+    "previous_app_backup": true,
+    "sibling_runtime_and_operator_settings_preserved": true,
+    "persistent_browser_profile_preserved": true,
+    "published_blob_matches_local_git_sha": true
+  },
+  "validation": {
+    "app_tests_windows_and_linux": 175,
+    "relay_tests_windows_and_linux": 12,
+    "desktop_mobile_browser_flows": 9,
+    "visible_chromium_fixture": "passed: WebSocket-only existing-browser recording/replay, managed tabs, persistent socket, retained dummy sign-in and disconnect without replacement launch; dedicated browser reattachment retained",
+    "windows_native_smoke": "passed",
+    "windows_installer_build_install_uninstall": "passed",
+    "unresolved_run_browser_only_save": "passed: local confirmed paused save preserves execution mode, recipes, destination settings and journal; mode/recipe changes remain rejected"
+  },
+  "installer_artifact": {
+    "url": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/37674103570/artifacts/11505674356",
+    "github_artifact_digest": "sha256:5f6db0aa68bc5ca0894f7356d0d749254e7684e3c0b73bc8540352bac5899125",
+    "expires": "2026-10-21T19:25:37Z",
+    "signed": false
+  },
+  "limitations": [
+    "Existing unresolved runs still require separate platform/OBS inspection before mode/recipe/destination changes.",
+    "Actual Windows Chrome inspect permission and signed-in platform/camera acceptance were not performed by CI.",
+    "Chrome connection still requires standard Windows stable Chrome debug marker, explicit local consent and reconnect after app/browser restart.",
+    "Site sessions may expire; website login and API credentials are separate.",
+    "Visible mode still requires reviewed site-specific recipes; OBS remains controlled by WebSocket.",
+    "Pilot is unsigned; remaining hosting/production onboarding/signing gates remain external."
+  ]
+}

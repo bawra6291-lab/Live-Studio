@@ -1,8 +1,12 @@
-# Live Desk 0.8.2 — supervised pilot
+# Live Desk 0.8.3 — supervised pilot
 
 This is an opt-in test build from the development branch. It is not the stable release or the finished cloud/team product. The stable `main/updates/latest.json` feed remains unchanged.
 
-## New in 0.8.2: your running Chrome
+## New in 0.8.3: save browser while recovering a run
+
+A recent unresolved run no longer blocks a browser-only choice. **Save browser only** preserves execution mode, recipes, destinations and the run journal while allowing local Chrome setup with automation paused. Mode/recipe changes still require run review. Unsaved browser choices are identified on screen. See [the 0.8.3 guide](0.8.3/README.md).
+
+## Retained from 0.8.2: your running Chrome
 
 Choose **My running Chrome (existing login)**, save the browser choice and connect locally. Chrome handles permission; one retained loopback browser WebSocket drives managed tabs in the already open browser. Missing/denied/lost connections refuse a replacement launch. Personal tabs are left alone, and no profile cookies are copied. Reconnect locally after Chrome/Live Desk restart. The actual Windows inspect permission flow and account selection remain a supervised PC gate. See [the 0.8.2 guide](0.8.2/README.md).
 
@@ -40,11 +44,11 @@ Windows Task Scheduler can return the principal as an account name even when set
 https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/latest.json
 ```
 
-4. **Check for updates**. New update source ka prompt aaye to URL check karke accept karein. **Version 0.8.2** aur **PILOT** notes dikhne chahiye.
+4. **Check for updates**. New update source ka prompt aaye to URL check karke accept karein. **Version 0.8.3** aur **PILOT** notes dikhne chahiye.
 5. **Download & install**. App restart hone dein. Folder ya shortcut manually delete/change na karein.
-6. Restart ke baad installed version **0.8.2** confirm karein. Automation paused hi rakhein.
+6. Restart ke baad installed version **0.8.3** confirm karein. Automation paused hi rakhein.
 
-If no update appears, do not repeatedly install: capture the Updates panel message and installed version. If your existing app is already 0.8.2 or newer, this package will not be offered as an upgrade.
+If no update appears, do not repeatedly install: capture the Updates panel message and installed version. If your existing app is already 0.8.3 or newer, this package will not be offered as an upgrade.
 
 ## Pehla check — koi live start nahi karna
 
@@ -74,10 +78,10 @@ Keep those backups until the PC test is complete. If rollback is needed after ed
 
 ## Build evidence
 
-- Tested 0.8.2 source: `b8e1e7073df61cbae71ec5c2f09dcd95221af7ab`.
-- [Passing Windows/Linux/browser/installer checks](https://github.com/bawra6291-lab/Live-Studio/actions/runs/37671817947): 173 app tests and 12 relay/agent tests per OS, Windows native smoke, nine desktop/mobile flows including local browser choice and remote connect denial, actual Chromium WebSocket-only existing-browser recording/replay with retained dummy sign-in and managed tabs, dedicated profile reattachment, and bundled runtime/installer install/uninstall.
-- [0.8.2 build report](0.8.2/build-report.json): all 45 packaged files match tested source. The 0.8.1 updater stages/swaps the release in a disposable folder, retaining the previous app, sibling runtime, settings and persistent browser profile.
+- Tested 0.8.3 source: `5e55495a048d0ae9264dad41a8a3b5f3109a6008`.
+- [Validation checks](https://github.com/bawra6291-lab/Live-Studio/actions/runs/37674103570) cover 175 app tests and 12 relay/agent tests per OS; Windows native smoke; nine desktop/mobile flows including browser-only saving without changing an unsaved mode and remote connect denial; actual Chromium WebSocket-only existing-browser recording/replay and retained dummy sign-in; dedicated profile reattachment; and bundled runtime/installer build/install/uninstall. The versioned build report records the completed source validation.
+- [0.8.3 build report](0.8.3/build-report.json): all 45 packaged files match tested source. The 0.8.2 updater stages/swaps the release in a disposable folder, retaining the previous app, sibling runtime, settings and persistent browser profile.
 - No operator settings, credentials, logs or browser sessions are packaged. The pilot is unsigned. Actual Windows Chrome permission, signed-in platform/visible-site/camera testing, remote hosting, production OAuth onboarding and publisher signing remain external gates.
-- Historical [0.8.1 evidence](0.8.1/build-report.json) and [0.8.0 evidence](0.8.0/build-report.json) are retained.
+- Historical [0.8.2 evidence](0.8.2/build-report.json), [0.8.1 evidence](0.8.1/build-report.json) and [0.8.0 evidence](0.8.0/build-report.json) are retained.
 
 Later pilot updates use this same opt-in address. Stable main remains unchanged until separately approved for production rollout.
