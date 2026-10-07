@@ -44,6 +44,8 @@ public final class MainActivity extends Activity {
         getWindow().setStatusBarColor(GREEN);
         getWindow().setNavigationBarColor(GREEN);
         if (android.os.Build.VERSION.SDK_INT >= 35) {
+            getWindow().setStatusBarColor(PAPER);
+            getWindow().setNavigationBarColor(PAPER);
             getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         }
         prefs = getSharedPreferences("connection", MODE_PRIVATE);
