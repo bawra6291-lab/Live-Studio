@@ -88,6 +88,8 @@ try:
     click('Pause automation',contains=True)
     assert_state(False,['arm','pause'])
     passed('Enable confirmation, cancel and Pause reach only the fake PC controller')
+    adb('shell','input','keyevent','3') # normal background flush before process restart
+    time.sleep(1)
     adb('shell','am','force-stop','org.livedesk.mobile')
     adb('shell','am','start','-n','org.livedesk.mobile/.MainActivity')
     find('Live overview',contains=True)

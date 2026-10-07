@@ -189,6 +189,10 @@ public final class MainActivity extends Activity {
             .setMessage("The PC keeps running its current live and schedule. To pause future actions, use Pause automation in the dashboard.")
             .setNegativeButton("Stay", null).setPositiveButton("Close app", (dialog, which) -> finish()).show();
     }
+    @Override public void onPause() {
+        CookieManager.getInstance().flush();
+        super.onPause();
+    }
     @Override public void onDestroy() {
         if (connectionTimeout != null) handler.removeCallbacks(connectionTimeout);
         if (web != null) { web.stopLoading(); web.destroy(); }
