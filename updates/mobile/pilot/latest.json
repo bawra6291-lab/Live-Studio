@@ -1,0 +1,9 @@
+{
+  "version": "0.1.0",
+  "url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/mobile/pilot/0.1.0/Live-Desk-Mobile-0.1.0.apk",
+  "sha256": "adc2f0cba39e3da3b4fdaa8afdb5a075e6577534fd8d4f6416fe007dd967d48e",
+  "size": 20974,
+  "min_android": "8.0",
+  "channel": "development-pilot",
+  "requires": "Windows Live Desk Mobile access on the same private LAN"
+}

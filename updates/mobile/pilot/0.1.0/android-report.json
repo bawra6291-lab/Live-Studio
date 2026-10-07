@@ -1,0 +1,11 @@
+{
+  "tests": [
+    "Installed APK loads pairing; incorrect code rejected",
+    "Correct pairing opens real remote dashboard without enabling automation",
+    "Enable confirmation, cancel and Pause reach only the fake PC controller",
+    "Saved address and pairing survive app restart",
+    "Connection loss disables controls and automatically recovers",
+    "Changing PC clears pairing without pausing or starting the PC"
+  ],
+  "status": "passed"
+}

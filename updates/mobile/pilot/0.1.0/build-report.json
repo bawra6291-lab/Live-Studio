@@ -1,0 +1,27 @@
+{
+  "version": "0.1.0",
+  "platform": "Android",
+  "min_sdk": 26,
+  "target_sdk": 35,
+  "source_commit": "c065112900c72b273526fffa92107f0e244172d4",
+  "apk": "Live-Desk-Mobile-0.1.0.apk",
+  "size_bytes": 20974,
+  "sha256": "adc2f0cba39e3da3b4fdaa8afdb5a075e6577534fd8d4f6416fe007dd967d48e",
+  "certificate_sha256": "6e9b76a9ec35d70811ecf3a943e8957ef6fb475242e162f3cccf3b3e780fec0c",
+  "signing": "Temporary development pilot certificate; production signing/update channel pending",
+  "android_validation_run": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/37703237621",
+  "windows_and_web_validation_run": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/37703237746",
+  "installed_app_test": {
+    "tests": [
+      "Installed APK loads pairing; incorrect code rejected",
+      "Correct pairing opens real remote dashboard without enabling automation",
+      "Enable confirmation, cancel and Pause reach only the fake PC controller",
+      "Saved address and pairing survive app restart",
+      "Connection loss disables controls and automatically recovers",
+      "Changing PC clears pairing without pausing or starting the PC"
+    ],
+    "status": "passed"
+  },
+  "scope": "Same private LAN; existing Windows Mobile access and dashboard. PC and Live Desk must stay running. No desktop upgrade or account setup is required.",
+  "acceptance_limit": "Android 15 emulator and isolated fake controller; actual phone/Wi-Fi/Windows firewall/live acceptance still requires the operator. No real broadcasts or camera commands were sent."
+}

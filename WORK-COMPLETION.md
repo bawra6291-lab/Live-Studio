@@ -41,3 +41,29 @@ This version supports IST, YouTube and Facebook together, a single workspace per
 ## Delivery discipline
 
 Keep stable main unchanged. Publish a pilot update only after this source revision passes Windows/Linux controller, relay authorization/queue, desktop/mobile browser, visible Chromium fixture and Windows installer checks. Record the exact source commit, workflow run and ZIP SHA-256 in the versioned pilot build report. A package checksum is integrity checking, not publisher signing.
+
+
+## Android LAN companion pilot 0.1.0
+
+An installable native Android client connects to the existing Windows Mobile access
+address (private IPv4, HTTP port 8866). Its paired dashboard supports the existing
+operator Enable/Pause, schedule and activity controls; settings and platform
+credentials stay on the PC. No Windows package or account migration is needed.
+The client remembers address/pairing, supplies Refresh and Change PC, constrains
+WebView navigation/resources to the selected origin, disables file/content/bridge
+access and backup, and leaves all role/CSRF/offline rules with the real dashboard.
+Android 15 system/keyboard insets are handled. No public-site login is required.
+
+Tested source c065112900c72b273526fffa92107f0e244172d4 passed Android validation
+37703237621: private-address/origin tests, compiled and signed APK verification,
+installed pairing/rejection, confirmation/cancel/Enable/Pause, remembered session,
+offline disabled controls/recovery and changing PC without commanding the old PC.
+All six installed-app checks used the real web dashboard and an isolated fake
+controller; no engine, platforms or camera were invoked. Existing Windows/web
+validation 37703237746 also passed. APK and checksum are in updates/mobile/pilot/0.1.0.
+
+This is a LAN pilot for Android 8+ (device acceptance tested in Android 15 emulator),
+not iPhone, internet remote control or PC power-on. The PC remains responsible for
+actual streaming and visible workflows. Actual user's device/network acceptance,
+production mobile publisher signing and a persistent mobile binary update channel
+remain pending. The temporary pilot private key is not committed or distributed.
