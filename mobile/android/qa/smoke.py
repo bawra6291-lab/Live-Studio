@@ -86,6 +86,7 @@ try:
     click('Enable automation',contains=True)
     click('Confirm')
     assert_state(True,['arm'])
+    find('Automation enabled',contains=True)
     shot('android-enabled.png')
     click('Pause automation',contains=True)
     assert_state(False,['arm','pause'])
