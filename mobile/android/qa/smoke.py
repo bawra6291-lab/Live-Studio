@@ -107,7 +107,7 @@ try:
     find('PC connected',contains=True)
     passed('Connection loss disables controls and automatically recovers')
     click('PC')
-    click('Change PC')
+    click('android:id/button1') # native positive button is uppercase on Material theme
     find('Connect to PC')
     click('Connect to PC')
     find('Connect this device',contains=True)
