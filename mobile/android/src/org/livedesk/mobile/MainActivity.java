@@ -43,6 +43,9 @@ public final class MainActivity extends Activity {
         super.onCreate(savedState);
         getWindow().setStatusBarColor(GREEN);
         getWindow().setNavigationBarColor(GREEN);
+        if (android.os.Build.VERSION.SDK_INT >= 35) {
+            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        }
         prefs = getSharedPreferences("connection", MODE_PRIVATE);
         String saved = prefs.getString("origin", "");
         try { origin = LanAddress.normalize(saved); showDashboard(); }
@@ -69,9 +72,20 @@ public final class MainActivity extends Activity {
         if (connectionTimeout != null) handler.removeCallbacks(connectionTimeout);
         if (web != null) {
             web.stopLoading(); web.setWebViewClient(new WebViewClient());
-            web.loadUrl("about:blank"); web.removeAllViews(); web.destroy(); web = null;
+            web.loadUrl("about:blank");
+            if (web.getParent() instanceof ViewGroup) ((ViewGroup)web.getParent()).removeView(web);
+            web.removeAllViews(); web.destroy(); web = null;
         }
-        root = column(); root.setBackgroundColor(PAPER); setContentView(root);
+        root = column(); root.setBackgroundColor(PAPER);
+        if (android.os.Build.VERSION.SDK_INT >= 35) {
+            root.setOnApplyWindowInsetsListener((view, insets) -> {
+                android.graphics.Insets bars = insets.getInsets(android.view.WindowInsets.Type.systemBars() | android.view.WindowInsets.Type.displayCutout());
+                android.graphics.Insets keyboard = insets.getInsets(android.view.WindowInsets.Type.ime());
+                view.setPadding(bars.left, bars.top, bars.right, Math.max(bars.bottom, keyboard.bottom));
+                return insets;
+            });
+        }
+        setContentView(root);
     }
     private void showSetup(String error) {
         resetRoot();

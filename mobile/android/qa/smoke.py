@@ -38,7 +38,8 @@ def click(label, contains=False): tap(find(label, contains=contains))
 def type_into(node, text):
     tap(node)
     adb('shell','input','text',text)
-    adb('shell','input','keyevent','111') # dismiss keyboard
+    adb('shell','input','keyevent','4') # Android Back dismisses the IME
+    time.sleep(.5)
 
 def state():
     return json.load(urllib.request.urlopen('http://127.0.0.1:8866/qa/state', timeout=3))
