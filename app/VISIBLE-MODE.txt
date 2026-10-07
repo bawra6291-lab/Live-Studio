@@ -1,4 +1,4 @@
-LIVE DESK 0.8.1 — CALIBRATED VISIBLE BROWSER MODE
+LIVE DESK 0.8.2 — CALIBRATED VISIBLE BROWSER MODE
 
 This opt-in development feature uses real Chrome/Edge input events. It is not
 preconfigured for every YouTube, Facebook or camera UI. Existing API mode stays
@@ -18,13 +18,21 @@ ONE-TIME CALIBRATION (AUTOMATION PAUSED)
 2. Open Visible automation on the Windows dashboard (not the phone).
 3. Choose a workflow. For YouTube preparation enter the reference livestream ID.
    For Go live/End recording enter the actual test video ID (YouTube/Facebook).
-4. Open site / sign in. Use the persistent Live Desk browser profile. Chrome is
-   preferred when installed, including a per-user Chrome installation. Log in
-   once per site, select the correct channel/Page and verify the identity. Open,
-   recording and replay reuse this browser and its site tab. After an app restart,
-   the app reconnects to the still-open browser and rediscovers the site tab.
-   Normal Chrome cookies are not read or copied. Site sessions can still expire
-   and Google OAuth consent for API access is separate from browser sign-in.
+4. To use your normal logged-in Chrome, select My running Chrome (existing login)
+   and Save mode & browser. Keep that Chrome open, enable Allow remote debugging
+   at chrome://inspect/#remote-debugging, then Connect my Chrome in Live Desk.
+   Chrome 144+ asks permission: allow only the connection you just requested.
+   Live Desk reads only Chrome's local debug marker, never copies your cookies
+   or reads profile website files. It keeps one permission-based browser socket;
+   Open site, recording and replay use managed tabs in that existing browser.
+   Existing personal tabs are not navigated or closed. Chrome/Live Desk restart
+   requires Connect my Chrome again locally. No separate browser is launched
+   if the connection is missing, denied or lost. Disconnect Chrome control leaves
+   the browser/tabs open; revoke access on Chrome's remote debugging page.
+   Alternatively, Separate Live Desk browser retains its dedicated persistent
+   profile and needs its own website sign-in. That mode remains available.
+   Select the correct channel/Page before recording. Site sessions can expire;
+   Google OAuth consent for API verification is separate from browser sign-in.
 5. Choose Record my actions only when you intend to perform the real workflow.
    Recording does not make the site a sandbox: manual publishing, ending and
    camera moves have their normal real effects. Use an approved supervised test.
@@ -47,7 +55,7 @@ ONE-TIME CALIBRATION (AUTOMATION PAUSED)
 10. Repeat for required operations: YouTube/Facebook preparation and Go live;
     both End live flows if automatic endings are configured; each camera action
     used by your saved plans. Separate workflows begin at their entry pages.
-11. After calibration choose Visible browser workflows -> Save mode. It cannot
+11. After calibration choose Visible browser workflows -> Save mode & browser. It cannot
     arm without required recipes. Keep Windows unlocked. Review a short future
     test schedule and explicitly enable it. Watch both platforms, OBS and Activity.
 
@@ -75,6 +83,12 @@ LIMITS THAT MUST NOT BE HIDDEN
   its local browser identity is checked. If it stops responding, the app refuses
   to open a duplicate; close only that browser normally and retry. The persistent
   profile is retained. Do not delete it or switch browser profiles to solve login.
+- My running Chrome expects the standard Windows stable Chrome User Data debug
+  marker. Other channels/custom profile roots are not auto-discovered. The Chrome
+  inspect permission flow on the actual operator PC still needs verification;
+  CI validates the same browser WebSocket transport against a localhost fixture.
+  When multiple Chrome accounts/profiles are open, verify the account in the
+  managed tab. An authenticated browser does not imply the correct Page/channel.
 - Steps are not automatically a trusted success. The scheduler verifies platform
   live/end states. Camera UI confirmation still needs visual operator testing.
 - Current plans continue to require both YouTube and Facebook. Public broadcasts
@@ -95,6 +109,8 @@ is silently substituted. YouTube's thumbnail reuse must be reviewed on the page.
 
 Technical references used for the browser implementation:
 https://developer.chrome.com/blog/remote-debugging-port
+https://developer.chrome.com/blog/chrome-devtools-mcp-debug-your-browser-session
+https://chromedevtools.github.io/devtools-protocol/tot/Target/
 https://chromedevtools.github.io/devtools-protocol/tot/Input/
 https://chromedevtools.github.io/devtools-protocol/tot/Page/
 https://chromedevtools.github.io/devtools-protocol/tot/Runtime/

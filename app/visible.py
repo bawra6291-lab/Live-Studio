@@ -57,6 +57,8 @@ class Visible:
         self.stop,self.log=stop,log
         self.running=False
         self.browser=Browser(base, cancelled=lambda:self.running and stop.is_set())
+        self.config.setdefault('browser_source', 'dedicated')
+        self.browser.select(self.config['browser_source'])
         self.lock=threading.RLock()
         self.status={'state':'idle','message':'API mode is unchanged. Visible mode requires reviewed workflows for your actual pages.'}
         self.draft=None
@@ -66,6 +68,8 @@ class Visible:
             result={'mode':self.config['mode'],'status':dict(self.status),'recording':self.browser.recording is not None,
                     'configured':list(self.config['recipes'])}
             if local:result.update(recipes=deepcopy(self.config['recipes']),draft=deepcopy(self.draft))
+            if local:result.update(browser_source=self.config['browser_source'],
+                                   chrome_connected=bool(self.browser.chrome and not self.browser.chrome.closed))
             return result
 
     def update(self, **data):
@@ -88,17 +92,22 @@ class Visible:
             if flow.startswith('camera_') and self.config['recipes'][flow]['steps'][-1]['kind']!='assert':
                 raise ValueError('Camera workflows must end with an explicit visible result check.')
         self.browser.ready()
+        if self.config['browser_source']=='running_chrome':self.browser.ensure()
 
     def save(self, data):
         mode=data.get('mode',self.config['mode'])
         if mode not in ('api','visible'):raise ValueError('Choose API or Visible browser mode.')
         if self.browser.recording:raise ValueError('Finish recording before saving.')
         config=deepcopy(self.config)
+        source=data.get('browser_source',config['browser_source'])
+        if source not in ('dedicated','running_chrome'):raise ValueError('Choose the Live Desk browser or your running Chrome.')
         if data.get('flow'):
             if data['flow'] not in FLOWS:raise ValueError('Unknown workflow.')
             config['recipes'][data['flow']]=validate_recipe(data.get('recipe'))
         config['mode']=mode
+        config['browser_source']=source
         atomic_json(self.path,config);self.config=config
+        self.browser.select(source)
         self.draft=None
         self.log('Visible workflow settings saved. No browser actions or broadcasts were started.')
 
@@ -127,6 +136,17 @@ class Visible:
 
     def command(self, data, cfg):
         action=data.get('action');flow=data.get('flow')
+        if action=='connect':
+            if self.browser.recording:raise ValueError('Finish recording before connecting Chrome.')
+            self.update(state='connecting',message='Check your normal Chrome for a remote debugging permission prompt. Allow it only for this connection you requested from Live Desk.')
+            self.browser.connect_chrome()
+            self.update(state='connected',message='Connected to your running Chrome. Open site and recording use managed tabs in that browser. No broadcasts or camera actions were started.')
+            self.log('Visible browser connected to the running Chrome. No separate browser was launched.')
+            return
+        if action=='disconnect':
+            self.browser.disconnect()
+            self.update(state='disconnected',message='Chrome control disconnected. Browser windows and tabs were left open.')
+            return
         if flow not in FLOWS and action!='finish':raise ValueError('Choose a workflow.')
         if action=='finish':
             self.draft=None

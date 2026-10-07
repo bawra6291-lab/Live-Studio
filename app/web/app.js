@@ -111,12 +111,15 @@ function renderVisible(){
  $('visible-status').textContent=(v.mode==='visible'?'VISIBLE BROWSER MODE · ':'API MODE · ')+(v.status?.message||'Idle');
  $('visible-configured').textContent='Configured: '+(v.configured.length?v.configured.map(k=>visibleFlows.find(([id])=>id===k)?.[1]||k).join(', '):'No workflows yet');
  $('visible-local').hidden=!state.local;$('visible-remote').hidden=state.local;
- if(!visibleLoaded&&state.local){$('visible-mode').value=v.mode;buildVisibleSteps(v.recipes?.[$('visible-flow').value]?.steps||[],v.recipes?.[$('visible-flow').value]?.identity||null);visibleLoaded=true;}
+ if(!visibleLoaded&&state.local){$('visible-mode').value=v.mode;$('visible-browser-source').value=v.browser_source||'dedicated';buildVisibleSteps(v.recipes?.[$('visible-flow').value]?.steps||[],v.recipes?.[$('visible-flow').value]?.identity||null);visibleLoaded=true;}
+ $('visible-chrome-status').textContent=v.browser_source==='running_chrome'?(v.chrome_connected?'Your running Chrome is connected.':'Your running Chrome is selected; connect on this PC before opening or recording.'):'Separate Live Desk browser is selected.';
  if(state.local&&v.draft){const signature=JSON.stringify(v.draft);if(signature!==visibleDraftSignature){visibleDraftSignature=signature;buildVisibleSteps(v.draft);}}
 }
 function updateVisibleButtons(){
  const blocked=!online||pending||!!state?.busy||!state?.local;
- for(const id of ['visible-save-mode','visible-open','visible-record','visible-save-recipe','visible-mode','visible-flow','visible-reference','visible-facebook-event','visible-identity-target','visible-identity-text'])$(id).disabled=blocked||!!state?.visible?.recording;
+ for(const id of ['visible-save-mode','visible-open','visible-record','visible-save-recipe','visible-mode','visible-browser-source','visible-flow','visible-reference','visible-facebook-event','visible-identity-target','visible-identity-text'])$(id).disabled=blocked||!!state?.visible?.recording;
+ $('visible-connect-chrome').disabled=blocked||!!state?.visible?.recording||state?.visible?.browser_source!=='running_chrome'||!!state?.visible?.chrome_connected;
+ $('visible-disconnect-chrome').disabled=blocked||!!state?.visible?.recording||!state?.visible?.chrome_connected;
  $('visible-finish').disabled=blocked||!state?.visible?.recording;
  $('visible-save-recipe').disabled=blocked||!!state?.visible?.recording||visibleSteps.length===0;
  document.querySelectorAll('#visible-steps input,#visible-steps select,#visible-steps button').forEach(n=>n.disabled=blocked||!!state?.visible?.recording);
@@ -126,7 +129,9 @@ async function visibleRequest(path,data){if(!online||pending)return;pending=true
 $('visible-open').onclick=()=>visibleRequest('/api/visible/browser',{action:'open',flow:$('visible-flow').value,reference:$('visible-reference').value.trim(),facebook_event:$('visible-facebook-event').value.trim()});
 $('visible-record').onclick=async()=>{if(await confirmAction('Record this real workflow?','You will perform real actions in the opened browser. These can create public broadcasts, start/end live or move the camera. Sign in first. Record only an intentional supervised workflow. Passwords and text values are not recorded.')){buildVisibleSteps([]);visibleDraftSignature='';visibleRequest('/api/visible/browser',{action:'record',flow:$('visible-flow').value,reference:$('visible-reference').value.trim(),facebook_event:$('visible-facebook-event').value.trim(),confirmed:true});}};
 $('visible-finish').onclick=()=>visibleRequest('/api/visible/browser',{action:'finish'});
-$('visible-save-mode').onclick=async()=>{if(await confirmAction('Save execution mode?','Visible mode requires a reviewed workflow for each scheduled operation and an unlocked PC. API mode remains available. Saving does not start automation.'))visibleRequest('/api/visible/save',{mode:$('visible-mode').value,confirmed:true});};
+$('visible-save-mode').onclick=async()=>{if(await confirmAction('Save execution mode and browser?','Visible mode needs reviewed workflows and an unlocked PC. My running Chrome requires you to connect locally and approve Chrome browser control. Saving does not start automation or connect to Chrome.'))visibleRequest('/api/visible/save',{mode:$('visible-mode').value,browser_source:$('visible-browser-source').value,confirmed:true});};
+$('visible-connect-chrome').onclick=()=>visibleRequest('/api/visible/browser',{action:'connect'});
+$('visible-disconnect-chrome').onclick=()=>visibleRequest('/api/visible/browser',{action:'disconnect'});
 $('visible-save-recipe').onclick=async()=>{if(!$('visible-identity-target').value)return toast('Record an identity target first.');if(await confirmAction('Approve this recorded workflow?','Review targets, remove unwanted actions, and map every input field. Live automation will replay these actual clicks when you enable it. Test under supervision.'))visibleRequest('/api/visible/save',{confirmed:true,flow:$('visible-flow').value,recipe:{identity:{locator:JSON.parse($('visible-identity-target').value),text:$('visible-identity-text').value},steps:visibleSteps}});};
 
 function downloadJSON(data,name){const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'})),a=el('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}

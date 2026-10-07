@@ -1,5 +1,6 @@
 """Real CDP input regression against a localhost-only fixture, never a platform."""
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -104,3 +105,56 @@ else:raise AssertionError('Cancellation was ignored')
 assert 'liveDeskSession=retained' in page.evaluate('document.cookie')
 page.close()
 print('PASS real Chromium recording/replay, cancellation, controller reattachment, same site tab and retained local login session')
+
+# Simulate Chrome's regular User Data marker using this localhost fixture's
+# already running browser. Real Windows permission UI is an operator gate;
+# this fixture proves the WebSocket-only transport without any HTTP discovery,
+# cookie migration, replacement launch or reuse/navigation of unrelated tabs.
+local=Path(base)/'normal-chrome-fixture'
+marker=local/'Google/Chrome/User Data/DevToolsActivePort'
+marker.parent.mkdir(parents=True)
+marker.write_text((Path(base)/'visible-browser-profile/DevToolsActivePort').read_text())
+os.environ['LOCALAPPDATA']=str(local)
+normal=Browser(base,ready=lambda:None);normal.select('running_chrome')
+normal.endpoint=lambda *a:(_ for _ in ()).throw(AssertionError('Normal Chrome must not use HTTP discovery'))
+normal.connect_chrome();root=normal.chrome
+before=root.call('Target.getTargets')['targetInfos']
+normal.navigate('fixture',url)
+managed=normal.page('fixture')
+deadline=time.monotonic()+10
+while time.monotonic()<deadline:
+    if managed.evaluate('location.href')==url and managed.evaluate('document.readyState')=='complete':break
+    time.sleep(.1)
+assert 'liveDeskSession=retained' in managed.evaluate('document.cookie')
+assert managed.evaluate("localStorage.getItem('liveDeskLogin')")=='retained'
+assert normal.process is None and normal.chrome is root
+normal_tab=normal.tabs['fixture']
+after=root.call('Target.getTargets')['targetInfos']
+assert len([t for t in after if t['type']=='page'])==len([t for t in before if t['type']=='page'])+1
+assert all(any(t['targetId']==old['targetId'] and t['url']==old['url'] for t in after) for old in before if old['type']=='page')
+normal.begin_recording('fixture',url)
+page=managed
+deadline=time.monotonic()+10
+while time.monotonic()<deadline:
+    if page.evaluate('Boolean(document.querySelector("#account") && window.__liveDeskRecorder)'):break
+    time.sleep(.1)
+click('#account');click('#title');page.call('Input.insertText',text='normal-chrome-private-value');click('#save')
+captured=normal.finish_recording()
+assert any(s['kind']=='fill' for s in captured)
+assert 'normal-chrome-private-value' not in json.dumps(captured)
+normal.run('fixture',url,recipe,{'title':'Existing browser scheduled title'},lambda *a:None)
+assert managed.evaluate('window.savedTitle')=='Existing browser scheduled title'
+assert managed.evaluate('window.trustedClick') is True
+assert normal.chrome is root and normal.tabs['fixture']==normal_tab
+assert len([t for t in root.call('Target.getTargets')['targetInfos'] if t['type']=='page'])==len([t for t in after if t['type']=='page'])
+managed.close();normal.disconnect()
+assert root.closed and normal.process is None
+try:normal.navigate('fixture',url)
+except Exception as exc:assert 'Connect my Chrome' in str(exc)
+else:raise AssertionError('Disconnected Chrome silently reconnected/launched')
+# Existing browser is still alive and retains every original page after detach.
+check=Browser(base,ready=lambda:None);check.select('running_chrome');check.connect_chrome()
+remaining=check.chrome.call('Target.getTargets')['targetInfos']
+assert all(any(t['targetId']==old['targetId'] for t in remaining) for old in before if old['type']=='page')
+check.disconnect()
+print('PASS existing browser WebSocket-only managed tabs, retained sign-in, recording/replay, persistent socket, disconnect without closing tabs or launching Chrome')

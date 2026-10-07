@@ -1,8 +1,10 @@
-# Completion record — 0.8.1 pilot
+# Completion record — 0.8.2 pilot
 
 This document distinguishes implemented software from external acceptance gates. It does not claim zero defects or production certification.
 
 ## Implemented in this increment
+
+- 0.8.2 normal Chrome connection: local browser choice, explicit Connect/Disconnect, Chrome-managed consent, one retained loopback browser WebSocket, flattened page sessions and one managed tab per service. Reads only standard stable Chrome's DevToolsActivePort marker; no HTTP discovery dependency or copying website/profile secrets. Rejects absent/denied/lost connection without a replacement launch or blind replay. Existing personal tabs and browser windows remain open. Connections are not restored automatically after app/browser restart. Actual Windows inspect permission and signed-in platform acceptance remains a supervised operator gate.
 
 - 0.8.1 browser-session repair: reconnect to the browser identified by the persistent Live Desk profile before launching, reuse an existing same-site tab after a controller restart, refuse duplicate launch when the existing process is unresponsive, and prefer per-user Chrome over system Edge. Local Chromium regression checks the same target ID, unchanged tab count and retained test-site cookie/local storage through reattachment and recording. This does not attach to the normal default Chrome profile or guarantee that external sites never expire sessions.
 

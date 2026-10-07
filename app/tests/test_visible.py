@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from visible import Visible, VisibleServices, validate_recipe
-from visible_browser import Browser, origin, RECORDER, target_script
+from visible_browser import Browser, BrowserCDP, origin, RECORDER, target_script
 from connections import SetupError
 
 
@@ -130,6 +130,95 @@ class VisibleTests(unittest.TestCase):
             with patch.dict('os.environ',{'PROGRAMFILES':str(system),'LOCALAPPDATA':str(local)},clear=True),patch('visible_browser.subprocess.Popen') as launch:
                 b.ensure()
             self.assertEqual(launch.call_args.args[0][0],str(local/'Google/Chrome/Application/chrome.exe'))
+
+    def test_normal_chrome_selection_persists_but_connection_is_local_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            v=Visible(tmp,threading.Event(),lambda _:None)
+            v.save({'browser_source':'running_chrome'})
+            clone=Visible(tmp,threading.Event(),lambda _:None)
+            self.assertEqual(clone.browser.source,'running_chrome')
+            self.assertFalse(clone.snapshot(True)['chrome_connected'])
+            self.assertNotIn('browser_source',clone.snapshot())
+            with self.assertRaises(ValueError):v.save({'browser_source':'http://attacker'})
+
+    def test_normal_chrome_never_launches_when_not_connected_or_disconnected(self):
+        b=Browser('/unused',ready=lambda:None);b.select('running_chrome')
+        with patch('visible_browser.subprocess.Popen') as launch:
+            with self.assertRaisesRegex(SetupError,'Connect my Chrome'):b.ensure()
+            b.chrome=Mock();b.chrome.closed=True
+            with self.assertRaisesRegex(SetupError,'Connect my Chrome'):b.page('facebook')
+        launch.assert_not_called()
+
+    def test_normal_chrome_connect_uses_only_valid_marker_and_one_browser_socket(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            marker=Path(tmp)/'Google/Chrome/User Data/DevToolsActivePort'
+            marker.parent.mkdir(parents=True);marker.write_text('9222\n/devtools/browser/user-browser\n')
+            b=Browser('/unused',ready=lambda:None);b.select('running_chrome')
+            with patch.dict('os.environ',{'LOCALAPPDATA':tmp}),patch('visible_browser.BrowserCDP') as connect,patch('visible_browser.subprocess.Popen') as launch:
+                root=connect.return_value;root.closed=False;root.call.return_value={'product':'Chrome/154.0'}
+                b.connect_chrome();b.connect_chrome();b.ensure()
+            connect.assert_called_once_with('ws://127.0.0.1:9222/devtools/browser/user-browser')
+            launch.assert_not_called();self.assertIs(b.chrome,root)
+
+    def test_normal_chrome_bad_marker_or_denied_permission_never_falls_back(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            marker=Path(tmp)/'Google/Chrome/User Data/DevToolsActivePort'
+            marker.parent.mkdir(parents=True)
+            b=Browser('/unused',ready=lambda:None);b.select('running_chrome')
+            with patch.dict('os.environ',{'LOCALAPPDATA':tmp}),patch('visible_browser.BrowserCDP') as connect,patch('visible_browser.subprocess.Popen') as launch:
+                for value in ('9222\nws://attacker/\n','9222\n/devtools/browser/user?secret=value\n','0\n/devtools/browser/abc\n','9222\n/devtools/browser/abc\nextra'):
+                    marker.write_text(value)
+                    with self.assertRaisesRegex(SetupError,'Cannot find'):b.connect_chrome()
+                connect.assert_not_called()
+                marker.write_text('9222\n/devtools/browser/abc\n')
+                connect.side_effect=RuntimeError('private-browser-value')
+                with self.assertRaisesRegex(SetupError,'not allowed') as exc:b.connect_chrome()
+                self.assertNotIn('private-browser-value',str(exc.exception))
+            launch.assert_not_called();self.assertIsNone(b.chrome)
+
+    def test_normal_chrome_uses_managed_tabs_and_browser_transport_without_http(self):
+        b=Browser('/unused',ready=lambda:None);b.select('running_chrome')
+        root=Mock();root.closed=False;b.chrome=root
+        existing=[{'type':'page','targetId':'personal','url':'https://www.facebook.com/'}]
+        root.call.side_effect=[{'product':'Chrome/154'},{'targetInfos':existing},{'targetId':'managed'},{},
+                               {'product':'Chrome/154'},{'targetInfos':existing+[{'type':'page','targetId':'managed'}]},{}]
+        b.endpoint=Mock(side_effect=AssertionError('No HTTP discovery'))
+        b.page('facebook');b.page('facebook')
+        self.assertEqual(b.tabs['facebook'],'managed')
+        creates=[c for c in root.call.call_args_list if c.args[0]=='Target.createTarget']
+        self.assertEqual(len(creates),1);self.assertFalse(creates[0].kwargs['newWindow'])
+        root.page.assert_called_with('managed');b.endpoint.assert_not_called()
+        b.disconnect();root.close.assert_called_once()
+        self.assertFalse(any(c.args[0] in ('Target.closeTarget','Browser.close') for c in root.call.call_args_list))
+
+    def test_browser_socket_filters_recorder_events_by_page_session(self):
+        import queue
+        import websocket
+        messages=queue.Queue()
+        ws=Mock()
+        def receive():
+            try:return messages.get(timeout=.05)
+            except queue.Empty:raise websocket.WebSocketTimeoutException()
+        ws.recv.side_effect=receive
+        def send(raw):
+            packet=json.loads(raw)
+            result={'sessionId':'s1'} if packet['method']=='Target.attachToTarget' else {}
+            if packet['method']=='Runtime.evaluate':
+                for session in ('unrelated','s1'):
+                    messages.put(json.dumps({'sessionId':session,'method':'Runtime.bindingCalled',
+                        'params':{'name':'liveDeskCapture','payload':'{"kind":"click"}'}}))
+            messages.put(json.dumps({'id':packet['id'],'result':result}))
+        ws.send.side_effect=send
+        with patch('websocket.create_connection',return_value=ws) as connect:
+            root=BrowserCDP('ws://127.0.0.1:9222/devtools/browser/fixture')
+            try:
+                page=root.page('target-one');page.call('Runtime.evaluate',expression='1')
+                self.assertEqual(len(page.events),1)
+                sent=json.loads(ws.send.call_args.args[0]);self.assertEqual(sent['sessionId'],'s1')
+                page.close();self.assertFalse(root.closed)
+                self.assertNotIn('s1',root.sessions)
+                self.assertEqual(connect.call_count,1)
+            finally:root.close()
 
     def test_missing_run_variable_refuses_before_browser_input(self):
         with tempfile.TemporaryDirectory() as tmp:

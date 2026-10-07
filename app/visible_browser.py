@@ -1,4 +1,4 @@
-"""Headful browser actions. Dedicated profile; no cookies, screenshots or input values exported."""
+"""Headful browser actions; no cookies, screenshots or input values exported."""
 import json
 import os
 import re
@@ -69,6 +69,113 @@ class CDP:
 
     def close(self):
         self.ws.close()
+
+
+class BrowserCDP:
+    """One consented browser socket, with isolated flattened page sessions.
+
+    Chrome's inspect server need not offer /json HTTP discovery. Reading only
+    DevToolsActivePort supplies its loopback socket; Chrome handles permission.
+    Keep that socket until explicit disconnect/app exit, not one per UI click.
+    """
+    def __init__(self, address):
+        import websocket
+        self.ws = websocket.create_connection(address, timeout=60, suppress_origin=True,
+                                              http_no_proxy=['127.0.0.1', 'localhost'])
+        self.ws.settimeout(1)
+        self.sequence = 0
+        self.lock = threading.RLock()
+        self.call_lock = threading.Lock()
+        self.pending = {}
+        self.sessions = {}
+        self.closed = False
+        threading.Thread(target=self._read, daemon=True).start()
+
+    def _read(self):
+        import websocket
+        try:
+            while not self.closed:
+                try: raw = self.ws.recv()
+                except websocket.WebSocketTimeoutException: continue
+                if not raw: break
+                if len(raw) > 2_000_000: break
+                reply = json.loads(raw)
+                with self.lock:
+                    if 'id' in reply and reply['id'] in self.pending:
+                        item = self.pending[reply['id']]
+                        item['reply'] = reply; item['ready'].set()
+                    elif reply.get('method') == 'Runtime.bindingCalled':
+                        page = self.sessions.get(reply.get('sessionId'))
+                        data = reply.get('params', {})
+                        if page is not None and len(page.events) < 500 and len(data.get('payload', '')) < 2000:
+                            page.events.append(data)
+        except Exception:
+            pass
+        finally:
+            self.close()
+
+    def call(self, method, **params):
+        return self._call(method, params)
+
+    def _call(self, method, params, session=None):
+        with self.call_lock:
+            with self.lock:
+                if self.closed: raise SetupError('Chrome disconnected. Connect my Chrome locally before retrying; no browser was launched.')
+                self.sequence += 1
+                ident = self.sequence
+                item = {'ready': threading.Event()}
+                self.pending[ident] = item
+            try:
+                packet = {'id': ident, 'method': method, 'params': params}
+                if session: packet['sessionId'] = session
+                self.ws.send(json.dumps(packet))
+                if not item['ready'].wait(15) or 'reply' not in item:
+                    self.close()
+                    raise SetupError('Chrome connection interrupted. Inspect the page and reconnect locally; no automatic replay was sent.')
+                reply = item['reply']
+                if 'error' in reply:
+                    raise SetupError('Chrome refused this browser action. Inspect the selected tab before retrying.')
+                return reply.get('result', {})
+            except SetupError:
+                raise
+            except Exception:
+                self.close()
+                raise SetupError('Chrome connection interrupted. Reconnect locally; no automatic replay was sent.') from None
+            finally:
+                with self.lock: self.pending.pop(ident, None)
+
+    def page(self, target):
+        session = self.call('Target.attachToTarget', targetId=target, flatten=True)['sessionId']
+        page = ChromePage(self, session)
+        with self.lock: self.sessions[session] = page
+        return page
+
+    def close(self):
+        with self.lock:
+            if self.closed: return
+            self.closed = True
+            for item in self.pending.values(): item['ready'].set()
+        try: self.ws.close()
+        except Exception: pass
+
+
+class ChromePage(CDP):
+    def __init__(self, browser, session):
+        self.browser, self.session = browser, session
+        self.events = []
+        self.closed = False
+
+    def call(self, method, **params):
+        if self.closed: raise SetupError('This Chrome page session is closed. Inspect the tab before retrying.')
+        return self.browser._call(method, params, self.session)
+
+    def close(self):
+        if self.closed: return
+        self.closed = True
+        with self.browser.lock: self.browser.sessions.pop(self.session, None)
+        if not self.browser.closed:
+            try: self.browser.call('Target.detachFromTarget', sessionId=self.session)
+            except SetupError: pass
 
 
 # Input values are deliberately never read. Passwords and authentication controls
@@ -166,6 +273,54 @@ class Browser:
         self.tabs = {}
         self.sites = {}
         self.recording = None
+        self.source = 'dedicated'
+        self.chrome = None
+
+    def select(self, source):
+        if source not in ('dedicated', 'running_chrome'):
+            raise ValueError('Choose the Live Desk browser or your running Chrome.')
+        if self.recording: raise ValueError('Finish recording before changing the browser.')
+        with self.lock:
+            if source != self.source:
+                self.disconnect()
+                self.source = source
+
+    def disconnect(self):
+        if self.recording: raise ValueError('Finish recording before disconnecting Chrome.')
+        with self.lock:
+            if self.chrome: self.chrome.close()
+            self.chrome = None
+            self.tabs = {}; self.sites = {}
+
+    def connect_chrome(self):
+        with self.lock:
+            self.guard()
+            if self.source != 'running_chrome':
+                raise SetupError('Save browser choice as My running Chrome before connecting.')
+            if self.chrome and not self.chrome.closed:
+                self.ensure(); return
+            # Read the debug marker only. Never copy/read cookies, Local State,
+            # Preferences or website data from the ordinary Chrome profile.
+            root = os.environ.get('LOCALAPPDATA')
+            marker = Path(root)/'Google/Chrome/User Data/DevToolsActivePort' if root else None
+            try:
+                lines = [line.strip() for line in marker.read_text().splitlines() if line.strip()] if marker else []
+                if len(lines) != 2 or not lines[0].isdigit(): raise ValueError()
+                port = int(lines[0])
+                if not 1 <= port <= 65535 or not re.fullmatch(r'/devtools/browser/[A-Za-z0-9-]+', lines[1]): raise ValueError()
+            except (OSError, ValueError):
+                raise SetupError('Cannot find the running Chrome debug connection. In normal Chrome enable chrome://inspect/#remote-debugging, then Connect my Chrome again. No separate browser was opened.') from None
+            connection = None
+            try:
+                connection = BrowserCDP(f'ws://127.0.0.1:{port}'+lines[1])
+                info = connection.call('Browser.getVersion')
+                if not re.match(r'^(HeadlessChrome|Chrome)/[0-9]+', info.get('product', '')):
+                    raise ValueError()
+                self.chrome = connection
+                self.tabs = {}; self.sites = {}
+            except Exception:
+                if connection: connection.close()
+                raise SetupError('Chrome connection was not allowed or did not respond. Check the permission prompt in your normal Chrome and connect again locally. No separate browser was opened.') from None
 
     def guard(self):
         if self.cancelled():
@@ -201,6 +356,14 @@ class Browser:
 
     def ensure(self):
         self.guard()
+        if self.source == 'running_chrome':
+            if not self.chrome or self.chrome.closed:
+                raise SetupError('Use Connect my Chrome on this PC first. Keep normal Chrome open and allow its connection prompt. No separate browser was opened.')
+            try: self.chrome.call('Browser.getVersion')
+            except Exception:
+                self.chrome.close(); self.chrome = None; self.tabs = {}
+                raise SetupError('Normal Chrome disconnected. Inspect the page, then Connect my Chrome locally. No automatic replay or separate browser launch was sent.') from None
+            return
         profile = self.base/'visible-browser-profile'
         profile.mkdir(parents=True, exist_ok=True)
         marker = profile/'DevToolsActivePort'
@@ -243,6 +406,17 @@ class Browser:
 
     def page(self, service):
         self.ensure()
+        if self.source == 'running_chrome':
+            targets = self.chrome.call('Target.getTargets')['targetInfos']
+            target = next((t for t in targets if t.get('type') == 'page' and t.get('targetId') == self.tabs.get(service)), None)
+            # Leave the operator's existing tabs alone. Create one managed tab
+            # per service in the already running browser's regular context.
+            if target is None:
+                ident = self.chrome.call('Target.createTarget', url='about:blank', newWindow=False)['targetId']
+            else: ident = target['targetId']
+            self.tabs[service] = ident
+            self.chrome.call('Target.activateTarget', targetId=ident)
+            return self.chrome.page(ident)
         targets = self.endpoint('/json/list')
         target = next((t for t in targets if t.get('type') == 'page' and t.get('id') == self.tabs.get(service)), None)
         if target is None and service in self.sites:

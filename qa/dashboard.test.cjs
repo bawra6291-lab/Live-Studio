@@ -58,7 +58,20 @@ async function noOverflow(page){assert.ok(await page.evaluate(()=>document.docum
  });
  await test('Visible mode controls are local, default API and retain unsaved values',async()=>{
   await view(desktop,'visible');await desktop.locator('#visible-local').waitFor({state:'visible'});assert.equal(await desktop.locator('#visible-mode').inputValue(),'api');await desktop.locator('#visible-identity-text').fill('Unsaved identity');await desktop.waitForResponse(r=>r.url().endsWith('/api/state'));assert.equal(await desktop.locator('#visible-identity-text').inputValue(),'Unsaved identity');await noOverflow(desktop);await desktop.screenshot({path:path.join(output,'visible-desktop.png'),fullPage:true});
+  assert.equal(await desktop.locator('#visible-connect-chrome').isDisabled(),true);
+  await desktop.locator('#visible-browser-source').selectOption('running_chrome');
+  await desktop.waitForResponse(r=>r.url().endsWith('/api/state'));
+  assert.equal(await desktop.locator('#visible-browser-source').inputValue(),'running_chrome');
+  await desktop.locator('#visible-save-mode').click();const savedBrowser=desktop.waitForResponse(r=>r.url().endsWith('/api/visible/save'));await confirm(desktop);assert.equal((await savedBrowser).status(),200);
+  await desktop.waitForFunction(()=>!document.getElementById('visible-connect-chrome').disabled);
+  assert.equal((await state(desktop)).visible.browser_source,'running_chrome');
+  assert.equal((await state(desktop)).visible.chrome_connected,false);
+  assert.equal((await state(desktop)).visible.mode,'api');
+  await desktop.reload();await desktop.locator('#app').waitFor({state:'visible'});await view(desktop,'visible');
+  assert.equal(await desktop.locator('#visible-browser-source').inputValue(),'running_chrome');
   await view(mobile,'visible');await mobile.locator('#visible-remote').waitFor({state:'visible'});assert.equal(await mobile.locator('#visible-local').isVisible(),false);const status=await mobile.evaluate(async()=>{const s=await fetch('/api/state').then(r=>r.json());return (await fetch('/api/visible/save',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':s.csrf},body:JSON.stringify({mode:'visible'})})).status;});assert.equal(status,403);assert.equal((await state(mobile)).visible.recipes,undefined);await noOverflow(mobile);await mobile.screenshot({path:path.join(output,'visible-mobile.png'),fullPage:true});
+  const connectionStatus=await mobile.evaluate(async()=>{const s=await fetch('/api/state').then(r=>r.json());return (await fetch('/api/visible/browser',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':s.csrf},body:JSON.stringify({action:'connect'})})).status;});
+  assert.equal(connectionStatus,403);assert.equal((await state(mobile)).visible.browser_source,undefined);
  });
  assert.deepEqual(report.errors,[],'no uncaught browser errors');report.status='passed';
 })().catch(async error=>{report.status='failed';report.failure=error.stack;console.error(error);if(desktop)await desktop.screenshot({path:path.join(output,'failure.png'),fullPage:true}).catch(()=>{});process.exitCode=1;}).finally(async()=>{
