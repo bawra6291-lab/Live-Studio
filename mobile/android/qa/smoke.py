@@ -15,8 +15,14 @@ def adb(*args, binary=False):
     return subprocess.check_output(['adb', *args], text=not binary, timeout=20)
 
 def nodes():
-    adb('shell', 'uiautomator', 'dump', '/sdcard/window.xml')
-    return list(ET.fromstring(adb('shell', 'cat', '/sdcard/window.xml')).iter('node'))
+    # Android's accessibility root can be temporarily absent while an activity
+    # starts or a dialog changes. Retry without consuming a stale prior dump.
+    adb('shell', 'rm', '-f', '/sdcard/window.xml')
+    try:
+        adb('shell', 'uiautomator', 'dump', '/sdcard/window.xml')
+        return list(ET.fromstring(adb('shell', 'cat', '/sdcard/window.xml')).iter('node'))
+    except (subprocess.CalledProcessError, ET.ParseError, subprocess.TimeoutExpired):
+        return []
 
 def find(label=None, klass=None, contains=False, enabled=True, timeout=35):
     until = time.monotonic() + timeout
@@ -64,7 +70,7 @@ def passed(label):
 
 try:
     adb('install','-r',str(OUT / 'Live-Desk-Mobile-0.1.0.apk'))
-    adb('shell','am','start','-n','org.livedesk.mobile/.MainActivity')
+    adb('shell','am','start','-W','-n','org.livedesk.mobile/.MainActivity')
     find('Connect to PC'); shot('android-connect.png')
     type_into(find('PC mobile address', klass='android.widget.EditText'), 'http://10.0.2.2:8866')
     click('Connect to PC')
@@ -94,7 +100,7 @@ try:
     adb('shell','input','keyevent','3') # normal background flush before process restart
     time.sleep(1)
     adb('shell','am','force-stop','org.livedesk.mobile')
-    adb('shell','am','start','-n','org.livedesk.mobile/.MainActivity')
+    adb('shell','am','start','-W','-n','org.livedesk.mobile/.MainActivity')
     find('Live overview',contains=True)
     assert state()['sessions']==1
     passed('Saved address and pairing survive app restart')
