@@ -1,0 +1,44 @@
+{
+  "version": "0.8.5",
+  "channel": "pilot",
+  "source_commit": "a5a59337c192fe59a461fec5a5a0b8bce8104bc7",
+  "source_tree": "23a26220142f21e2b52265a7921be822d9c9ba7f",
+  "archive_sha256": "70176b9bd4c7c204baa5b143e7747edb1e8e8abfdc5e6fe5941645870b70c07d",
+  "archive_size": 149274,
+  "files": 45,
+  "ci_run": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/37682188462",
+  "checks": {
+    "archive_matches_committed_source": true,
+    "archive_hashes": true,
+    "no_operator_data_packaged": true,
+    "previous_app_backup": true,
+    "sibling_runtime_and_operator_settings_preserved": true,
+    "persistent_browser_profile_preserved": true,
+    "published_blob_matches_local_git_sha": true,
+    "updater_0_8_4_stages_and_swaps": true
+  },
+  "validation": {
+    "app_tests_windows_and_linux": 178,
+    "relay_tests_windows_and_linux": 12,
+    "desktop_mobile_browser_flows": 9,
+    "opaque_frame_health_regressions": "passed: exact old HTTP(S) exception reproduced before fix, valid steps retained, health-only session rejected, opaque action rejected and foreign-origin action excluded",
+    "visible_chromium_fixture": "passed: opaque health messages through real existing-browser binding mixed with trusted input; recording/replay, managed tabs, persistent socket, retained dummy sign-in and no replacement launch; dedicated reattachment retained",
+    "windows_native_smoke": "passed",
+    "windows_installer_build_install_uninstall": "passed",
+    "visible_setup_layout": "passed: existing browser selection/save boundaries retained; owner setup has no page overflow at 1440, 980, 390 and 320px; desktop and 320px owner screenshots visually reviewed"
+  },
+  "installer_artifact": {
+    "url": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/37682188462/artifacts/11509925986",
+    "github_artifact_digest": "sha256:a5a78e78834a9ff40a1a4d2071eae4c57def5da10097cca8d03757f8b5d3cdb0",
+    "expires": "2026-10-21T20:29:25Z",
+    "signed": false
+  },
+  "limitations": [
+    "A failed finish in the older build discarded the draft; it cannot be recovered from the screenshot.",
+    "Operator confirmed normal Chrome connection and signed-in Facebook navigation; CI never used real operator platforms or camera.",
+    "Full preparation/Go-live/end/camera recipes remain uncalibrated. Facebook preparation requires an unpublished manual-Go-live draft; no automatic-publish fallback.",
+    "Chrome reconnect after app/browser restart still requires explicit local consent.",
+    "Keep the existing YouTube Official stream key. OBS remains controlled through WebSocket.",
+    "Pilot is unsigned; hosting, production OAuth onboarding and publisher signing remain external gates."
+  ]
+}

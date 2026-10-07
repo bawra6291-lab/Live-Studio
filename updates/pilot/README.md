@@ -1,8 +1,12 @@
-# Live Desk 0.8.4 — supervised pilot
+# Live Desk 0.8.5 — supervised pilot
 
 This is an opt-in test build from the development branch. It is not the stable release or the finished cloud/team product. The stable `main/updates/latest.json` feed remains unchanged.
 
-## New in 0.8.4: finish recording despite opaque-frame health events
+## New in 0.8.5: aligned visible setup controls
+
+Execution mode and Chrome connection now have separate cards. Labels sit above full-width fields; Save actions sit under their selections; browser status and Connect/Disconnect controls stay together. Workflow and review fields follow the same aligned structure. Chrome setup guidance is expandable and the cards stack in narrow windows. Existing control behavior is retained. See [the 0.8.5 guide](0.8.5/README.md).
+
+## Retained from 0.8.4: finish recording despite opaque-frame health events
 
 The reported HTTP(S) address error is reproduced by a ready/skipped recorder message from a blank or opaque frame. Those bookkeeping messages are now filtered before validating real action origins, preserving valid captured steps. Empty recordings, opaque-origin actions and foreign destinations remain guarded. This does not add iframe replay support. See [the 0.8.4 guide](0.8.4/README.md).
 
@@ -50,11 +54,11 @@ Windows Task Scheduler can return the principal as an account name even when set
 https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/latest.json
 ```
 
-4. **Check for updates**. New update source ka prompt aaye to URL check karke accept karein. **Version 0.8.4** aur **PILOT** notes dikhne chahiye.
+4. **Check for updates**. New update source ka prompt aaye to URL check karke accept karein. **Version 0.8.5** aur **PILOT** notes dikhne chahiye.
 5. **Download & install**. App restart hone dein. Folder ya shortcut manually delete/change na karein.
-6. Restart ke baad installed version **0.8.4** confirm karein. Automation paused hi rakhein.
+6. Restart ke baad installed version **0.8.5** confirm karein. Automation paused hi rakhein.
 
-If no update appears, do not repeatedly install: capture the Updates panel message and installed version. If your existing app is already 0.8.4 or newer, this package will not be offered as an upgrade.
+If no update appears, do not repeatedly install: capture the Updates panel message and installed version. If your existing app is already 0.8.5 or newer, this package will not be offered as an upgrade.
 
 ## Pehla check — koi live start nahi karna
 
@@ -84,10 +88,11 @@ Keep those backups until the PC test is complete. If rollback is needed after ed
 
 ## Build evidence
 
-- Tested 0.8.4 source: `652d0afb3835d6d50d15f42febfc628bd9f4f0a1`.
-- [Validation checks](https://github.com/bawra6291-lab/Live-Studio/actions/runs/37680302859) passed 178 app tests and 12 relay/agent tests on each OS, nine desktop/mobile flows, actual Chromium browser-socket recording/replay including mixed opaque health events and trusted input, Windows native smoke and bundled installer build/install/uninstall.
-- [0.8.4 build report](0.8.4/build-report.json): all 45 packaged app files match tested source. The 0.8.3 updater stages/swaps the package in a disposable fixture, retaining the previous app, sibling runtime, settings and persistent browser profile.
-- No operator settings, credentials, logs or browser sessions are packaged. Normal Chrome connection and signed-in Facebook navigation were confirmed by the operator; complete site recipes/camera acceptance remain unverified. Pilot is unsigned; hosting, production OAuth and publisher signing are external gates.
-- Historical [0.8.3 evidence](0.8.3/build-report.json), [0.8.2 evidence](0.8.2/build-report.json), [0.8.1 evidence](0.8.1/build-report.json) and [0.8.0 evidence](0.8.0/build-report.json) are retained.
+- Tested 0.8.5 source: `a5a59337c192fe59a461fec5a5a0b8bce8104bc7`.
+- [Validation checks](https://github.com/bawra6291-lab/Live-Studio/actions/runs/37682188462) passed 178 app tests and 12 relay tests on each OS, nine browser/mobile flows, actual visible browser recording/replay, Windows native smoke and bundled installer build/install/uninstall.
+- Owner setup fits 1440, 980, 390 and 320px viewports without page overflow. Desktop and 320px screenshots were visually reviewed. Existing save/remote boundaries remain tested.
+- [0.8.5 build report](0.8.5/build-report.json): all 45 packaged app files match tested source. The 0.8.4 updater stages/swaps the package in a disposable fixture, preserving previous app, sibling runtime, settings and browser profile.
+- Normal Chrome connection and signed-in Facebook navigation are operator-confirmed; complete site/camera recipes remain unverified. No operator data is packaged. Pilot is unsigned; hosting, production OAuth and publisher signing are external gates.
+- Historical [0.8.4 evidence](0.8.4/build-report.json), [0.8.3 evidence](0.8.3/build-report.json), [0.8.2 evidence](0.8.2/build-report.json), [0.8.1 evidence](0.8.1/build-report.json) and [0.8.0 evidence](0.8.0/build-report.json) remain available.
 
 Later pilot updates use this same opt-in address. Stable main remains unchanged until separately approved for production rollout.
