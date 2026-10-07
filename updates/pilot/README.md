@@ -1,6 +1,10 @@
-# Live Desk 0.8.0 — supervised pilot
+# Live Desk 0.8.1 — supervised pilot
 
 This is an opt-in test build from the development branch. It is not the stable release or the finished cloud/team product. The stable `main/updates/latest.json` feed remains unchanged.
+
+## New in 0.8.1: persistent browser reuse
+
+The visible adapter reconnects to the existing Live Desk browser before launching, reuses same-site tabs after an app restart, and prefers Chrome when installed. Sign in once per site in this persistent profile; Open site, recording and replay use the same browser session. Normal Chrome is separate, and site sessions may still expire. See [the 0.8.1 guide](0.8.1/README.md).
 
 ## New in 0.8.0
 
@@ -66,9 +70,10 @@ Keep those backups until the PC test is complete. If rollback is needed after ed
 
 ## Build evidence
 
-- Tested source: `ff60ccc15f151dbddcf3510907751976411fd9c5`.
-- [Passing Windows/Linux/browser/installer checks](https://github.com/bawra6291-lab/Live-Studio/actions/runs/37294294299): 162 app tests and 12 relay/agent tests on each OS, Windows native smoke check, nine desktop/mobile browser flows, real Chromium recorder/replay fixture, bundled-runtime validation, silent installer install/uninstall.
-- [0.8.0 build report](0.8.0/build-report.json) records the package digest, exact committed source match and temporary-directory upgrade simulation from 0.7.1, preserving the sibling runtime and prior-app backup.
-- No operator settings, logs, credentials or browser sessions are packaged. Checksums detect corruption; the pilot is unsigned. Real operator-PC/site/camera validation, relay deployment, production OAuth onboarding and publisher signing remain external gates.
+- Tested 0.8.1 source: `0da31a5031c4fcebd67431aba031b75a1934ccb4`.
+- [Passing Windows/Linux/browser/installer checks](https://github.com/bawra6291-lab/Live-Studio/actions/runs/37667447521): 167 app tests and 12 relay/agent tests per OS, Windows native smoke, nine desktop/mobile flows, actual Chromium same-browser/tab/session reuse through controller restart and recording, bundled runtime and installer install/uninstall.
+- [0.8.1 build report](0.8.1/build-report.json): all 45 packaged files match committed source; the 0.8.0 updater stages/swaps the release in a disposable folder while retaining the previous app, sibling runtime, settings and persistent browser profile.
+- No operator settings, credentials, logs or browser sessions are packaged. The pilot is unsigned. Actual operator-PC visible-site/camera testing, remote hosting, production OAuth onboarding and publisher signing remain external gates.
+- [Historical 0.8.0 evidence](0.8.0/build-report.json) is retained.
 
 Later pilot updates use this same opt-in address. Stable main remains unchanged until separately approved for production rollout.

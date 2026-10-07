@@ -20,7 +20,7 @@ Both-platform scheduling, custom end times and camera actions, exact existing Yo
 
 ## External acceptance gates — not completed here
 
-- Install/migrate on the actual operator PC, verify administrator OBS visibility, plugin output reload, visible YouTube/Facebook/camera recipes, real broadcast start/end, lock/sleep/wake behavior and camera physical motion. The user deferred these PC tests. Automated tests use isolated fake services.
+- Install/migrate on the actual operator PC, verify administrator OBS visibility, plugin output reload, visible YouTube/Facebook/camera recipes, real broadcast start/end, lock/sleep/wake behavior and camera physical motion. The operator reported API-mode live working on 7 October 2026. Visible-site calibration and the remaining PC/camera acceptance checks still need supervised verification. Automated platform tests use isolated fake services.
 - Deploy the optional relay to an owned host/domain, obtain TLS, provision workspace access codes and enroll PCs. No hosted service, paid infrastructure or DNS changes have been created.
 - Obtain Google/Meta production approval and configure public OAuth onboarding. The local app continues to use the current desktop OAuth JSON and Page-token setup; the relay is not an OAuth broker.
 - Publisher code signing and authenticated release metadata require publisher credentials and protected CI configuration. Pilot artifacts are unsigned; no signing identity is invented.

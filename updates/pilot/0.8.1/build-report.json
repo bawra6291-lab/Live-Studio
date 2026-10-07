@@ -1,0 +1,40 @@
+{
+  "version": "0.8.1",
+  "channel": "pilot",
+  "source_commit": "0da31a5031c4fcebd67431aba031b75a1934ccb4",
+  "source_tree": "d7bfe5c6e9a71f9760ad884069620ff74fa4d157",
+  "archive_sha256": "69fe00cfebf0b20bdfa2eb143da555ce4a4f99c64939738d795904221477473f",
+  "archive_size": 143017,
+  "files": 45,
+  "ci_run": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/37667447521",
+  "checks": {
+    "archive_matches_committed_source": true,
+    "archive_hashes": true,
+    "no_operator_data_packaged": true,
+    "updater_0_8_0_stages_and_swaps": true,
+    "previous_app_backup": true,
+    "sibling_runtime_and_operator_settings_preserved": true,
+    "persistent_browser_profile_preserved": true
+  },
+  "validation": {
+    "app_tests_windows_and_linux": 167,
+    "relay_tests_windows_and_linux": 12,
+    "desktop_mobile_browser_flows": 9,
+    "visible_chromium_fixture": "passed: same browser/tab and retained test-site cookie/local storage across controller restart and recording",
+    "windows_native_smoke": "passed",
+    "windows_installer_build_install_uninstall": "passed"
+  },
+  "installer_artifact": {
+    "url": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/37667447521/artifacts/11503443039",
+    "github_artifact_digest": "sha256:222fd547abba28d60fab8fe4e9cf98c574ad5db3fb8655068a8bd88e3babe70d",
+    "expires": "2026-10-21T18:32:47Z",
+    "signed": false
+  },
+  "limitations": [
+    "Normal default Chrome profile is separate; its cookies are not copied.",
+    "External sites can expire or revoke sessions; sign in once per site in the Live Desk profile.",
+    "Actual operator-PC visible browser/site/camera acceptance remains supervised and was not performed by this validation.",
+    "OBS remains controlled by WebSocket in its real desktop window, not native mouse clicks.",
+    "Pilot update is unsigned; remaining production/hosting/OAuth gates are unchanged."
+  ]
+}
