@@ -29,7 +29,7 @@ Both-platform scheduling, custom end times and camera actions, exact existing Yo
 ## External acceptance gates — not completed here
 
 - Install/migrate on the actual operator PC, verify administrator OBS visibility, plugin output reload, visible YouTube/Facebook/camera recipes, real broadcast start/end, lock/sleep/wake behavior and camera physical motion. The operator reported API-mode live working on 7 October 2026. Visible-site calibration and the remaining PC/camera acceptance checks still need supervised verification. Automated platform tests use isolated fake services.
-- Deploy the optional relay to an owned host/domain, obtain TLS, provision workspace access codes and enroll PCs. No hosted service, paid infrastructure or DNS changes have been created.
+- Deploy the optional relay to an owned host/domain, obtain TLS, provision workspace access codes and enroll PCs. The relay configuration is now staged in a separate Live Desk Internet Control project with a 500 MB persistent volume; it is not deployed or publicly exposed. Explicit deployment/public HTTPS approval remains pending. No payment plan was purchased.
 - Obtain Google/Meta production approval and configure public OAuth onboarding. The local app continues to use the current desktop OAuth JSON and Page-token setup; the relay is not an OAuth broker.
 - Publisher code signing and authenticated release metadata require publisher credentials and protected CI configuration. Pilot artifacts are unsigned; no signing identity is invented.
 - Independently review security, dependencies/licenses, load capacity and disaster recovery before a multi-customer production launch.
@@ -67,3 +67,16 @@ not iPhone, internet remote control or PC power-on. The PC remains responsible f
 actual streaming and visible workflows. Actual user's device/network acceptance,
 production mobile publisher signing and a persistent mobile binary update channel
 remain pending. The temporary pilot private key is not committed or distributed.
+
+
+## Android 0.2.0 — internet controls and persistent updates
+
+The Android companion now accepts the operator-selected trusted HTTPS relay origin as well as private LAN HTTP. Internet phone pairing is stored in relay SQLite, renewed on use, and independent for each phone. Normal app/PC/server restarts and same-signer app upgrades retain it; logout, Forget phone, grant revocation, app data deletion, lost relay data or a 365-day inactivity interval require pairing again. The PC keeps its separate outbound-HTTPS agent enrollment in Windows Credential Manager. Existing LAN sessions still use their older 12-hour policy. Internet screens expose Check/Enable/Pause and status/history/revocation; detailed schedule editing remains local/LAN.
+
+Updates inside the installed app use a fixed official HTTPS feed, size/hash checks, exact package and strictly higher versionCode checks, and exact installed-signer matching. A private read-only content provider grants the Android installer only the verified APK. Android installation approval is required. Verified downloads can be resumed after granting Allow from this source. A persistent self-signed Android signing key and private relay enrollment setup backup have been saved privately outside the public repository. This is package continuity, not Windows publisher certification. The old temporary-signer 0.1.0 needs one initial replacement; new releases must retain the 0.2.0 signer.
+
+Source ad2e0f0563e079652a9ebde60856cd9a7f2f0234 passed Android workflow 37721981796: nine installed native checks, including updater signer/version/package/downgrade rejection, restricted installer provider, retained pairing through an installed same-signer replacement, in-app HTTPS feed check, confirmation/Enable/Pause and reconnect. Twenty-two relay tests cover migration/durable sessions, tenant separation, phone revocation and queued-command cancellation, CSRF, heartbeat/boot guards, expiration, dispatch/receipt idempotency and disabled API before HTTPS origin configuration. Workflow 37721981795 passed Windows/Linux controllers, installer, desktop/mobile UI and the isolated HTTPS remote browser flow with restored phone login, command acknowledgements and revocation. No actual platform live or camera operation was invoked.
+
+Released APK code/resources/manifest match the tested aligned APK byte-for-byte. The final APK has separately verified permanent signing, SHA-256 d50cbd0a8b631e6e4d31b9acdffa9ae3911e37af4ff2ee61d9d227c022b4a089, 29166 bytes. APK, reports and Hindi guide are under updates/mobile/pilot/0.2.0. Stable main remains unchanged.
+
+The public relay is staged only, with its own volume and hashed bootstrap grants. Automatic approval review rejected creating the public HTTPS address because that introduces internet exposure without explicit final approval. Deployment, TLS, real PC enrollment, volume durability in that hosted environment and actual phone-cellular acceptance remain pending. See remote/DEPLOYMENT-REVIEW.md; do not claim that a public mobile-data endpoint is already running.
