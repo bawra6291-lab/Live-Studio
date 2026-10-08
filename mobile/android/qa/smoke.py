@@ -113,6 +113,11 @@ try:
     # Reconnect automatically through the dashboard's polling.
     find('PC connected',contains=True)
     passed('Connection loss disables controls and automatically recovers')
+    # Exercise the app's own updater guard and URI provider before replacing it.
+    adb('install','-r',str(OUT / 'Live-Desk-QA.apk'))
+    guard=adb('shell','am','instrument','-w','org.livedesk.mobile.qa/.UpgradeTest')
+    assert 'passed=true' in guard,guard
+    passed('Updater accepts matching signer; rejects wrong signer/version/package/downgrade; APK provider is restricted and read-only')
     # A replacement APK with the same certificate must retain private app data.
     adb('install','-r',str(OUT / 'Live-Desk-Mobile-0.2.1-qa.apk'))
     adb('shell','am','start','-W','-n','org.livedesk.mobile/.MainActivity')
@@ -120,6 +125,10 @@ try:
     assert state()['sessions']==1
     assert_state(False,['arm','pause'])
     passed('In-place same-signer version update preserves address, pairing and PC state')
+    click('Updates')
+    find('You have the latest version',contains=True)
+    click('android:id/button1')
+    passed('Native in-app update check reads official HTTPS feed without clearing pairing')
     click('PC')
     click('android:id/button1') # native positive button is uppercase on Material theme
     find('Connect to PC')

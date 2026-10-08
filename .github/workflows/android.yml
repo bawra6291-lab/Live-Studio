@@ -36,6 +36,10 @@ jobs:
         run: |
           LIVE_DESK_BUILD_VERSION_NAME=0.2.1-qa LIVE_DESK_BUILD_VERSION_CODE=3 LIVE_DESK_KEYSTORE="$PWD/mobile/android/build/pilot.keystore" LIVE_DESK_STORE_PASS=android LIVE_DESK_KEY_PASS=android bash mobile/android/build.sh build-next
           cp mobile/android/build-next/Live-Desk-Mobile-0.2.1-qa.apk mobile/android/build/
+      - name: Build foreign-signer rejection fixture and update instrumentation
+        run: |
+          LIVE_DESK_BUILD_VERSION_NAME=0.2.1-qa LIVE_DESK_BUILD_VERSION_CODE=3 bash mobile/android/build.sh build-foreign
+          bash mobile/android/qa/build-instrumentation.sh
       - name: Remote session and command tests
         run: python -m unittest discover -s qa -p 'test_remote*.py'
       - name: Enable emulator acceleration

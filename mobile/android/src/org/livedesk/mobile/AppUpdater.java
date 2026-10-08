@@ -31,7 +31,7 @@ public final class AppUpdater {
     }
     public void check() {
         synchronized(AppUpdater.class) { if(working) { message("An update check or download is already running.");return; } working=true; }
-        message("Checking for a new version…");
+        android.widget.Toast.makeText(activity,"Checking for a new version…",android.widget.Toast.LENGTH_SHORT).show();
         new Thread(() -> {
             try {
                 File cached=new File(activity.getCacheDir(),"mobile-update.apk");
@@ -74,7 +74,7 @@ public final class AppUpdater {
     }
     private void download(String url,String expected,long size,int version) {
         synchronized(AppUpdater.class) { if(working)return;working=true; }
-        message("Downloading and verifying update…");
+        android.widget.Toast.makeText(activity,"Downloading and verifying update…",android.widget.Toast.LENGTH_LONG).show();
         new Thread(() -> {
             File part=new File(activity.getCacheDir(),"mobile-update.part"),apk=new File(activity.getCacheDir(),"mobile-update.apk");
             try {

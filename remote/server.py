@@ -24,10 +24,11 @@ class Handler(BaseHTTPRequestHandler):
         return cookie['desk_remote'].value if 'desk_remote' in cookie else ''
     def do_GET(self):
         path=urlsplit(self.path).path
-        if path=='/health':return self.reply(200,{'ok':True})
+        if path=='/health':return self.reply(200,{'ok':True,'configured':bool(self.server.origin)})
         if path in ('/','/remote.js','/remote.css'):
             name={'/':'index.html','/remote.js':'remote.js','/remote.css':'remote.css'}[path];raw=(Path(__file__).parent/'web'/name).read_bytes()
             self.send_response(200);self.send_header('Content-Type',{'/':'text/html; charset=utf-8','/remote.js':'text/javascript; charset=utf-8','/remote.css':'text/css'}[path]);self.send_header('Content-Length',str(len(raw)));self.send_header('Cache-Control','no-store');self.send_header('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");self.send_header('X-Content-Type-Options','nosniff');self.end_headers();self.wfile.write(raw);return
+        if path.startswith('/api/') and not self.server.origin:return self.reply(503,{'error':'HTTPS server setup is not complete'})
         if path!='/api/state':return self.reply(404,{'error':'Not found'})
         try:
             token=self.token()
@@ -36,6 +37,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:self.reply(500,{'error':'Could not load remote status'})
     def session_cookie(self,token):return 'desk_remote='+token+'; Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age='+str(SESSION_AGE)
     def do_POST(self):
+        if not self.server.origin:return self.reply(503,{'error':'HTTPS server setup is not complete'})
         try:
             if self.headers.get('Content-Type','').split(';')[0]!='application/json':raise ValueError('JSON required')
             size=int(self.headers.get('Content-Length','0'))
@@ -86,7 +88,7 @@ def main():
     elif args.command=='grant':print(json.dumps(store.grant(args.workspace,args.role,args.name)))
     else:
         origin=args.origin or '';p=urlsplit(origin)
-        if p.scheme!='https' or not p.hostname or p.path or p.query or p.fragment or p.username:parser.error('Use a public HTTPS origin without a trailing slash. TLS proxy required.')
+        if origin and (p.scheme!='https' or not p.hostname or p.path or p.query or p.fragment or p.username):parser.error('Use a public HTTPS origin without a trailing slash. TLS proxy required.')
         store.mark_offline()
         Server((args.host,args.port),store,origin).serve_forever()
 if __name__=='__main__':main()

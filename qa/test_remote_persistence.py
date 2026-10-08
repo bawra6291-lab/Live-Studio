@@ -55,6 +55,17 @@ class PersistentPhones(unittest.TestCase):
         db=sqlite3.connect(path);db.execute('CREATE TABLE sessions(secret TEXT PRIMARY KEY,principal TEXT NOT NULL,csrf TEXT NOT NULL,expires REAL NOT NULL)');db.commit();db.close()
         old=Store(path);w=old.create_workspace('Old');g=old.grant(w,'owner');token,_=old.login(g['token'])
         self.assertEqual(Store(path).authenticate(token)['id'],g['id'])
+    def test_unconfigured_deployment_health_only_no_controls(self):
+        server=Server(('127.0.0.1',0),self.store,'');threading.Thread(target=server.serve_forever,daemon=True).start()
+        base='http://127.0.0.1:'+str(server.server_port)
+        try:
+            with urllib.request.urlopen(base+'/health') as r:self.assertFalse(json.load(r)['configured'])
+            with self.assertRaises(urllib.error.HTTPError) as e:urllib.request.urlopen(base+'/api/state')
+            self.assertEqual(e.exception.code,503)
+            req=urllib.request.Request(base+'/api/login',data=b'{}',headers={'Content-Type':'application/json'})
+            with self.assertRaises(urllib.error.HTTPError) as e:urllib.request.urlopen(req)
+            self.assertEqual(e.exception.code,503)
+        finally:server.shutdown();server.server_close()
     def test_http_persistent_cookie_csrf_and_agent_auth(self):
         server=Server(('127.0.0.1',0),self.store,'https://desk.test');threading.Thread(target=server.serve_forever,daemon=True).start()
         base='http://127.0.0.1:'+str(server.server_port)
