@@ -4,7 +4,8 @@ Pehli installation:
 1. Live-Desk-Mobile-0.2.0.apk phone par install karo.
 2. Agar purana 0.1.0 test APK install hai to ek baar uninstall karke naya install karna padega. Purane test APK ki temporary signing key alag thi. Iske baad naye releases isi signing key se milenge aur app ke andar update honge.
 
-Mobile internet (server deploy aur one-time setup ke BAAD):
+Mobile internet — one-time setup:
+Server: https://live-desk-relay-production.up.railway.app
 1. PC par Live Desk chalu aur internet connected rakho.
 2. PC dashboard ko localhost se kholkar Mobile access > Internet remote access mein apna HTTPS control address aur PC ka separate agent token save karo. Enable karo. YouTube/Facebook/camera credentials PC par hi rehte hain.
 3. Android app mein wahi HTTPS control address enter karo. Apne workspace access code se phone ko ek baar pair karo.
@@ -26,4 +27,4 @@ PC status, recorded plans/runs, Check connections, Enable/Pause, command history
 Pause future automation ko rokta hai; existing live khud end nahi hota.
 
 Status:
-Software aur emulator/disposable-service tests complete hone par APK publish hota hai. Public relay abhi staged hai; deploy/public HTTPS approval aur actual PC/phone cellular test pending hai. Server URL chalu hone se pehle mobile-data connection work nahi karega. Kisi real live ya camera ko QA tests ne trigger nahi kiya.
+APK published aur public HTTPS relay online hai. TLS/login/CSRF aur container redeployment ke baad saved pairing ke checks pass hue. Private setup file se real PC enroll karna aur actual phone mobile-data test abhi operator ko karna hai. Kisi real live ya camera ko QA tests ne trigger nahi kiya.

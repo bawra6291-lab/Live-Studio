@@ -9,8 +9,9 @@
   "min_android": "8.0",
   "channel": "development-pilot",
   "requires": "Online enrolled PC and deployed HTTPS relay for mobile data, or same private LAN for local mode",
-  "relay_status": "staged-awaiting-deploy-approval",
+  "relay_status": "deployed-pc-enrollment-and-cellular-test-pending",
   "legacy_0_1_0": "One-time replacement required; different temporary signer",
   "url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/mobile/pilot/0.2.0/Live-Desk-Mobile-0.2.0.apk",
-  "size": 29166
+  "size": 29166,
+  "relay_url": "https://live-desk-relay-production.up.railway.app"
 }

@@ -16,6 +16,11 @@
   "signature_verified": true,
   "payload_matches_tested_aligned_apk": true,
   "external_live_actions": false,
-  "public_relay_deployed": false,
-  "actual_cellular_acceptance": "Pending relay deployment approval and PC enrollment/operator test"
+  "public_relay_deployed": true,
+  "actual_cellular_acceptance": "Pending actual PC enrollment and operator cellular-network test",
+  "public_relay_origin": "https://live-desk-relay-production.up.railway.app",
+  "relay_source_commit": "9edce04918891b9aa7f69c19cda56e5bc19fad65",
+  "relay_deployment": "37cd66d6-15ff-48da-869f-a000e0d475f7",
+  "hosted_tls_auth_csrf": "passed",
+  "hosted_pairing_volume_redeploy": "passed"
 }
