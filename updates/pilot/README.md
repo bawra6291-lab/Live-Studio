@@ -1,8 +1,12 @@
-# Live Desk 0.8.5 — supervised pilot
+# Live Desk 0.8.6 — supervised pilot
 
 This is an opt-in test build from the development branch. It is not the stable release or the finished cloud/team product. The stable `main/updates/latest.json` feed remains unchanged.
 
-## New in 0.8.5: aligned visible setup controls
+## New in 0.8.6: desktop controls inside the dashboard
+
+Normal launch hides the console and launcher. OBS/admin setup, Windows startup, local logs and explicit Quit are in PC controls. Wi-Fi access is in Mobile access. Closing the browser keeps the same controller running; reopening Live Desk returns to it. Saved setup is preserved. See [the 0.8.6 guide](0.8.6/README.md).
+
+## Historical 0.8.5: aligned visible setup controls
 
 Execution mode and Chrome connection now have separate cards. Labels sit above full-width fields; Save actions sit under their selections; browser status and Connect/Disconnect controls stay together. Workflow and review fields follow the same aligned structure. Chrome setup guidance is expandable and the cards stack in narrow windows. Existing control behavior is retained. See [the 0.8.5 guide](0.8.5/README.md).
 
