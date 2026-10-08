@@ -30,3 +30,7 @@ One Python replica behind Railway-managed TLS, health /health, PUBLIC_ORIGIN set
 4. Detailed schedule/camera editing remains in the PC/local LAN dashboard. Real streaming/camera and actual phone-cellular tests require supervised operator acceptance. No router port forwarding is needed.
 
 Compute, volume and traffic follow Railway usage billing/account credits. No new payment plan was purchased. Keep one SQLite replica, arrange private database backups and independently review security/load/disaster recovery before a multi-customer public launch. This is an opt-in supervised pilot, not SSO/billing or a platform OAuth broker.
+
+## Internet UI hotfix
+
+The enrolled real PC was observed online on 8 October, with automation paused and no remote command history when the operator reported inert controls. The frontend now uses HTML confirmation rather than native JS dialogs unsupported by this APK. Twenty-two relay tests and the isolated HTTPS WebView-dialog-suppression regression passed locally. The unchanged Android APK fetches the page on Refresh. Live PC commands were not issued by QA; the operator must confirm Check/Enable after refreshing and inspect the resulting status. See WORK-COMPLETION.md for the regression scope and integration gap.
