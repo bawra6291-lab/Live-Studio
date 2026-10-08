@@ -1,3 +1,15 @@
+## Desktop consolidation · 0.8.6
+
+Normal Windows startup keeps the Tk host hidden and opens the designed dashboard.
+The PC controls panel exposes OBS/admin setup, startup preferences, settings/logs,
+optional recovery launcher and explicit app shutdown. Mobile access manages LAN
+listener settings locally. Browser close keeps the host running; reopening uses
+a fixed loopback handoff to return to the same controller and fresh local pairing.
+ZIP launch uses pyw/pythonw; diagnostic console remains opt-in. Updates use the
+existing feed and data locations. Explicit UAC, OBS and update windows remain native.
+Local-only authenticated CSRF-protected actions enter a bounded UI-thread queue.
+Validation and release evidence: updates/pilot/0.8.6/build-report.json.
+
 # Completion record — 0.8.5 pilot
 
 This document distinguishes implemented software from external acceptance gates. It does not claim zero defects or production certification.

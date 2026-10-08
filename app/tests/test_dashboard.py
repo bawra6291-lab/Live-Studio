@@ -59,6 +59,33 @@ class Tests(unittest.TestCase):
         self.assertEqual(self.request('/api/updates/open',{},**{'X-CSRF-Token':'wrong'})[0],403)
         self.assertEqual(self.request('/api/updates/open',{})[0],200)
         self.c.open_updates.assert_called_once()
+    def test_desktop_controls_require_local_owner_csrf_and_confirmation(self):
+        from desktop_host import DesktopHost
+        self.c.desktop_host=DesktopHost()
+        payload={'action':'obs'}
+        self.assertEqual(self.request('/api/desktop/action',payload)[0],401)
+        local=self.login();self.assertTrue(local['desktop_host']['available'])
+        self.assertEqual(self.request('/api/desktop/action',payload,**{'X-CSRF-Token':'wrong'})[0],403)
+        with patch.object(Handler,'local',return_value=False):
+            self.assertIsNone(self.request('/api/state')[1]['desktop_host'])
+            self.assertEqual(self.request('/api/desktop/action',payload)[0],403)
+        with self.server.auth_lock:
+            token=self.cookie.split('=',1)[1];self.server.sessions[token]['role']='viewer'
+        self.assertEqual(self.request('/api/desktop/action',payload)[0],403)
+        with self.server.auth_lock:self.server.sessions[token]['role']='owner'
+        self.assertEqual(self.request('/api/desktop/action',{'action':'quit'})[0],409)
+        self.assertEqual(self.request('/api/desktop/action',{'action':'arbitrary-shell'})[0],409)
+        self.assertFalse(self.c.desktop_host.snapshot()['busy'])
+        self.assertEqual(self.request('/api/desktop/action',payload)[0],202)
+        self.assertTrue(self.c.desktop_host.snapshot()['busy'])
+        self.assertEqual(self.request('/api/desktop/action',payload)[0],409)
+        dispatched=[]
+        self.c.desktop_host.drain(lambda action,ip:dispatched.append(action) or 'OBS shown in QA')
+        self.assertEqual(dispatched,['obs'])
+        self.assertEqual(self.request('/api/state')[1]['desktop_host']['message'],'OBS shown in QA')
+        self.c.maintenance=True
+        self.assertEqual(self.request('/api/desktop/action',payload)[0],409)
+
     def test_wrong_code_and_rate_limit(self):
         for _ in range(8):self.assertEqual(self.request('/api/login',{'code':'bad'})[0],401)
         self.assertEqual(self.request('/api/login',{'code':'test-pairing-code'})[0],429)

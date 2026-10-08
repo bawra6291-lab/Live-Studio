@@ -24,7 +24,7 @@ Source: "{#Stage}\runtime\*"; DestDir: "{app}\runtime"; Flags: ignoreversion rec
 Source: "{#Stage}\runtime-dependencies.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#Stage}\RUNTIME-NOTICE.txt"; DestDir: "{app}"; Flags: ignoreversion
 [Icons]
-Name: "{group}\Live Desk"; Filename: "{app}\runtime\pythonw.exe"; Parameters: "-E -s ""{app}\app\launcher.py"""; WorkingDir: "{app}\app"
-Name: "{userdesktop}\Live Desk"; Filename: "{app}\runtime\pythonw.exe"; Parameters: "-E -s ""{app}\app\launcher.py"""; WorkingDir: "{app}\app"
+Name: "{group}\Live Desk"; Filename: "{app}\runtime\pythonw.exe"; Parameters: "-E -s ""{app}\app\desktop_start.py"""; WorkingDir: "{app}\app"
+Name: "{userdesktop}\Live Desk"; Filename: "{app}\runtime\pythonw.exe"; Parameters: "-E -s ""{app}\app\desktop_start.py"""; WorkingDir: "{app}\app"
 [Run]
-Filename: "{app}\runtime\pythonw.exe"; Parameters: "-E -s ""{app}\app\launcher.py"""; WorkingDir: "{app}\app"; Description: "Open Live Desk"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\runtime\pythonw.exe"; Parameters: "-E -s ""{app}\app\desktop_start.py"""; WorkingDir: "{app}\app"; Description: "Open Live Desk"; Flags: nowait postinstall skipifsilent

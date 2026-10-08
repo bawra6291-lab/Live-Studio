@@ -192,8 +192,10 @@ def check_obs_idle(controller):
 def start_installer(app_dir, stage, work_dir):
     work_dir=Path(work_dir);job=work_dir/uuid.uuid4().hex;job.mkdir(parents=True)
     worker=job/'updater_worker.py';shutil.copyfile(Path(__file__).resolve(),worker)
+    gui=Path(sys.executable).with_name('pythonw.exe')
+    restart_python=str(gui) if os.name=='nt' and gui.exists() else sys.executable
     plan={'app_dir':str(Path(app_dir).resolve()),'stage':str(Path(stage).resolve()),
-          'pid':os.getpid(),'python':sys.executable,'job':str(job.resolve())}
+          'pid':os.getpid(),'python':restart_python,'job':str(job.resolve())}
     path=job/'plan.json';path.write_text(json.dumps(plan),encoding='utf-8')
     # The worker must live outside the app folder being renamed. No shell/UAC.
     process=subprocess.Popen([sys.executable,str(worker),'--apply',str(path)],cwd=str(job),

@@ -10,7 +10,7 @@ function showLogin(){$('app').hidden=true;$('login').hidden=false;online=false;s
 async function pair(code){await api('/api/login',{code});$('pair-code').value='';$('pair-error').textContent='';await refresh();}
 $('pair-form').addEventListener('submit',async event=>{event.preventDefault();const b=event.submitter;b.disabled=true;try{await pair($('pair-code').value.trim());}catch(e){$('pair-error').textContent=e.message;}finally{b.disabled=false;}});
 const recoveryNav=el('button','nav','Run history & backups');recoveryNav.dataset.view='recovery';document.querySelector('nav').append(recoveryNav);
-function navigate(view){if(!['overview','schedule','connections','activity','mobile','updates','visible','recovery'].includes(view))view='overview';document.querySelectorAll('.view').forEach(n=>n.hidden=n.id!=='view-'+view);document.querySelectorAll('[data-view]').forEach(n=>{n.classList.toggle('active',n.dataset.view===view);if(n.dataset.view===view)n.setAttribute('aria-current','page');else n.removeAttribute('aria-current');});$('page-title').textContent={overview:'Live overview',schedule:'Schedule',connections:'Connections',activity:'Activity',mobile:'Mobile access',updates:'App updates',visible:'Visible automation',recovery:'Run history & backups'}[view];history.replaceState(null,'','#'+view);}
+function navigate(view){if(!['overview','schedule','connections','activity','mobile','updates','visible','recovery','pc'].includes(view))view='overview';document.querySelectorAll('.view').forEach(n=>n.hidden=n.id!=='view-'+view);document.querySelectorAll('[data-view]').forEach(n=>{n.classList.toggle('active',n.dataset.view===view);if(n.dataset.view===view)n.setAttribute('aria-current','page');else n.removeAttribute('aria-current');});$('page-title').textContent={overview:'Live overview',schedule:'Schedule',connections:'Connections',activity:'Activity',mobile:'Mobile access',updates:'App updates',visible:'Visible automation',recovery:'Run history & backups',pc:'PC controls'}[view];history.replaceState(null,'','#'+view);}
 document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>navigate(b.dataset.view));document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>navigate(b.dataset.go));
 function makeSlots(target,full){const parent=$(target);parent.replaceChildren();for(const s of state.slots){const row=el('div','slot'+(s.name===state.next.name?' next':''));const time=el('div','slot-time',s.at);time.append(el('small','','IST'));const name=el('div');name.append(el('div','slot-name',s.name),el('div','slot-dest',full&&s.last_error?s.last_error:(s.end_at?'End '+s.end_at+(s.end_next_day?' +1 day':'')+' · YouTube + Facebook':'Manual end · YouTube + Facebook')));const status=el('span','slot-state'+(s.phase==='needs_review'||s.end_state==='needs_review'?' attention':['live','done'].includes(s.phase)?' confirmed':''),s.end_state==='needs_review'?'End needs review':labels[s.phase]||s.phase);row.append(time,name,status);parent.append(row);}}
 function render(){
@@ -27,10 +27,10 @@ function render(){
  const logs=$('log-list');const atBottom=logs.scrollHeight-logs.scrollTop-logs.clientHeight<60;logs.replaceChildren();for(const item of state.logs){const row=el('div','log-entry'+(/failed|attention|review|error/i.test(item.message)?' log-error':''));row.append(el('span','log-time',item.time),el('span','',item.message));logs.append(row);}if(atBottom)logs.scrollTop=logs.scrollHeight;
  $('remote-settings').hidden=state.local;$('settings-form').hidden=!state.local;
  if(state.local&&!formLoaded){const grid=$('settings-fields');grid.replaceChildren();for(const [key,label,type] of fields){const wrap=el('div','field'),l=el('label','',label),input=el('input');input.id='field-'+key;input.name=key;input.type=type||'text';input.autocomplete='off';input.value=type==='password'?'':state.settings[key]||'';if(type==='password')input.placeholder='Saved value retained when blank';l.htmlFor=input.id;wrap.append(l,input);grid.append(wrap);}formLoaded=true;}
- const addresses=$('phone-addresses');addresses.replaceChildren();if(!state.local)addresses.textContent='This phone is paired. Controls are available in Overview.';else if(!state.mobile_enabled)addresses.textContent='Mobile access is currently off. Enable it from the Windows launcher.';else{addresses.append(el('b','','Phone address'));state.mobile_urls.forEach(url=>{const p=el('p'),a=el('a','',url);a.href=url;p.append(a);addresses.append(p);});if(!state.mobile_urls.length)addresses.append(el('p','','Check the Windows launcher for your network address.'));}
- renderRemote();renderOperations();renderVisible();updateButtons();updateClock();
+ const addresses=$('phone-addresses');addresses.replaceChildren();if(!state.local)addresses.textContent='This phone is paired. Controls are available in Overview.';else if(!state.mobile_enabled)addresses.textContent='Wi-Fi mobile access is off. Enable it below on this PC. Internet remote access is separate.';else{addresses.append(el('b','','Phone address'));state.mobile_urls.forEach(url=>{const p=el('p'),a=el('a','',url);a.href=url;p.append(a);addresses.append(p);});if(!state.mobile_urls.length)addresses.append(el('p','','Choose a local network address below.'));}
+ renderRemote();renderOperations();renderVisible();renderPC();updateButtons();updateClock();
 }
-function updateButtons(){updateVisibleButtons();const busy=!online||pending;for(const id of ['arm','check','check-settings','retry','save-settings','connect-youtube','save-schedule','reload-schedule'])$(id).disabled=busy||!!state?.busy;$('pause').disabled=busy||!(state?.armed||state?.busy);document.querySelectorAll('#schedule-form input,#schedule-form select,#schedule-form button').forEach(i=>i.disabled=busy||!!state?.busy);document.querySelectorAll('#settings-form input').forEach(i=>i.disabled=busy||!!state?.busy);updateOperationsButtons();}
+function updateButtons(){updatePCButtons();updateVisibleButtons();const busy=!online||pending;for(const id of ['arm','check','check-settings','retry','save-settings','connect-youtube','save-schedule','reload-schedule'])$(id).disabled=busy||!!state?.busy;$('pause').disabled=busy||!(state?.armed||state?.busy);document.querySelectorAll('#schedule-form input,#schedule-form select,#schedule-form button').forEach(i=>i.disabled=busy||!!state?.busy);document.querySelectorAll('#settings-form input').forEach(i=>i.disabled=busy||!!state?.busy);updateOperationsButtons();}
 function updateClock(){if(!state)return;const now=new Date(Date.parse(state.now)+(Date.now()-state.received));$('clock').replaceChildren(document.createTextNode(now.toLocaleTimeString('en-GB',{timeZone:'Asia/Kolkata'})+' '),el('small','','IST'));const diff=Math.max(0,Date.parse(state.next.due)-now.getTime()),mins=Math.floor(diff/60000),h=Math.floor(mins/60),m=mins%60;$('countdown').textContent=!state.next.due?'Add and enable a program with a future date in Schedule.':(state.armed?'Starts in ':'Next program in ')+(h?h+'h ':'')+m+'m'+(state.armed?'':' · enable automation to run this schedule');}
 async function refresh(){try{const out=await api('/api/state');state={...out,received:Date.now()};csrf=out.csrf;online=true;render();}catch(e){if(state){online=false;$('offline').hidden=false;$('link-state').textContent='○ PC disconnected';$('link-state').className='badge';updateButtons();}else if(!$('login').hidden){}else showLogin();}}
 function confirmAction(title,message){return new Promise(resolve=>{const d=$('confirm-dialog');$('confirm-title').textContent=title;$('confirm-text').textContent=message;const finish=value=>{d.oncancel=null;$('confirm-ok').onclick=null;$('confirm-cancel').onclick=null;d.close();resolve(value);};$('confirm-ok').onclick=()=>finish(true);$('confirm-cancel').onclick=()=>finish(false);d.oncancel=e=>{e.preventDefault();finish(false);};d.showModal();$('confirm-cancel').focus();});}
@@ -82,7 +82,7 @@ $('schedule-form').onsubmit=async event=>{event.preventDefault();if(!online||pen
 $('export-diagnostics').onclick=async()=>{try{const data=await api('/api/diagnostics');const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=el('a');a.href=url;a.download='Live-Desk-diagnostics.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Diagnostics downloaded. Send this file to investigate the missed start.');}catch(e){toast(e.message);}};
 (async()=>{const fragment=location.hash.slice(1);if(fragment.startsWith('pair=')){history.replaceState(null,'','/');try{await pair(decodeURIComponent(fragment.slice(5)));}catch(e){showLogin();$('pair-error').textContent=e.message;}}else{navigate(fragment||'overview');await refresh();}setInterval(refresh,3000);setInterval(updateClock,1000);})();
 
-$('open-updates').onclick=async()=>{try{await api('/api/updates/open',{});toast('Update controls opened in the Windows launcher.');}catch(e){toast(e.message);}};
+$('open-updates').onclick=async()=>{try{await api('/api/updates/open',{});toast('Update controls opened on this PC.');}catch(e){toast(e.message);}};
 
 const visibleFlows=[['youtube_prepare','YouTube — create schedule'],['facebook_prepare','Facebook — create live event'],['youtube_go','YouTube — Go live'],['facebook_go','Facebook — Go live'],['youtube_end','YouTube — End live'],['facebook_end','Facebook — End live'],['camera_patrol_start','Camera — Start patrol'],['camera_patrol_stop','Camera — Stop patrol'],['camera_preset','Camera — Go to preset']];
 let visibleLoaded=false,visibleDraftSignature='',visibleSteps=[],visibleIdentity=null;
@@ -178,3 +178,54 @@ const remoteSave=el('button','primary','Save remote access');remoteSave.id='remo
 let remoteLoaded=false;
 function renderRemote(){remotePanel.hidden=!state?.local;if(!state)return;remoteStatus.textContent=state.remote?.status||'Not connected';if(!remoteLoaded){remoteURL.value=state.remote?.url||'';remoteEnabled.checked=!!state.remote?.enabled;remoteLoaded=true;}remoteSave.disabled=!online||pending;}
 remoteSave.onclick=async()=>{if(await confirmAction('Save internet access settings?',remoteEnabled.checked?'Workspace owners and operators on this server will be able to check, enable and pause this PC. Use only a relay you trust.':'Remote commands will be disabled; local automation continues.')){await visibleRequest('/api/remote/settings',{url:remoteURL.value.trim(),token:remoteToken.value.trim(),enabled:remoteEnabled.checked,confirmed:true});remoteToken.value='';}};
+
+
+// Desktop-only controls use a bounded queue consumed by the Windows UI thread.
+const lanPanel=el('article','panel');lanPanel.id='pc-lan-tools';
+lanPanel.append(el('h2','','Wi-Fi mobile access'),el('p','','Use this for phones on the same trusted Wi-Fi. Internet access above works separately with your saved relay pairing.'));
+const lanIP=selectField(lanPanel,'PC network address','pc-ip','',[]);lanIP.id='pc-ip';
+const lanButton=el('button','primary','Enable Wi-Fi mobile access');lanButton.id='pc-mobile-toggle';lanPanel.append(lanButton);
+$('view-mobile').prepend(lanPanel);
+function renderPC(){
+ const host=state?.desktop_host,available=!!state?.local&&!!host?.available;
+ $('pc-nav').hidden=!state?.local;lanPanel.hidden=!available;
+ $('pc-action-status').textContent=state?.local&&host?host.message:'PC controls are available in the Windows app on this PC.';
+ $('pc-startup-status').textContent=host?.startup?'Live Desk opens after Windows login.':'Start with Windows is off.';
+ $('pc-local-help').hidden=available;
+ if(!state?.local&&!$('view-pc').hidden)navigate('overview');
+ if(available){
+  const addresses=host.addresses||[],old=lanIP.value;
+  if(JSON.stringify([...lanIP.options].map(o=>o.value))!==JSON.stringify(addresses)){
+   lanIP.replaceChildren(...addresses.map(ip=>{const o=el('option','',ip);o.value=ip;return o;}));
+   if(addresses.includes(old))lanIP.value=old;
+  }
+  lanButton.textContent=state.mobile_enabled?'Disable Wi-Fi mobile access':'Enable Wi-Fi mobile access';
+ }
+ updatePCButtons();
+}
+function updatePCButtons(){
+ const blocked=!online||pending||!state?.local||!state?.desktop_host?.available||state.desktop_host.busy||state.role==='viewer';
+ document.querySelectorAll('[data-pc]').forEach(b=>b.disabled=blocked);
+ lanIP.disabled=blocked||!!state?.mobile_enabled;
+ lanButton.disabled=blocked||(!state?.mobile_enabled&&!lanIP.value);
+}
+async function pcRequest(action,extra={}){
+ if(!online||pending)return;
+ pending=true;updateButtons();
+ try{const result=await api('/api/desktop/action',{action,...extra});$('pc-action-status').textContent=result.message;await refresh();}
+ catch(e){$('pc-action-status').textContent=e.message;toast(e.message);}
+ finally{pending=false;updateButtons();}
+}
+for(const b of document.querySelectorAll('[data-pc]'))b.onclick=async()=>{
+ if(b.dataset.pc==='quit'){
+  if(!await confirmAction('Quit Live Desk on this PC?','Future starts, scheduled endings, camera actions and phone control will stop. Existing live broadcasts continue. Closing the browser alone keeps automation running.'))return;
+  return pcRequest('quit',{confirmed:true});
+ }
+ pcRequest(b.dataset.pc);
+};
+lanButton.onclick=async()=>{
+ if(state.mobile_enabled){
+  if(!await confirmAction('Disable Wi-Fi mobile access?','Phones connected through the local Wi-Fi address will disconnect. Internet remote access and automation continue.'))return;
+  await pcRequest('mobile-off',{confirmed:true});
+ }else await pcRequest('mobile-on',{ip:lanIP.value});
+};

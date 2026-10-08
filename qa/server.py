@@ -6,6 +6,8 @@ import threading
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'app'))
 from dashboard import Controller, DashboardServer, Handler
+from desktop_host import DesktopHost
+import time
 
 class MemoryVault:
     def __init__(self): self.values = {'facebook_page_token': 'qa-only-secret-not-a-real-token'}
@@ -31,6 +33,18 @@ class RemoteHandler(Handler):
 
 with tempfile.TemporaryDirectory(prefix='live-desk-qa-') as directory:
     controller = QAController(directory, ReadOnlyFakeServices, MemoryVault())
+    controller.desktop_host=DesktopHost()
+    controller.desktop_host.update(addresses=['192.168.1.42'])
+    def fake_host():
+        while not controller.closing:
+            def dispatch(action,ip):
+                controller.log('QA PC action: '+action)
+                if action=='mobile-on':controller.mobile_enabled=True;controller.mobile_urls=['http://'+ip+':8866']
+                if action=='mobile-off':controller.mobile_enabled=False;controller.mobile_urls=[]
+                return 'QA PC action finished: '+action
+            controller.desktop_host.drain(dispatch)
+            time.sleep(.05)
+    threading.Thread(target=fake_host,daemon=True).start()
     local = DashboardServer(('127.0.0.1', 0), controller, 'qa-pairing')
     remote = DashboardServer(('127.0.0.1', 0), controller, 'qa-pairing')
     remote.RequestHandlerClass = RemoteHandler

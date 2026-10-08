@@ -32,7 +32,7 @@ class Controller:
         self.lock = threading.RLock(); self.stop = threading.Event()
         from visible import Visible
         self.visible=Visible(self.base,self.stop,self.log)
-        self.maintenance = False; self.open_updates = None
+        self.maintenance = False; self.open_updates = None; self.desktop_host = None
         self.worker = None; self.mode = ''; self.armed = False; self.closing = False
         self.logs = deque(maxlen=160); self.message = 'Ready. Check connections before enabling daily starts.'
         self.checked = None; self.error = False
@@ -90,6 +90,7 @@ class Controller:
                     'slots':slots, 'next':{k:next_run[k] for k in ('name','due','at')},
                     'logs':list(self.logs), 'local':local, 'mobile_enabled':self.mobile_enabled,
                     'mobile_urls':self.mobile_urls if local else [],
+                    'desktop_host':self.desktop_host.snapshot() if local and self.desktop_host else None,
                     'settings':{k:self.cfg.get(k,v) for k,v in DEFAULTS.items() if k!='armed'} if local else None}
 
     def pause(self):
@@ -512,6 +513,13 @@ class Handler(BaseHTTPRequestHandler):
                 for server in c.servers:
                     with server.auth_lock:server.pair_code=code;server.pair_expires=time.monotonic()+1800;server.pair_role=role
                 return self.reply(200,{'code':code,'role':role,'minutes':30})
+            if path=='/api/desktop/action':
+                if not self.local():return self.reply(403,{'error':'Use PC controls on the Windows PC.'})
+                with c.lock:
+                    if c.closing or c.maintenance:raise ValueError('Wait for shutdown or the update to finish.')
+                    if not c.desktop_host:raise ValueError('PC controls require the Windows app.')
+                    c.desktop_host.submit(data)
+                return self.reply(202,{'ok':True,'message':'PC action queued. Watch the PC controls status.'})
             if path=='/api/updates/open':
                 if not self.local():return self.reply(403,{'error':'Manage app updates on the Windows PC.'})
                 if not c.open_updates:raise ValueError('Open the Windows launcher to manage updates.')

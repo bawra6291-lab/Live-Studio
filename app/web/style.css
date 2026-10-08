@@ -36,3 +36,13 @@
 .visible-workflow-field{grid-column:1/-1}
 @media(max-width:800px){.visible-setup-grid{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:540px){#visible-local .settings-grid{grid-template-columns:minmax(0,1fr)}.visible-setup-card{padding:17px}.visible-save-row button{width:100%}.visible-setup-grid{gap:14px}}
+
+/* Desktop host controls share the main dashboard; no automatic launcher panel. */
+.pc-control-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:24px 0}
+.pc-control-card{padding:22px;border:1px solid var(--line);border-radius:12px;background:#fcfdf8;min-width:0}
+.pc-control-card h3{margin-top:0}.pc-control-card p{font-size:13px;line-height:1.65;color:#58705e}
+.pc-control-card .inline{flex-wrap:wrap;gap:10px;margin-top:20px}
+#pc-lan-tools>label{display:block;max-width:420px;margin:20px 0}
+#pc-lan-tools select{width:100%;padding:12px;border:1px solid var(--line);border-radius:8px;margin-top:8px}
+#pc-action-status{overflow-wrap:anywhere}
+@media(max-width:950px){.pc-control-grid{grid-template-columns:1fr}.pc-control-card{padding:18px}}
