@@ -24,7 +24,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import java.io.ByteArrayInputStream;
 
-/** Native LAN companion. All operator permissions and writes remain on the PC. */
+/** Native LAN/HTTPS companion. All operator permissions and writes remain on the PC. */
 public final class MainActivity extends Activity {
     private static final int GREEN = Color.rgb(28, 61, 53);
     private static final int PAPER = Color.rgb(248, 247, 241);
@@ -50,7 +50,7 @@ public final class MainActivity extends Activity {
         }
         prefs = getSharedPreferences("connection", MODE_PRIVATE);
         String saved = prefs.getString("origin", "");
-        try { origin = LanAddress.normalize(saved); showDashboard(); }
+        try { origin = ConnectionAddress.normalize(saved); showDashboard(); }
         catch (IllegalArgumentException exception) { origin = null; showSetup(""); }
     }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
@@ -98,8 +98,8 @@ public final class MainActivity extends Activity {
         TextView title = text("Your live desk.\nOn your phone.", 30, GREEN);
         title.setTypeface(null, android.graphics.Typeface.BOLD); card.addView(title);
         card.addView(text("Control your PC's automation, timings and activity.", 16, GREEN));
-        card.addView(text("1. Keep Live Desk running on your PC.\n2. Click Enable mobile access in its launcher.\n3. Connect this phone to the same trusted Wi-Fi.", 16, GREEN));
-        card.addView(text("PC mobile address", 14, GREEN));
+        card.addView(text("1. Keep Live Desk running on your PC.\n2. Click Enable mobile access in its launcher.\n3. For Wi-Fi, enter the PC address. For mobile internet, enter your HTTPS internet-control address.", 16, GREEN));
+        card.addView(text("PC or internet address", 14, GREEN));
         EditText address = new EditText(this);
         address.setSingleLine(true);
         address.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_URI);
@@ -109,16 +109,17 @@ public final class MainActivity extends Activity {
         TextView message = text(error, 14, Color.rgb(151, 48, 31)); card.addView(message);
         Button connect = button("Connect to PC", view -> {
             try {
-                origin = LanAddress.normalize(address.getText().toString());
+                origin = ConnectionAddress.normalize(address.getText().toString());
                 prefs.edit().putString("origin", origin).apply();
                 ((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(address.getWindowToken(), 0);
                 showDashboard();
             } catch (IllegalArgumentException exception) { message.setText(exception.getMessage()); }
         });
         connect.setBackgroundTintList(android.content.res.ColorStateList.valueOf(ORANGE)); card.addView(connect);
-        card.addView(text("Use the pairing code shown on the PC when asked. Your YouTube, Facebook and camera setup stays on that PC.", 14, GREEN));
-        card.addView(text("This app connects over your private Wi-Fi. It cannot turn on the PC or reach it from outside that network. Closing this phone app does not pause the PC schedule.", 14, GREEN));
-        card.addView(text("Android pilot 0.1.0", 12, GREEN));
+        card.addView(text("Pair once: use the PC pairing code on Wi-Fi or your workspace access code for internet. Internet pairing is remembered across restarts and updates until you sign out or access is revoked. Your YouTube, Facebook and camera setup stays on that PC.", 14, GREEN));
+        card.addView(text("Mobile data works with an online HTTPS control server. Keep the PC, its internet and Live Desk running with Internet remote access enabled. Closing this phone app does not pause the PC schedule.", 14, GREEN));
+        card.addView(button("Check for updates", view -> new AppUpdater(this).check()));
+        card.addView(text("Android 0.2.0", 12, GREEN));
     }
     private void showDashboard() {
         resetRoot(); loaded = false; failed = false;
@@ -128,6 +129,7 @@ public final class MainActivity extends Activity {
         brand.setTypeface(null, android.graphics.Typeface.BOLD);
         bar.addView(brand, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         bar.addView(button("Refresh", view -> reload()));
+        bar.addView(button("Updates", view -> new AppUpdater(this).check()));
         bar.addView(button("PC", view -> new AlertDialog.Builder(this).setTitle("Change PC?")
             .setMessage("This phone will forget its pairing. The PC's current live and automation will continue.")
             .setNegativeButton("Cancel", null).setPositiveButton("Change PC", (dialog, which) -> {
@@ -154,22 +156,22 @@ public final class MainActivity extends Activity {
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, false);
         web.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                if (LanAddress.sameOrigin(request.getUrl().toString(), origin)) return false;
+                if (ConnectionAddress.sameOrigin(request.getUrl().toString(), origin)) return false;
                 status.setText("Open platform pages from the PC. This app controls only your paired Live Desk.");
                 return true;
             }
             @Override public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                return !LanAddress.sameOrigin(url, origin);
+                return !ConnectionAddress.sameOrigin(url, origin);
             }
             @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                if (LanAddress.sameOrigin(request.getUrl().toString(), origin)) return null;
+                if (ConnectionAddress.sameOrigin(request.getUrl().toString(), origin)) return null;
                 return new WebResourceResponse("text/plain", "UTF-8", 403, "Blocked", null, new ByteArrayInputStream(new byte[0]));
             }
             @Override public void onPageFinished(WebView view, String url) {
-                if (!failed && LanAddress.sameOrigin(url, origin)) {
+                if (!failed && ConnectionAddress.sameOrigin(url, origin)) {
                     loaded = true;
                     if (connectionTimeout != null) handler.removeCallbacks(connectionTimeout);
-                    status.setText("PC address: " + origin + " · status is shown below");
+                    status.setText((origin.startsWith("https://") ? "Internet controls: " : "PC address: ") + origin + " · status below");
                     CookieManager.getInstance().flush();
                 }
             }
@@ -186,7 +188,7 @@ public final class MainActivity extends Activity {
     private void connectionFailed() {
         failed = true;
         if (connectionTimeout != null) handler.removeCallbacks(connectionTimeout);
-        status.setText("Cannot reach PC. Keep Live Desk and Mobile access on, check same Wi-Fi and the address. Tap Refresh to retry or PC to change it.");
+        status.setText("Cannot reach PC. Keep Live Desk and PC internet on. For Wi-Fi check Mobile access; for HTTPS check Internet remote access. Tap Refresh to retry or PC to change it.");
     }
     private void load() {
         failed = false; loaded = false;

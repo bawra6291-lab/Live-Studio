@@ -2,7 +2,7 @@ name: Android companion validation
 on:
   pull_request:
     branches: [main]
-    paths: ['mobile/**', 'app/**', '.github/workflows/android.yml']
+    paths: ['mobile/**', 'app/**', 'remote/**', '.github/workflows/android.yml']
 permissions:
   contents: read
 concurrency:
@@ -32,6 +32,12 @@ jobs:
         run: bash mobile/android/test.sh
       - name: Build and verify signed pilot APK
         run: bash mobile/android/build.sh
+      - name: Build next-version upgrade fixture with the same private CI key
+        run: |
+          LIVE_DESK_BUILD_VERSION_NAME=0.2.1-qa LIVE_DESK_BUILD_VERSION_CODE=3 LIVE_DESK_KEYSTORE="$PWD/mobile/android/build/pilot.keystore" LIVE_DESK_STORE_PASS=android LIVE_DESK_KEY_PASS=android bash mobile/android/build.sh build-next
+          cp mobile/android/build-next/Live-Desk-Mobile-0.2.1-qa.apk mobile/android/build/
+      - name: Remote session and command tests
+        run: python -m unittest discover -s qa -p 'test_remote*.py'
       - name: Enable emulator acceleration
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -52,7 +58,9 @@ jobs:
         with:
           name: live-desk-android-pilot
           path: |
-            mobile/android/build/Live-Desk-Mobile-0.1.0.apk
+            mobile/android/build/Live-Desk-Mobile-0.2.0.apk
+            mobile/android/build/aligned.apk
+            mobile/android/build/apksigner.jar
             mobile/android/build/SHA256SUMS
             mobile/android/build/signature.txt
             mobile/android/build/manifest.txt

@@ -4,6 +4,8 @@ from contextlib import contextmanager
 
 def digest(value):return hashlib.sha256(value.encode()).hexdigest()
 
+SESSION_AGE=365*24*60*60
+
 class Store:
     def __init__(self,path):
         self.path=str(path)
@@ -15,6 +17,13 @@ class Store:
         CREATE TABLE IF NOT EXISTS devices(id TEXT PRIMARY KEY,workspace TEXT NOT NULL,name TEXT NOT NULL,secret TEXT UNIQUE NOT NULL,enabled INTEGER NOT NULL DEFAULT 1,seen REAL NOT NULL DEFAULT 0,boot TEXT NOT NULL DEFAULT '',snapshot TEXT NOT NULL DEFAULT '{}');
         CREATE TABLE IF NOT EXISTS commands(id TEXT PRIMARY KEY,device TEXT NOT NULL,workspace TEXT NOT NULL,actor TEXT NOT NULL,nonce TEXT NOT NULL,action TEXT NOT NULL,args TEXT NOT NULL,boot TEXT NOT NULL,created REAL NOT NULL,expires REAL NOT NULL,status TEXT NOT NULL,result TEXT NOT NULL DEFAULT '',UNIQUE(device,nonce));
         ''')
+        with self.db() as db:
+            columns={row['name'] for row in db.execute('PRAGMA table_info(sessions)')}
+            for name,kind in [('id','TEXT'),('created','REAL'),('seen','REAL')]:
+                if name not in columns:db.execute(f'ALTER TABLE sessions ADD COLUMN {name} {kind}')
+            command_columns={row['name'] for row in db.execute('PRAGMA table_info(commands)')}
+            if 'session' not in command_columns:db.execute("ALTER TABLE commands ADD COLUMN session TEXT NOT NULL DEFAULT ''")
+            db.execute("UPDATE sessions SET id=lower(hex(randomblob(16))) WHERE id IS NULL")
     @contextmanager
     def db(self):
         db=sqlite3.connect(self.path,timeout=10);db.row_factory=sqlite3.Row
@@ -22,6 +31,21 @@ class Store:
             db.execute('PRAGMA foreign_keys=ON');yield db;db.commit()
         except Exception:db.rollback();raise
         finally:db.close()
+    def mark_offline(self):
+        with self.db() as db:db.execute('UPDATE devices SET seen=0')
+    def bootstrap(self,seed):
+        """Provision only hashed grants from the deployer's private seed, atomically."""
+        for field in ('workspace','owner','agent'):
+            if not re.fullmatch(r'[a-f0-9]{32}',str(seed.get(field,''))):raise ValueError('Invalid bootstrap ID')
+        for field in ('owner_hash','agent_hash'):
+            if not re.fullmatch(r'[a-f0-9]{64}',str(seed.get(field,''))):raise ValueError('Invalid bootstrap grant')
+        with self.db() as db:
+            db.execute('BEGIN IMMEDIATE')
+            # Existing databases are authoritative: this never resets/re-enables grants.
+            if db.execute('SELECT 1 FROM workspaces WHERE id=?',(seed['workspace'],)).fetchone():return
+            db.execute('INSERT INTO workspaces VALUES(?,?)',(seed['workspace'],str(seed.get('name','Live Desk'))[:80]))
+            db.execute('INSERT INTO principals(id,workspace,role,secret) VALUES(?,?,?,?)',(seed['owner'],seed['workspace'],'owner',seed['owner_hash']))
+            db.execute('INSERT INTO devices(id,workspace,name,secret) VALUES(?,?,?,?)',(seed['agent'],seed['workspace'],'Livestream PC',seed['agent_hash']))
     def create_workspace(self,name):
         if not isinstance(name,str) or not 1<=len(name)<=80:raise ValueError('Workspace name must be 1–80 characters.')
         ident=secrets.token_hex(16)
@@ -41,13 +65,14 @@ class Store:
             if not principal:raise PermissionError('Invalid or revoked access code.')
             session=secrets.token_urlsafe(32);csrf=secrets.token_urlsafe(24)
             db.execute('DELETE FROM sessions WHERE expires<?',(time.time(),))
-            db.execute('INSERT INTO sessions VALUES(?,?,?,?)',(digest(session),principal['id'],csrf,time.time()+43200))
+            db.execute('INSERT INTO sessions(secret,principal,csrf,expires,id,created,seen) VALUES(?,?,?,?,?,?,?)',(digest(session),principal['id'],csrf,time.time()+SESSION_AGE,secrets.token_hex(16),time.time(),time.time()))
             return session,csrf
     def authenticate(self,token,agent=False):
         with self.db() as db:
             if agent:row=db.execute('SELECT * FROM devices WHERE secret=? AND enabled=1',(digest(token),)).fetchone()
-            else:row=db.execute('SELECT p.*,s.csrf FROM sessions s JOIN principals p ON p.id=s.principal WHERE s.secret=? AND s.expires>? AND p.enabled=1',(digest(token),time.time())).fetchone()
+            else:row=db.execute('SELECT p.*,s.csrf,s.id AS session_id FROM sessions s JOIN principals p ON p.id=s.principal WHERE s.secret=? AND s.expires>? AND p.enabled=1',(digest(token),time.time())).fetchone()
             if not row:raise PermissionError('Sign in again; authorization expired or was revoked.')
+            if not agent:db.execute('UPDATE sessions SET expires=?,seen=? WHERE secret=?',(time.time()+SESSION_AGE,time.time(),digest(token)))
             return dict(row)
     def logout(self,token):
         with self.db() as db:db.execute('DELETE FROM sessions WHERE secret=?',(digest(token),))
@@ -59,7 +84,8 @@ class Store:
             devices=[{'id':row['id'],'name':row['name'],'online':now-row['seen']<=15,'seen':row['seen'],'boot':row['boot'],'snapshot':json.loads(row['snapshot'])} for row in db.execute('SELECT * FROM devices WHERE workspace=? AND enabled=1',(principal['workspace'],))]
             commands=[{k:row[k] for k in ('id','device','action','created','status','result')} for row in db.execute('SELECT * FROM commands WHERE workspace=? ORDER BY created DESC LIMIT 50',(principal['workspace'],))]
             members=[{k:row[k] for k in ('id','role','enabled')} for row in db.execute('SELECT * FROM principals WHERE workspace=?',(principal['workspace'],))] if principal['role']=='owner' else []
-        return {'role':principal['role'],'csrf':principal['csrf'],'devices':devices,'commands':commands,'members':members}
+            phones=[{'id':r['id'],'role':r['role'],'seen':r['seen'],'current':r['id']==principal.get('session_id')} for r in db.execute('SELECT s.id,s.seen,p.role FROM sessions s JOIN principals p ON p.id=s.principal WHERE p.workspace=? AND p.enabled=1 AND s.expires>?',(principal['workspace'],now))] if principal['role']=='owner' else []
+        return {'phones':phones,'role':principal['role'],'csrf':principal['csrf'],'devices':devices,'commands':commands,'members':members}
     def enqueue(self,principal,data):
         if principal['role'] not in ('owner','operator'):raise PermissionError('View-only access.')
         action=data.get('action');args=data.get('args',{});nonce=data.get('nonce')
@@ -78,7 +104,7 @@ class Store:
             if now-device['seen']>15 or data.get('boot')!=device['boot']:raise ValueError('PC offline or restarted. Refresh before issuing a command.')
             if db.execute("SELECT 1 FROM commands WHERE device=? AND status='queued' AND expires>?",(device['id'],now)).fetchone():raise ValueError('Wait for the pending command.')
             ident=secrets.token_hex(16)
-            db.execute('INSERT INTO commands VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',(ident,device['id'],principal['workspace'],principal['id'],nonce,action,json.dumps(args),device['boot'],now,now+45,'queued',''))
+            db.execute('INSERT INTO commands(id,device,workspace,actor,nonce,action,args,boot,created,expires,status,result,session) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',(ident,device['id'],principal['workspace'],principal['id'],nonce,action,json.dumps(args),device['boot'],now,now+45,'queued','',principal.get('session_id','')))
             return ident
     def poll(self,agent,data):
         boot=data.get('boot');snapshot=data.get('snapshot');ack=data.get('ack')
@@ -102,6 +128,11 @@ class Store:
             return {k:json.loads(command[k]) if k=='args' else command[k] for k in ('id','action','args','expires','boot')}
     def revoke(self,principal,ident,kind):
         if principal['role']!='owner':raise PermissionError('Owner access required.')
+        if kind=='phone':
+            with self.db() as db:
+                db.execute('DELETE FROM sessions WHERE id=? AND principal IN (SELECT id FROM principals WHERE workspace=?)',(ident,principal['workspace']))
+                db.execute("UPDATE commands SET status='revoked' WHERE session=? AND workspace=? AND status='queued'",(ident,principal['workspace']))
+            return
         if kind not in ('principal','device'):raise ValueError('Unknown revocation type.')
         if kind=='principal' and ident==principal['id']:raise ValueError('Owner cannot revoke their own access here.')
         table='principals' if kind=='principal' else 'devices'

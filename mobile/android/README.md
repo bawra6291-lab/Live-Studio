@@ -60,3 +60,16 @@ The default pilot key is generated locally, kept in the ignored build directory
 and excluded from CI uploads. The SDK's `apksigner verify` report and APK checksum
 are emitted next to the APK. The workflow additionally runs an installed-app smoke
 test. Its fixture refuses real services and other operations.
+
+
+## 0.2.0 internet controls and in-app updates
+
+Enter the trusted HTTPS relay origin to use mobile data. Pair with the workspace access code once. The PC must have its Internet remote access origin and separate agent token saved locally, and remain online. The relay sends only allowed operator commands through the PC's outbound HTTPS connection; no port forwarding or local-platform credentials on the phone. The internet screen provides connection checks, Enable/Pause, run status/history and owner device revocation; detailed schedule editing stays on the local/LAN dashboard in this release.
+
+Relay sessions persist in its mounted SQLite volume and renew on use; they expire after 365 days without use. Logout, revocation, app-data deletion/uninstall, lost server data or inactive expiry require re-pairing. LAN pairing still follows the existing PC LAN session policy. This is not a PC wake or remote desktop service.
+
+Updates → Check for updates downloads from the fixed project HTTPS feed, checks size and SHA-256, package ID, strictly newer versionCode and the installed APK's exact signing certificate. Android asks for Allow from this source once, then for install approval. The installer performs an in-place update, keeping private preferences and WebView cookies. A verified download can be resumed from Updates after granting permission. No streamed/live operations occur during app update.
+
+Release 0.2.0 uses a persistent maintainer signing key stored outside the public repository and CI artifacts. Future public builds must be re-signed using that key before the feed is advanced. CI keys and the 0.2.1-qa fixture are disposable test keys. The old 0.1.0 APK used an unrecoverable temporary CI key: it requires one initial replacement; its pairing cannot survive uninstall. Do not advertise compatibility with that signer.
+
+CI tests verify LAN pairing/controls/reconnect, same-signer in-place upgrade/session preservation, HTTPS origin boundaries, relay persistent sessions/migration, tenant isolation, single phone revocation, CSRF, offline/boot/expiry guards and no command replay. Real cellular/PC/TLS deployment is not claimed by these tests.

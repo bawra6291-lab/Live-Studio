@@ -69,7 +69,7 @@ def passed(label):
     print('PASS ' + label, flush=True)
 
 try:
-    adb('install','-r',str(OUT / 'Live-Desk-Mobile-0.1.0.apk'))
+    adb('install','-r',str(OUT / 'Live-Desk-Mobile-0.2.0.apk'))
     adb('shell','am','start','-W','-n','org.livedesk.mobile/.MainActivity')
     find('Connect to PC'); shot('android-connect.png')
     type_into(find('PC mobile address', klass='android.widget.EditText'), 'http://10.0.2.2:8866')
@@ -113,6 +113,13 @@ try:
     # Reconnect automatically through the dashboard's polling.
     find('PC connected',contains=True)
     passed('Connection loss disables controls and automatically recovers')
+    # A replacement APK with the same certificate must retain private app data.
+    adb('install','-r',str(OUT / 'Live-Desk-Mobile-0.2.1-qa.apk'))
+    adb('shell','am','start','-W','-n','org.livedesk.mobile/.MainActivity')
+    find('Live overview',contains=True)
+    assert state()['sessions']==1
+    assert_state(False,['arm','pause'])
+    passed('In-place same-signer version update preserves address, pairing and PC state')
     click('PC')
     click('android:id/button1') # native positive button is uppercase on Material theme
     find('Connect to PC')
