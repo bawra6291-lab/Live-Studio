@@ -16,7 +16,10 @@ class Launcher:
         root.configure(bg='#f5f4ef')
         self.controller=Controller()
         self.host=DesktopHost();self.controller.desktop_host=self.host
-        self.controller.remote.start()
+        self.controller.remote.start();self.controller.monitor.start()
+        from queue import SimpleQueue
+        from tray import Tray
+        self.tray_events=SimpleQueue();self.tray=Tray(self.tray_events.put);self.tray.start()
         self.controller.open_updates=lambda:self.host.submit({'action':'updates'})
         self.server=DashboardServer(('127.0.0.1',8865),self.controller)
         self.controller.desktop_url='http://127.0.0.1:8865'
@@ -103,7 +106,7 @@ class Launcher:
         if action=='updates':
             self.open_updates();return 'Update controls opened on this PC.'
         if action=='quit':
-            if self.updates_dialog and self.updates_dialog.busy:raise ValueError('Update in progress.')
+            if self.controller.updates.snapshot()['busy'] or (self.updates_dialog and self.updates_dialog.busy):raise ValueError('Update in progress.')
             self.host.update(available=False)
             # Let the HTTP response and final status leave before closing the server.
             self.root.after(500,lambda:self.close(confirmed=True))
@@ -184,16 +187,26 @@ class Launcher:
         self.code.set(self.server.pair_code)
         if self.closing:return
         with self.controller.lock:self.status.set(self.controller.message)
-        self.host.update(addresses=lan_addresses(),startup=self.startup_path().exists())
+        while not self.tray_events.empty():
+            event=self.tray_events.get()
+            if event=='dashboard':self.open_dashboard()
+            elif event=='pause' and not self.controller.maintenance:self.controller.pause()
+            elif event=='quit':self.close()
+        if self.controller.updates.exit_ready.is_set():
+            self.closing=True;self.tray.close();self.controller.shutdown();self.wait_close();return
+        self.tray.update(self.controller.armed)
+        self.host.update(tray_available=self.tray.available,addresses=lan_addresses(),startup=self.startup_path().exists())
         self.root.after(1000,self.update_status)
     def close(self,confirmed=False):
-        if self.updates_dialog and self.updates_dialog.busy:
+        if self.controller.updates.snapshot()['busy'] or (self.updates_dialog and self.updates_dialog.busy):
             messagebox.showinfo('Update in progress','Wait for the update operation to finish.');return
         if not confirmed and not messagebox.askyesno('Close Live Desk?','Future starts, scheduled endings, camera actions and phone control will stop. Existing broadcasts continue. Close the app?'):return
-        self.closing=True;self.controller.shutdown();self.status.set('Waiting for the current operation to finish…')
+        self.closing=True;self.tray.close();self.controller.shutdown();self.status.set('Waiting for the current operation to finish…')
         self.wait_close()
     def wait_close(self):
         if self.controller.worker and self.controller.worker.is_alive():self.root.after(300,self.wait_close);return
+        worker=self.controller.updates.worker
+        if worker and worker.is_alive():self.root.after(300,self.wait_close);return
         for server in [self.mobile,self.server]:
             if server:server.shutdown();server.server_close()
         import ctypes

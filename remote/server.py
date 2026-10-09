@@ -27,7 +27,7 @@ class Handler(BaseHTTPRequestHandler):
         if path=='/health':return self.reply(200,{'ok':True,'configured':bool(self.server.origin)})
         if path in ('/','/remote.js','/remote.css'):
             name={'/':'index.html','/remote.js':'remote.js','/remote.css':'remote.css'}[path];raw=(Path(__file__).parent/'web'/name).read_bytes()
-            self.send_response(200);self.send_header('Content-Type',{'/':'text/html; charset=utf-8','/remote.js':'text/javascript; charset=utf-8','/remote.css':'text/css'}[path]);self.send_header('Content-Length',str(len(raw)));self.send_header('Cache-Control','no-store');self.send_header('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");self.send_header('X-Content-Type-Options','nosniff');self.end_headers();self.wfile.write(raw);return
+            self.send_response(200);self.send_header('Content-Type',{'/':'text/html; charset=utf-8','/remote.js':'text/javascript; charset=utf-8','/remote.css':'text/css'}[path]);self.send_header('Content-Length',str(len(raw)));self.send_header('Cache-Control','no-store');self.send_header('Content-Security-Policy',"default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");self.send_header('X-Content-Type-Options','nosniff');self.end_headers();self.wfile.write(raw);return
         if path.startswith('/api/') and not self.server.origin:return self.reply(503,{'error':'HTTPS server setup is not complete'})
         if path!='/api/state':return self.reply(404,{'error':'Not found'})
         try:

@@ -316,6 +316,11 @@ class YouTube:
         return original,metadata
     def prepare(self,slot,due,obs_key,persist):
         channel=self.owned_channel();self.no_other_live()
+        from content import ContentStore
+        from config import BASE
+        assets=ContentStore(self.cfg.get('_data_base',BASE))
+        chosen=slot.get('thumbnail_days',{}).get(str(due.day),'')
+        local_thumb=assets.get(chosen) if chosen else None
         previous=[] if slot.get('title_template') else self.list('liveBroadcasts',part='id,snippet,status,contentDetails',broadcastStatus='completed',broadcastType='all',maxResults=50,max_pages=4,allow_partial=True)
         previous=[x for x in previous if slot['name'].casefold() in x['snippet']['title'].casefold() and x['snippet']['channelId']==channel['id']]
         previous.sort(key=lambda x:x['snippet'].get('actualStartTime',x['snippet'].get('publishedAt','')),reverse=True)
@@ -332,6 +337,9 @@ class YouTube:
         if len(matches)>1:raise SetupError('Duplicate YouTube schedules already exist for this title. Resolve them manually.')
         if matches:
             event=matches[0];details=event['contentDetails']
+            if slot.get('description_mode')=='custom' and event['snippet'].get('description','')!=slot['description']:
+                persist(yt_id=event['id'],title=title,stage='youtube_metadata')
+                raise SetupError('Existing YouTube draft description differs from the saved plan. Correct the retained draft in Studio; no duplicate was created.')
             scheduled=datetime.fromisoformat(event['snippet']['scheduledStartTime'].replace('Z','+00:00'))
             if abs((scheduled-due).total_seconds())>60:raise SetupError('Existing YouTube schedule has a different start time; review it in Studio.')
             if details.get('enableAutoStop') or details.get('enableAutoStart'):
@@ -340,13 +348,17 @@ class YouTube:
                 raise SetupError('Existing schedule requires testing mode. Disable its monitor stream or create the schedule with this app.')
             if event['status']['privacyStatus']!='public':raise SetupError('Existing schedule is not public; check Studio.')
             if details.get('boundStreamId') not in (None,'',stream['id']):raise SetupError('Existing YouTube schedule uses another stream key.')
+            if local_thumb:
+                persist(yt_id=event['id'],title=title,stage='youtube_thumbnail')
+                self.api('POST','thumbnails/set',{'videoId':event['id'],'uploadType':'media'},data=local_thumb[0],content_type=local_thumb[1])
         else:
             original,metadata=self.video_template(source['id'],slot['reference'],title,channel['id'])
+            if slot.get('description_mode')=='custom':metadata['description']=slot['description']
             details={k:v for k,v in source.get('contentDetails',{}).items() if k in ('enableDvr','recordFromStart','enableEmbed','enableClosedCaptions','closedCaptionsType','latencyPreference','projection')}
             details.update(enableAutoStart=False,enableAutoStop=False,monitorStream={'enableMonitorStream':False,'broadcastStreamDelayMs':0})
             status={'privacyStatus':'public','selfDeclaredMadeForKids':source['status'].get('selfDeclaredMadeForKids',source['status'].get('madeForKids',False))}
             event=self.api('POST','liveBroadcasts',{'part':'snippet,status,contentDetails'},body={
-                'snippet':{'title':title,'description':source['snippet'].get('description',''),'scheduledStartTime':due.isoformat()},
+                'snippet':{'title':title,'description':slot['description'] if slot.get('description_mode')=='custom' else source['snippet'].get('description',''),'scheduledStartTime':due.isoformat()},
                 'status':status,'contentDetails':details})
             persist(yt_id=event['id'],title=title,yt_stream_id=stream['id'],stage='youtube_bind')
             event=self.bind_stream(event,stream)
@@ -356,18 +368,23 @@ class YouTube:
                 self.api('PUT','videos',{'part':'snippet'},body={'id':event['id'],'snippet':metadata})
             except SetupError as exc:
                 raise SetupError(str(exc)+' Broadcast retained for review in YouTube Studio; title and categoryId were included. No automatic retry was sent.') from None
-            thumbs=original.get('thumbnails',{})
-            thumb=next((thumbs[k]['url'] for k in ('maxres','standard','high','medium','default') if k in thumbs),None)
-            if not thumb:raise SetupError('Previous thumbnail could not be found. New broadcast retained for manual review.')
-            # Download without OAuth headers, and only from YouTube image hosts.
-            import requests
-            host=urlsplit(thumb).hostname or ''
-            if not (host.endswith('.ytimg.com') or host=='ytimg.com'):raise SetupError('Unexpected YouTube thumbnail host.')
-            try:
-                r=requests.get(thumb,timeout=25);r.raise_for_status()
-            except Exception:raise SetupError('Previous thumbnail download failed.') from None
-            if len(r.content)>2*1024*1024:raise SetupError('Previous thumbnail exceeds YouTube upload limit.')
-            self.api('POST','thumbnails/set',{'videoId':event['id'],'uploadType':'media'},data=r.content,content_type=r.headers.get('Content-Type','image/jpeg'))
+            if local_thumb:
+                image_data,image_kind=local_thumb
+            else:
+                thumbs=original.get('thumbnails',{})
+                thumb=next((thumbs[k]['url'] for k in ('maxres','standard','high','medium','default') if k in thumbs),None)
+                if not thumb:raise SetupError('Previous thumbnail could not be found. New broadcast retained for manual review.')
+                # Download without OAuth headers, and only from YouTube image hosts.
+                import requests
+                host=urlsplit(thumb).hostname or ''
+                if not (host.endswith('.ytimg.com') or host=='ytimg.com'):raise SetupError('Unexpected YouTube thumbnail host.')
+                try:
+                    r=requests.get(thumb,timeout=25);r.raise_for_status()
+                except Exception:raise SetupError('Previous thumbnail download failed.') from None
+                if len(r.content)>2*1024*1024:raise SetupError('Previous thumbnail exceeds YouTube upload limit.')
+                image_data,image_kind=r.content,r.headers.get('Content-Type','image/jpeg')
+            persist(stage='youtube_thumbnail')
+            self.api('POST','thumbnails/set',{'videoId':event['id'],'uploadType':'media'},data=image_data,content_type=image_kind)
         persist(yt_id=event['id'],title=title)
         self.bind_stream(event,stream)
         return {'yt_id':event['id'],'yt_stream_id':stream['id'],'title':title}
@@ -417,7 +434,7 @@ class Facebook:
     def no_other_live(self,allowed=None):
         if any(x.get('status') in ('LIVE','LIVE_NOW') and x['id']!=allowed for x in self.recent()):
             raise SetupError('Another Facebook live is active. End it manually first.')
-    def prepare(self,title,persist):
+    def prepare(self,title,persist,description=''):
         self.identity();self.no_other_live()
         matches=[x for x in self.recent() if x.get('title')==title and x.get('status') in ('UNPUBLISHED','SCHEDULED_UNPUBLISHED','SCHEDULED_LIVE')]
         if len(matches)>1:raise SetupError('Multiple matching Facebook drafts exist. Resolve them in Live Producer.')
@@ -425,9 +442,9 @@ class Facebook:
             event=matches[0]
             if event['status']!='UNPUBLISHED':raise SetupError('An existing Facebook event is scheduled. Use an unpublished draft for this app; it will not duplicate it.')
         else:
-            event=self.api('POST',self.PAGE+'/live_videos',{'title':title,'description':'','status':'UNPUBLISHED','stream_type':'REGULAR'})
+            event=self.api('POST',self.PAGE+'/live_videos',{'title':title,'description':description,'status':'UNPUBLISHED','stream_type':'REGULAR'})
         persist(fb_id=event['id'])
-        self.api('POST',event['id'],{'title':title,'is_manual_mode':'true'})
+        self.api('POST',event['id'],{'title':title,'is_manual_mode':'true',**({'description':description} if description else {})})
         detail=self.api('GET',event['id'],{'fields':'id,status,secure_stream_url'})
         if not detail.get('secure_stream_url'):raise SetupError('Facebook did not return an ingest URL for this draft.')
         return event['id'],detail['secure_stream_url']
@@ -504,7 +521,9 @@ class Services:
         self.fb.identity();self.fb.no_other_live()
         for action in slot.get('camera_actions',[]):self.cam.check_action(action)
         record=self.yt.prepare(slot,due,self.obs.key(),persist)
-        fb_id,url=self.fb.prepare(record['title'],persist)
+        persist(stage='facebook_prepare')
+        fb_id,url=self.fb.prepare(record['title'],persist,**({'description':slot['description']} if slot.get('description_mode')=='custom' else {}))
+        persist(stage='obs_configure')
         self.obs.prepare_fb_output(url)
         record['fb_id']=fb_id
         return record
@@ -534,8 +553,11 @@ class Services:
                 break
             time.sleep(2)
         else:raise SetupError('YouTube ingest and FB output sending were not both confirmed within 90 seconds.')
+        self.persist_run(stage='youtube_publish')
         self.yt.go(record['yt_id'])
+        self.persist_run(stage='facebook_publish')
         self.fb.go(record['fb_id'])
+        self.persist_run(stage='confirming_live')
         deadline=time.monotonic()+90
         while time.monotonic()<deadline:
             if self.both_live(record):return

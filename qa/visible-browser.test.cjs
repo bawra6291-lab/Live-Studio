@@ -8,7 +8,8 @@ const {spawn}=require('node:child_process');
 let browser,server,profile;
 (async()=>{
  profile=await fs.mkdtemp(path.join(os.tmpdir(),'live-visible-qa-'));
- server=http.createServer((req,res)=>{res.writeHead(200,{'Content-Type':'text/html'});res.end(`<!doctype html><html><body><button id="account">Test Temple</button><label>Title<input id="title"></label><input id="password" type="password"><button id="save">Save fixture</button><p id="result">Waiting</p><studio-fixture></studio-fixture><script>
+ server=http.createServer((req,res)=>{res.writeHead(200,{'Content-Type':'text/html'});res.end(`<!doctype html><html><body><button id="account">Test Temple</button><label>Title<input id="title"></label><input id="password" type="password"><input id="thumbnail-file" type="file" hidden><p id="upload-result">Waiting for thumbnail</p><button id="save">Save fixture</button><p id="result">Waiting</p><studio-fixture></studio-fixture><script>
+ document.getElementById('thumbnail-file').onchange=e=>{document.getElementById('upload-result').textContent=e.target.files.length?'Thumbnail selected':'Empty';};
  document.getElementById('save').onclick=e=>{window.trustedClick=e.isTrusted;window.savedTitle=document.getElementById('title').value;document.getElementById('result').textContent='Saved via real click';};
  const root=document.querySelector('studio-fixture').attachShadow({mode:'open'});
  root.innerHTML='<span id="channel-name">Test Temple</span><label>Event title<input id="shadow-title"></label><div id="editable-title" contenteditable="true" aria-label="Editable title"></div><input type="password" id="shadow-password"><button id="shadow-save"><span>Save shadow fixture</span></button><p id="shadow-result">Waiting</p>';

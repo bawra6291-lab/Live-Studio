@@ -22,6 +22,8 @@ class Agent:
             self.seen=json.loads(self.path.read_text('utf-8')) if self.path.exists() else {}
             if not isinstance(self.seen,dict):raise ValueError('Invalid command ledger')
         except (OSError,ValueError):self.seen={};self.ledger_error=True
+        for row in self.seen.values():
+            if row.get('status') in ('received','accepted','running'):row.update(status='unknown',message='PC restarted; inspect the recorded operation. No replay was sent.')
         self.status='Not connected';self.ack=None;self.last_seen=None
     def execute(self,command):
         ident=command.get('id');status='rejected';message='Command rejected'
@@ -38,20 +40,35 @@ class Agent:
             elif action in ('arm','check'):c.run(action)
             elif action=='end':c.review_run({'action':'end','key':command.get('args',{}).get('key'),'confirmed':True})
             else:raise ValueError('Unsupported remote action.')
-            status='accepted';message='Accepted by PC; inspect live status for the operation result'
+            status='accepted';message='Received by PC; operation result will follow'
+            self.seen[ident].update(boot=self.boot,operation=c.operation_serial if type(getattr(c,'operation_serial',None))==int else None,message=message)
+            if action=='pause':self.seen[ident].update(status='completed',message='Automation paused. Existing lives continue.')
         except ValueError as exc:message=str(exc)[:200]
         except Exception:message='PC could not accept command; inspect local activity'
-        self.seen[ident]['status']=status;atomic_json(self.path,self.seen)
+        if self.seen[ident]['status']!='completed':self.seen[ident]['status']=status
+        atomic_json(self.path,self.seen)
         c=self.controller;c.log('Remote '+str(command.get('action','unknown'))+' command '+status+'.')
         return {'id':ident,'status':status,'message':message}
+    def receipts(self):
+        c=self.controller;changed=False
+        with c.lock:
+            for row in self.seen.values():
+                if row.get('boot')==self.boot and row.get('status') in ('accepted','running'):
+                    result=getattr(c,'operation_results',{}).get(row.get('operation'))
+                    if result and (row.get('status')!=result['status'] or row.get('message')!=result['message']):
+                        row.update(result);changed=True
+        if changed:atomic_json(self.path,self.seen)
+        return [{'id':ident,'status':r['status'],'message':r.get('message','')[:200]} for ident,r in list(self.seen.items())[-16:] if r['status'] in ('running','completed','failed','cancelled','unknown')]
     def start(self):
         if self.thread and self.thread.is_alive():return
         self.stop.clear();self.thread=threading.Thread(target=self.work,daemon=True);self.thread.start()
     def close(self):self.stop.set()
     def public_snapshot(self):
         state=self.controller.snapshot(False)
-        fields=('workspace_name','now','armed','busy','mode','message','error','connections','checked','next','slots','last_tick','app_version')
-        return {key:state[key] for key in fields if key in state}
+        fields=('workspace_name','now','armed','busy','mode','message','error','connections','checked','next','slots','last_tick','app_version','monitor','progress','readiness')
+        result={key:state[key] for key in fields if key in state}
+        if len(json.dumps(result))>48000:result.get('monitor',{})['frame']=''
+        return result
     def work(self):
         import requests
         while not self.stop.is_set():
@@ -63,7 +80,7 @@ class Agent:
             try:
                 if not token:raise ValueError('Save an agent enrollment token on this PC.')
                 url=remote_origin(address)
-                response=requests.post(url+'/api/agent/poll',headers={'Authorization':'Bearer '+token},json={'boot':self.boot,'snapshot':self.public_snapshot(),'ack':self.ack},timeout=(5,10),allow_redirects=False)
+                response=requests.post(url+'/api/agent/poll',headers={'Authorization':'Bearer '+token},json={'boot':self.boot,'snapshot':self.public_snapshot(),'ack':self.ack,'receipts':self.receipts()},timeout=(5,10),allow_redirects=False)
                 if response.status_code in (401,403):
                     self.status='Enrollment expired or revoked. Re-enroll locally.'
                     with c.lock:c.cfg['remote_enabled']=False;atomic_json(c.path,c.cfg)

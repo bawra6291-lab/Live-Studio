@@ -11,7 +11,7 @@ from core import atomic_json, now_ist, title_for
 from visible_browser import Browser, origin
 
 FLOWS = ('youtube_prepare','facebook_prepare','youtube_go','facebook_go',
-         'youtube_end','facebook_end','camera_patrol_start','camera_patrol_stop','camera_preset')
+         'youtube_end','facebook_end','camera_patrol_start','camera_patrol_stop','camera_preset','youtube_thumbnail')
 VARIABLES = ('title','description','date','time','number')
 
 
@@ -36,8 +36,9 @@ def validate_recipe(raw):
     steps=raw.get('steps')
     if not isinstance(steps,list) or not 1<=len(steps)<=80:raise ValueError('A workflow needs 1–80 reviewed steps.')
     for step in steps:
-        if not isinstance(step,dict) or step.get('kind') not in ('click','fill','assert'):raise ValueError('Unsupported visible step.')
+        if not isinstance(step,dict) or step.get('kind') not in ('click','fill','assert','upload'):raise ValueError('Unsupported visible step.')
         item={'kind':step['kind'],'locator':locator(step.get('locator'))}
+        if item['kind']=='upload' and 'css' not in item['locator']:raise ValueError('Thumbnail upload requires a unique CSS file-input selector.')
         if item['kind']=='fill':
             if step.get('variable') not in VARIABLES:raise ValueError('Map each text field to title, description, date, time or camera number. Typed values and passwords are not saved.')
             item['variable']=step['variable']
@@ -82,6 +83,7 @@ class Visible:
         if any(s['end_at'] for s in slots):needed.update(FLOWS[4:6])
         for s in slots:
             needed.update('camera_'+a['kind'] for a in s['camera_actions'])
+        if any(s.get('thumbnail_days') for s in slots):needed.add('youtube_thumbnail')
         return needed
 
     def ready(self, cfg):
@@ -89,7 +91,8 @@ class Visible:
         missing=self.required(cfg)-self.config['recipes'].keys()
         if missing:raise ValueError('Record and review visible workflows first: '+', '.join(sorted(missing)))
         for flow in self.required(cfg):
-            if flow.startswith('camera_') and self.config['recipes'][flow]['steps'][-1]['kind']!='assert':
+            if flow=='youtube_thumbnail' and not any(s['kind']=='upload' for s in self.config['recipes'][flow]['steps']):raise ValueError('Thumbnail workflow requires a managed upload step.')
+            if (flow.startswith('camera_') or flow=='youtube_thumbnail') and self.config['recipes'][flow]['steps'][-1]['kind']!='assert':
                 raise ValueError('Camera workflows must end with an explicit visible result check.')
         self.browser.ready()
         if self.config['browser_source']=='running_chrome':self.browser.ensure()
@@ -248,6 +251,11 @@ class VisibleServices(Services):
             raise
 
     def prepare_visible(self,slot,due,persist):
+        chosen=slot.get('thumbnail_days',{}).get(str(due.day),'')
+        thumbnail_path=None
+        if chosen:
+            from content import ContentStore
+            thumbnail_path=ContentStore(self.cfg.get('_data_base',self.visible.path.parent)).path_for(chosen)
         self.desktop_guard()
         self.obs.close();self.obs.connect(launch=True);self.obs.idle();self.obs.check_profile()
         self.fb.identity();self.fb.no_other_live();channel=self.yt.owned_channel();self.yt.no_other_live()
@@ -256,7 +264,7 @@ class VisibleServices(Services):
         if source['snippet']['channelId']!=channel['id']:raise SetupError('Visible reference belongs to another YouTube channel.')
         title=title_for(source['snippet']['title'],slot,due.date())
         stream=self.yt.stream_for_obs(self.obs.key())
-        values={'title':title,'description':source['snippet'].get('description',''),'date':due.strftime('%Y-%m-%d'),'time':due.strftime('%H:%M')}
+        values={'title':title,'description':slot['description'] if slot.get('description_mode')=='custom' else source['snippet'].get('description',''),'date':due.strftime('%Y-%m-%d'),'time':due.strftime('%H:%M')}
         def matches():
             return [x for x in self.yt.list('liveBroadcasts',part='id,snippet,status,contentDetails',broadcastStatus='upcoming',broadcastType='all',maxResults=50) if x['snippet']['title']==title]
         events=matches()
@@ -275,6 +283,9 @@ class VisibleServices(Services):
         when=datetime.fromisoformat(event['snippet']['scheduledStartTime'].replace('Z','+00:00'))
         if abs((when-due).total_seconds())>60 or event['snippet'].get('description','')!=values['description']:
             raise SetupError('Visible YouTube date/time or description differs from the plan. Review the retained event.')
+        if thumbnail_path:
+            persist(stage='visible_youtube_thumbnail')
+            self.ui('youtube_thumbnail',{'_thumbnail_path':thumbnail_path},{'yt_id':event['id']})
         recent=self.fb.recent()
         existing=[x for x in recent if x.get('title')==title and x.get('status') in ('UNPUBLISHED','SCHEDULED_UNPUBLISHED','SCHEDULED_LIVE')]
         if len(existing)>1:raise SetupError('Duplicate Facebook schedules exist; review before visible execution.')
@@ -288,6 +299,7 @@ class VisibleServices(Services):
         if detail.get('status')!='UNPUBLISHED' or detail.get('is_manual_mode') is not True:
             raise SetupError('Visible Facebook draft must use manual Go live, with automatic publishing disabled. Review Live Producer before OBS starts.')
         if not detail.get('secure_stream_url'):raise SetupError('Facebook stream destination is not available for the visible event.')
+        persist(stage='obs_configure')
         self.obs.prepare_fb_output(detail['secure_stream_url'])
         self.visible.update(state='verified',message='Both prepared events verified by API reads. OBS target configured through the existing local adapter.')
         return {'yt_id':event['id'],'yt_stream_id':stream['id'],'fb_id':fb_id,'title':title}

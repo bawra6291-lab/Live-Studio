@@ -49,19 +49,21 @@ class HTTPSRedirects(HTTPRedirectHandler):
         https_url(newurl)
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
-def fetch(url, limit, destination=None):
+def fetch(url, limit, destination=None, progress=None):
     https_url(url)
     request = Request(url, headers={'User-Agent':'ISKCON-Live-Desk-Updater/1','Cache-Control':'no-cache'})
     try:
         with build_opener(HTTPSRedirects()).open(request, timeout=25) as response:
             https_url(response.url)
             data = bytearray(); total = 0
+            length=int(getattr(response,'headers',{}).get('Content-Length','0'))
             out = open(destination,'wb') if destination else None
             try:
                 while True:
                     chunk = response.read(64*1024)
                     if not chunk:break
                     total += len(chunk)
+                    if progress:progress(total,length)
                     if total > limit:raise UpdateError('Update download exceeds its size limit.')
                     if out:out.write(chunk)
                     else:data.extend(chunk)
@@ -168,6 +170,7 @@ def reserve_install(controller):
     """Block all new dashboard operations while an update checks OBS and exits."""
     with controller.lock:
         controller.require_idle()
+        if getattr(controller,'desktop_host',None) and controller.desktop_host.snapshot()['busy']:raise UpdateError('Wait for the PC/OBS action to finish.')
         if controller.armed or controller.cfg.get('armed'):
             raise UpdateError('Pause automation before installing an update.')
         controller.maintenance=True

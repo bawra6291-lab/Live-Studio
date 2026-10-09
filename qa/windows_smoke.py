@@ -27,9 +27,15 @@ try:
     assert isinstance(session, int)
 finally:
     pythoncom.CoUninitialize()
+from tray import Tray
+tray=Tray(lambda _:None);tray.start()
+assert tray.ready.wait(8), 'Tray initialization timed out.'
+assert tray.available, 'Windows notification icon could not be registered.'
+tray.update(False,'QA fixture');tray.close();tray.thread.join(5)
+assert not tray.thread.is_alive() and not tray.available, 'Tray icon did not close cleanly.'
 backend = type(keyring.get_keyring()).__module__
 assert 'Windows' in backend, 'Windows Credential Manager backend unavailable.'
-print(json.dumps({'tkinter': 'passed', 'windows_user_identity': 'passed',
+print(json.dumps({'tray_icon': 'passed','tkinter': 'passed', 'windows_user_identity': 'passed',
                   'task_account_name_resolution': 'passed',
                   'session_lookup': 'passed', 'credential_backend': backend,
                   'note': 'No OBS, UAC, scheduled task, credentials or live-platform operations tested.'}))

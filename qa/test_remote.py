@@ -41,6 +41,22 @@ class Remote(unittest.TestCase):
         self.assertIsNone(self.store.poll(self.agent,body))
         self.store.poll(self.agent,{**body,'ack':{'id':ident,'status':'accepted','message':'Accepted'}})
         self.assertEqual(self.store.state(self.owner)['commands'][0]['status'],'accepted')
+    def test_command_receipts_terminal_and_tenant_bound(self):
+        ident=self.store.enqueue(self.owner,self.command());body={'boot':self.boot,'snapshot':{'monitor':{'obs':{'active':True}},'progress':{'name':'Test'},'settings':{'secret':'never'}}}
+        self.store.poll(self.agent,body)
+        self.store.poll(self.agent,{**body,'ack':{'id':ident,'status':'accepted'},'receipts':[{'id':ident,'status':'running','message':'Checking'}]})
+        self.assertEqual(self.store.state(self.owner)['commands'][0]['status'],'running')
+        self.store.poll(self.agent,{**body,'receipts':[{'id':ident,'status':'completed','message':'Armed, not live'}]})
+        self.store.poll(self.agent,{**body,'receipts':[{'id':ident,'status':'failed','message':'late result'}]})
+        state=self.store.state(self.owner);self.assertEqual(state['commands'][0]['status'],'completed');self.assertNotIn('settings',state['devices'][0]['snapshot']);self.assertTrue(state['devices'][0]['snapshot']['monitor']['obs']['active'])
+        with self.assertRaises(ValueError):self.store.poll(self.agent,{**body,'receipts':[{'id':'invalid','status':'completed'}]})
+    def test_agent_completion_receipt_and_restart_never_replay(self):
+        with tempfile.TemporaryDirectory() as d:
+            c=Mock();c.base=Path(d);c.lock=__import__('threading').RLock();c.operation_serial=1;c.operation_results={1:{'status':'running','message':'Checking'}}
+            a=Agent(c);ident='b'*32;a.execute({'id':ident,'action':'check','boot':a.boot,'expires':time.time()+45})
+            self.assertEqual(a.receipts()[0]['status'],'running');c.operation_results[1]={'status':'completed','message':'Checked'};self.assertEqual(a.receipts()[0]['status'],'completed')
+            ident2='c'*32;a.execute({'id':ident2,'action':'check','boot':a.boot,'expires':time.time()+45});c.operation_results={}
+            restarted=Agent(c);self.assertEqual(restarted.seen[ident2]['status'],'unknown');self.assertEqual(restarted.execute({'id':ident2})['status'],'rejected')
     def test_expired_commands_and_restarts_never_replay(self):
         self.store.enqueue(self.owner,self.command())
         with patch('store.time.time',return_value=time.time()+46):self.assertIsNone(self.store.poll(self.agent,{'boot':self.boot,'snapshot':{}}))

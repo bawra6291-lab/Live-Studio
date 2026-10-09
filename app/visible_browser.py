@@ -209,12 +209,12 @@ function target(event){
  if(!n || n.closest('[data-live-desk-recorder]'))return null;
  if(n.type==='password'||forbidden.test(label(n)+' '+n.id+' '+n.name+' '+n.type))return null;
  if(passive && (!label(n)||label(n).length>160||/EAA[A-Za-z0-9]{20}|ya29\.|[A-Za-z0-9_-]{50}/.test(label(n))))return null;
- if(n.tagName==='SELECT'||n.type==='file')return null;
+ if(n.tagName==='SELECT'||(n.type==='file'&&(event.type!=='change'||!n.id)))return null;
  const text=label(n).slice(0,160);
  let loc=null;
  if(n.id && !/[0-9]{5}/.test(n.id))loc={css:'#'+CSS.escape(n.id),label:text};
  else if(text && ['button','input','textarea','a','div','span','ytcp-button','tp-yt-paper-button','yt-formatted-string'].includes(n.tagName.toLowerCase()))loc={tag:n.tagName.toLowerCase(),text};
- return loc?{locator:loc,passive,text}:null;
+ return loc?{locator:loc,passive,text,upload:n.type==='file'}:null;
 }
 function capture(e){
  if(!window.__liveDeskRecorder||!e.isTrusted||seen.has(e))return;
@@ -223,7 +223,7 @@ function capture(e){
  if(e.type==='focusout' && !actual?.isContentEditable)return;
  const found=target(e);
  if(!found){ignored++;emit({kind:'skipped'});show();return;}
- const kind=found.passive?'assert':e.type==='click'?'click':'fill';
+ const kind=found.upload?'upload':found.passive?'assert':e.type==='click'?'click':'fill';
  emit({kind,locator:found.locator,...(kind==='assert'?{text:found.text}:{})});count++;show();
 }
 function scan(){
@@ -247,7 +247,7 @@ const timer=setInterval(scan,200);scan();emit({kind:'ready'});
 })();''' 
 
 
-def target_script(locator, body):
+def target_script(locator, body, file_input=False):
     # locator is data, never JavaScript or an arbitrary expression from a client.
     return r'''(() => {
 const loc=LOCATOR;
@@ -255,12 +255,12 @@ const roots=[document];for(let i=0;i<roots.length;i++)for(const n of roots[i].qu
 let found=[];for(const root of roots){
  for(const n of root.querySelectorAll(loc.css||loc.tag)){
  const label=(n.getAttribute('aria-label')||n.labels?.[0]?.innerText||n.getAttribute('placeholder')||n.innerText||'').trim();
- if((loc.css||label===loc.text)&&n.getClientRects().length)found.push(n);
+ if((loc.css||label===loc.text)&&(n.getClientRects().length||FILEINPUT&&n.tagName==='INPUT'&&n.type==='file'))found.push(n);
  }}
 if(found.length!==1)return {ok:false,reason:found.length?'ambiguous':'missing'};
 const n=found[0];if(n.disabled||n.getAttribute('aria-disabled')==='true')return {ok:false,reason:'disabled'};
 BODY
-})();'''.replace('LOCATOR', json.dumps(locator)).replace('BODY', body)
+})();'''.replace('LOCATOR', json.dumps(locator)).replace('BODY', body).replace('FILEINPUT','true' if file_input else 'false')
 
 
 class Browser:
@@ -486,7 +486,7 @@ class Browser:
                     # The startup script also runs in blank/opaque frames.
                     # Their ready/skipped messages are bookkeeping, not actions:
                     # filter them before validating a replayable site's origin.
-                    if item.get('kind') not in ('click','fill','assert'):continue
+                    if item.get('kind') not in ('click','fill','assert','upload'):continue
                     if origin(item.get('origin', '')) != allowed:continue
                     step = {k:item[k] for k in ('kind','locator')}
                     if step['kind'] == 'fill':step['variable'] = ''
@@ -506,8 +506,19 @@ class Browser:
             if self.recording:raise SetupError('Finish recording before running visible automation.')
             self.sites[service] = origin(url)
             page = self.page(service)
+            upload=any(s['kind']=='upload' for s in recipe['steps'])
+            if upload:
+                from content import ContentStore
+                path=Path(values.get('_thumbnail_path',''))
+                media=(self.base/'media').resolve()
+                if path.parent.resolve()!=media or not re.fullmatch(r'[a-f0-9]{64}\.(jpg|png)',path.name) or path.is_symlink():
+                    page.close();raise SetupError('Only a saved calendar thumbnail can be uploaded.')
+                raw,_=ContentStore(self.base).get(path.stem)
+                if not path.is_file() or path.read_bytes()!=raw:
+                    page.close();raise SetupError('Managed thumbnail file is missing or changed.')
             try:
                 self.guard();page.call('Page.enable');page.call('Page.bringToFront')
+                if upload:page.call('Page.setInterceptFileChooserDialog',enabled=True)
                 page.call('Page.navigate', url=url)
                 expected = origin(url)
                 def check_origin():
@@ -557,6 +568,20 @@ return {ok:true,x,y,text:(n.getAttribute('aria-label')||n.labels?.[0]?.innerText
                         number=str(values.get('number',''))
                         if not number.isdigit():raise SetupError('Missing camera number for the visible target.')
                         loc['css']=loc['css'].replace('{number}',number)
+                    if step['kind']=='upload':
+                        check_origin()
+                        expression=target_script(loc,"if(n.tagName!=='INPUT'||n.type!=='file')return null;return n;",file_input=True)
+                        deadline=time.monotonic()+25;obj=None
+                        while time.monotonic()<deadline:
+                            check_origin();result=page.call('Runtime.evaluate',expression=expression,returnByValue=False).get('result',{})
+                            if result.get('subtype')=='node':obj=result['objectId'];break
+                            if result.get('objectId'):page.call('Runtime.releaseObject',objectId=result['objectId'])
+                            time.sleep(.2)
+                        if not obj:raise SetupError('Unique thumbnail file input is unavailable. No upload was sent.')
+                        try:
+                            check_origin();page.call('DOM.setFileInputFiles',files=[str(path.resolve())],objectId=obj)
+                        finally:page.call('Runtime.releaseObject',objectId=obj)
+                        time.sleep(.6);continue
                     point = wait_target(loc)
                     self.guard();page.call('Page.bringToFront')
                     if step['kind'] == 'assert':
@@ -582,4 +607,7 @@ return {ok:true,x,y,text:(n.getAttribute('aria-label')||n.labels?.[0]?.innerText
                     time.sleep(.6)
                 check_origin()
             finally:
+                if upload:
+                    try:page.call('Page.setInterceptFileChooserDialog',enabled=False)
+                    except Exception:pass
                 page.close()

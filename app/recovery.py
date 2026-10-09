@@ -36,7 +36,7 @@ def run_history(journal,limit=100):
             **{k:rec.get(k,'') for k in ('phase','stage','scheduled_at','confirmed_at','ended_at','last_error','reviewed_at')},
             'youtube_url':'https://studio.youtube.com/video/'+yt+'/livestreaming' if re.fullmatch(r'[A-Za-z0-9_-]{11}',yt) else '',
             'facebook_url':'https://www.facebook.com/'+fb if re.fullmatch(r'[0-9_]{5,70}',fb) else '',
-            'inspection':rec.get('inspection'), 'reviewed':rec.get('phase')=='reviewed'})
+            'guide':__import__('insights').recovery_guide(rec),'inspection':rec.get('inspection'), 'reviewed':rec.get('phase')=='reviewed'})
     return rows
 
 def inspect_run(service,record):
@@ -46,7 +46,7 @@ def inspect_run(service,record):
     main=service.obs.call('GetStreamStatus')
     outputs=service.obs.call('GetOutputList').get('outputs',[])
     obs_active=bool(main.get('outputActive') or any(x.get('outputActive') for x in outputs))
-    result={'checked_at':now_ist().isoformat(),'obs_active':obs_active,'youtube':'not recorded','facebook':'not recorded'}
+    result={'checked_at':now_ist().isoformat(),'obs_active':obs_active,'youtube':'not recorded','facebook':'not recorded','youtube_id':record.get('yt_id',''),'facebook_id':record.get('fb_id','')}
     if record.get('yt_id'):
         service.yt.owned_channel();event=service.yt.event(record['yt_id'])
         result['youtube']=event['status']['lifeCycleStatus']

@@ -39,6 +39,11 @@ class Controller:
         self.connections = {k: 'unchecked' for k in ('obs','youtube','facebook','camera')}
         self.mobile_urls = []; self.desktop_url = ''; self.mobile_enabled = False
         self.servers=[]
+        from content import ContentStore
+        from insights import LiveMonitor
+        from update_service import UpdateService
+        self.content=ContentStore(self.base);self.monitor=LiveMonitor(self);self.updates=UpdateService(self)
+        self.operation_serial=0;self.operation_results={}
         from remote_agent import Agent
         self.remote=Agent(self)
         self.started_at=now_ist().isoformat();self.last_tick=None;self.last_heartbeat=0
@@ -80,6 +85,9 @@ class Controller:
                     'remote':{'enabled':bool(self.cfg.get('remote_enabled')),'status':self.remote.status,
                         'last_seen':self.remote.last_seen,'url':self.cfg.get('remote_url','') if local else ''},
                     'destinations':{k:self.cfg.get(k,'') for k in ('youtube_channel_id','facebook_page_id','youtube_stream_title','camera_channel')},
+                    'progress':__import__('insights').progress(journal,self.mode,self.armed),
+                    'readiness':__import__('insights').readiness(self),'monitor':self.monitor.snapshot(),
+                    'updates':self.updates.snapshot() if local else None,
                     'schedule':schedule,'grace_minutes':int(self.cfg.get('grace_minutes',2)),
                     'upcoming':calendar,'runs':run_history(journal),'run_attention':issue,
                     'last_tick':self.last_tick,'started_at':self.started_at,'arm_requested':bool(self.cfg.get('armed')),
@@ -119,7 +127,7 @@ class Controller:
         with self.lock:
             self.require_idle()
             self.mode='visible_setup';self.error=False
-            cfg=dict(self.cfg)
+            cfg={**self.cfg,'_data_base':str(self.base)}
             def work():
                 try:self.visible.command(data,cfg)
                 except Exception as exc:
@@ -203,9 +211,11 @@ class Controller:
             key=data.get('key');journal=Journal(self.base/'journal.json')
             if not isinstance(key,str) or key not in journal.data:raise ValueError('Unknown recorded run.')
             from copy import deepcopy
-            record=deepcopy(journal.data[key]);cfg=dict(self.cfg)
+            record=deepcopy(journal.data[key]);cfg={**self.cfg,'_data_base':str(self.base)}
             if record.get('phase')=='reviewed':raise ValueError('This run is already reviewed.')
             if data['action']=='end' and not record.get('obs_start_epoch'):raise ValueError('This app did not record starting the selected run. End it manually in OBS and both platforms.')
+            self.operation_serial+=1;operation=self.operation_serial
+            self.operation_results[operation]={'status':'running','message':'Inspecting the selected recorded run.'}
             self.stop.clear()
             self.mode='inspect_run';self.error=False
             self.message='Reading the recorded run from OBS and both platforms…'
@@ -246,7 +256,9 @@ class Controller:
                     if service:
                         try:service.close()
                         except Exception:pass
-                    with self.lock:self.mode=''
+                    with self.lock:
+                        self.mode=''
+                        self.operation_results[operation]={'status':'failed' if self.error else 'completed','message':self.message[:200]}
             self.worker=threading.Thread(target=work,daemon=True);self.worker.start()
 
     def retry(self, slot_id):
@@ -261,6 +273,11 @@ class Controller:
                 raise ValueError('Only a failed or prepared slot can be reset.')
             rec=journal.get(slot,now.date())
             if rec.get('obs_start_epoch') or rec.get('confirmed_at'):raise ValueError('This run already started. Inspect and end it manually; it cannot be reset here.')
+            inspection=rec.get('inspection',{})
+            from datetime import datetime
+            fresh=inspection.get('checked_at') and datetime.fromisoformat(inspection['checked_at'])>now-timedelta(seconds=60)
+            if not fresh or not inspection.get('can_review') or inspection.get('youtube_id','')!=rec.get('yt_id','') or inspection.get('facebook_id','')!=rec.get('fb_id',''):
+                raise ValueError('Inspect this exact recorded run first. A fresh inactive result is required before reset.')
             journal.put(slot,now.date(),phase='new')
             self.log('Slot reset after manual review. Enable daily starts to retry within its scheduled window.')
 
@@ -337,11 +354,14 @@ class Controller:
             if self.visible.browser.recording:raise ValueError('Finish the visible workflow recording first.')
             if mode=='arm' and self.visible.config['mode']=='visible':self.visible.ready(self.cfg)
             if mode=='arm' and not any(s['enabled'] for s in get_schedule(self.cfg)):raise ValueError('Enable at least one program in Schedule.')
+            self.operation_serial+=1;operation=self.operation_serial
+            self.operation_results[operation]={'status':'running','message':'Checking connections.'}
+            self.operation_results=dict(list(self.operation_results.items())[-50:])
             self.stop.clear();self.mode=mode;self.error=False
             self.message='Checking connections…' if mode!='youtube' else 'Complete Google sign-in on the Windows PC.'
             self.connections={k:'unchecked' for k in self.connections};self.checked=None
             if mode=='arm':self.cfg['armed']=True;atomic_json(self.path,self.cfg)
-            cfg=dict(self.cfg)
+            cfg={**self.cfg,'_data_base':str(self.base)}
             def factory():
                 if self.visible.config['mode']=='visible' and mode=='arm':
                     from visible import VisibleServices
@@ -373,6 +393,7 @@ class Controller:
                             if mode=='arm' and not self.stop.is_set():
                                 self.armed=True;self.message='Automation enabled: your saved start, end and camera times are active.'
                                 self.log(self.message)
+                                self.operation_results[operation]={'status':'completed','message':'Automation enabled for the saved schedule; this does not mean live has started.'}
                         if mode=='arm' and not self.stop.is_set():
                             scheduler=Scheduler(service,Journal(self.base/'journal.json'),self.log,self.stop.is_set,slots=get_schedule(cfg),grace_seconds=int(cfg.get('grace_minutes',2))*60)
                             while not self.stop.is_set():
@@ -387,6 +408,8 @@ class Controller:
                         except Exception:pass
                     with self.lock:
                         self.mode=''
+                        if self.operation_results[operation]['status']=='running':
+                            self.operation_results[operation]={'status':'failed' if self.error else 'cancelled' if self.stop.is_set() else 'completed','message':self.message[:200]}
                         if self.stop.is_set():self.message='Paused. Scheduled endings and camera actions are also paused; handle any live manually.'
                         elif not self.error:self.message='Connection operation finished. Automation is paused.'
                     self.heartbeat()
@@ -395,7 +418,7 @@ class Controller:
     def shutdown(self):
         with self.lock: self.closing=True
         self.stop.set()  # Keep saved armed preference for the next Windows launch.
-        self.remote.close()
+        self.remote.close();self.monitor.close()
 
 class DashboardServer(ThreadingHTTPServer):
     daemon_threads=True
@@ -460,6 +483,11 @@ class Handler(BaseHTTPRequestHandler):
             if not session:return self.reply(401,{'error':'Pair this device to continue.'})
             try:return self.reply(200,{**self.server.controller.snapshot(self.local()),'csrf':session['csrf'],'role':session.get('role','operator')})
             except Exception:return self.reply(500,{'error':'Could not read app state. Check the PC.'})
+        if path.startswith('/api/media/'):
+            if not self.auth():return self.reply(401,{'error':'Pair this device to continue.'})
+            try:
+                raw,kind=self.server.controller.content.get(path.rsplit('/',1)[1]);return self.reply(200,raw,kind)
+            except ValueError as exc:return self.reply(404,{'error':str(exc)})
         if path=='/api/devices':
             if not self.auth():return self.reply(401,{'error':'Pair this device to continue.'})
             if not self.local():return self.reply(403,{'error':'Manage paired devices on the PC.'})
@@ -469,7 +497,7 @@ class Handler(BaseHTTPRequestHandler):
                     for token,item in server.sessions.items():
                         if item['expires']>time.monotonic():rows.append({k:item.get(k,'') for k in ('id','label','role','created_at')})
             return self.reply(200,{'devices':rows,'pairing_minutes_left':max(0,int((self.server.pair_expires-time.monotonic())/60))})
-        assets={'/':('index.html','text/html; charset=utf-8'),'/style.css':('style.css','text/css; charset=utf-8'),'/app.js':('app.js','text/javascript; charset=utf-8'),'/icon.svg':('icon.svg','image/svg+xml')}
+        assets={'/':('index.html','text/html; charset=utf-8'),'/style.css':('style.css','text/css; charset=utf-8'),'/app.js':('app.js','text/javascript; charset=utf-8'),'/icon.svg':('icon.svg','image/svg+xml'),'/features.js':('features.js','text/javascript; charset=utf-8')}
         if path not in assets:return self.reply(404,{'error':'Not found.'})
         name,ctype=assets[path];return self.reply(200,(WEB/name).read_bytes(),ctype)
     def do_POST(self):
@@ -481,7 +509,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(415,{'error':'JSON required.'})
         try:
             size=int(self.headers.get('Content-Length','0'))
-            if not 0<size<=65536:raise ValueError()
+            path=urlsplit(self.path).path
+            limit=2800000 if path=='/api/media/upload' and self.local() and self.auth() else 65536
+            if not 0<size<=limit:raise ValueError()
             data=json.loads(self.rfile.read(size))
             if not isinstance(data,dict):raise ValueError()
         except Exception:return self.reply(400,{'error':'Invalid request.'})
@@ -520,6 +550,22 @@ class Handler(BaseHTTPRequestHandler):
                     if not c.desktop_host:raise ValueError('PC controls require the Windows app.')
                     c.desktop_host.submit(data)
                 return self.reply(202,{'ok':True,'message':'PC action queued. Watch the PC controls status.'})
+            if path=='/api/media/upload':
+                if not self.local():return self.reply(403,{'error':'Upload thumbnails on the PC.'})
+                with c.lock:
+                    c.require_idle();result=c.content.add(data.get('data'))
+                return self.reply(200,result)
+            if path=='/api/content/preview':
+                from datetime import date
+                slot=next((x for x in get_schedule(c.cfg) if x['id']==data.get('slot')),None)
+                if not slot:raise ValueError('Choose a saved program.')
+                return self.reply(200,c.content.preview(slot,date.fromisoformat(data.get('date',''))))
+            if path.startswith('/api/updates/') and path!='/api/updates/open':
+                if not self.local():return self.reply(403,{'error':'Manage updates on this PC.'})
+                action=path.rsplit('/',1)[1]
+                if action not in ('check','install','rollback'):raise ValueError('Unknown update action.')
+                getattr(c.updates,action)(data)
+                return self.reply(202,{'ok':True})
             if path=='/api/updates/open':
                 if not self.local():return self.reply(403,{'error':'Manage app updates on the Windows PC.'})
                 if not c.open_updates:raise ValueError('Open the Windows launcher to manage updates.')

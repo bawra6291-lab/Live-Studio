@@ -75,6 +75,18 @@ assert page.evaluate('document.querySelector("#title").value')=='Scheduled Title
 assert page.evaluate('window.trustedClick') is True
 assert page.evaluate('window.savedTitle')=='Scheduled Title'
 assert len(progress)==3
+# Managed file upload uses one content-addressed image; no arbitrary local path.
+import base64
+from content import ContentStore
+store=ContentStore(base);asset=store.add('iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAIAAAB7QOjdAAAAD0lEQVR4nGN4sKBAxtYIAAsnAnyYPiW8AAAAAElFTkSuQmCC')
+thumbnail=store.path_for(asset['id'])
+upload_recipe={'identity':recipe['identity'],'steps':[{'kind':'upload','locator':{'css':'#thumbnail-file'}},{'kind':'assert','locator':{'css':'#upload-result'},'text':'Thumbnail selected'}]}
+browser.run('fixture',url,upload_recipe,{'_thumbnail_path':thumbnail},lambda *a:None)
+assert page.evaluate('document.querySelector("#thumbnail-file").files.length')==1
+try:browser.run('fixture',url,upload_recipe,{'_thumbnail_path':str(Path(base)/'private.txt')},lambda *a:None)
+except Exception as exc:assert 'saved calendar thumbnail' in str(exc)
+else:raise AssertionError('Arbitrary file path accepted')
+print('PASS hidden file input uses managed thumbnail and rejects arbitrary files')
 # Replacing the controller (app restart) must attach to the same browser/profile
 # and rediscover its site tab instead of opening another login window or tab.
 page.evaluate("document.cookie='liveDeskSession=retained;path=/';localStorage.setItem('liveDeskLogin','retained')")

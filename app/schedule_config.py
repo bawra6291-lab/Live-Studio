@@ -64,6 +64,15 @@ def validate_schedule(raw):
         elif not legacy:raise ValueError('Enter a title template, for example {date} | {program}.')
         base=dict(id=ident,name=name.strip(),reference=reference)
         if template:base['title_template']=template
+        description_mode=row.get('description_mode','reference')
+        if description_mode not in ('reference','custom'):raise ValueError('Choose reference or saved description.')
+        if description_mode=='custom':
+            description=row.get('description','')
+            if not isinstance(description,str) or len(description.encode('utf-8'))>5000 or any(ord(c)<32 and c not in '\n\r\t' for c in description) or any(c in description for c in '<>'):raise ValueError('Description must be plain text up to 5000 UTF-8 bytes.')
+            base.update(description_mode='custom',description=description)
+        thumbnails=row.get('thumbnail_days',{})
+        if not isinstance(thumbnails,dict) or len(thumbnails)>31 or any(not isinstance(k,str) or not re.fullmatch(r'(?:[1-9]|[12][0-9]|3[01])',k) or not isinstance(v,str) or not re.fullmatch('[a-f0-9]{64}',v) for k,v in thumbnails.items()):raise ValueError('Map calendar days 1–31 to uploaded thumbnail IDs.')
+        if thumbnails:base['thumbnail_days']=dict(thumbnails)
         repeat=row.get('repeat','daily');lead=row.get('prepare_minutes',5)
         if repeat not in ('daily','weekdays','once'):raise ValueError('Choose daily, selected weekdays or one date.')
         if type(lead)!=int or not 5<=lead<=60:raise ValueError('Preparation must begin 5–60 minutes before start.')

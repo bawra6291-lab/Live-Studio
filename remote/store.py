@@ -110,9 +110,13 @@ class Store:
         boot=data.get('boot');snapshot=data.get('snapshot');ack=data.get('ack')
         if not isinstance(boot,str) or not re.fullmatch(r'[a-f0-9]{32}',boot) or not isinstance(snapshot,dict):raise ValueError('Invalid heartbeat.')
         # Never store settings, cookies, stream keys, workflow recipes or diagnostics.
-        allowed=('workspace_name','now','armed','busy','mode','message','error','connections','checked','next','slots','last_tick','app_version')
+        allowed=('workspace_name','now','armed','busy','mode','message','error','connections','checked','next','slots','last_tick','app_version','monitor','progress','readiness')
         snapshot={k:snapshot[k] for k in allowed if k in snapshot}
         if len(json.dumps(snapshot))>50000:raise ValueError('Snapshot too large.')
+        receipts=data.get('receipts',[])
+        if not isinstance(receipts,list) or len(receipts)>16:raise ValueError('Invalid receipts.')
+        for r in receipts:
+            if not isinstance(r,dict) or not re.fullmatch(r'[a-f0-9]{32}',str(r.get('id',''))) or r.get('status') not in ('running','completed','failed','cancelled','unknown') or not isinstance(r.get('message',''),str) or len(r.get('message',''))>200:raise ValueError('Invalid receipt.')
         now=time.time()
         with self.db() as db:
             db.execute('BEGIN IMMEDIATE')
@@ -121,6 +125,8 @@ class Store:
             db.execute('UPDATE devices SET seen=?,boot=?,snapshot=? WHERE id=?',(now,boot,json.dumps(snapshot),agent['id']))
             if isinstance(ack,dict) and ack.get('status') in ('accepted','rejected'):
                 db.execute("UPDATE commands SET status=?,result=? WHERE id=? AND device=? AND status='dispatched'",(ack['status'],str(ack.get('message',''))[:200],ack.get('id'),agent['id']))
+            for r in receipts:
+                db.execute("UPDATE commands SET status=?,result=? WHERE id=? AND device=? AND status IN ('dispatched','accepted','running')",(r['status'],r.get('message',''),r['id'],agent['id']))
             db.execute("UPDATE commands SET status='expired',result='Expired or PC restarted' WHERE device=? AND status='queued' AND (expires<? OR boot!=?)",(agent['id'],now,boot))
             command=db.execute("SELECT c.* FROM commands c JOIN principals p ON p.id=c.actor WHERE c.device=? AND c.status='queued' AND c.expires>? AND c.boot=? AND p.enabled=1 ORDER BY c.created LIMIT 1",(agent['id'],now,boot)).fetchone()
             if not command:return None
