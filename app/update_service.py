@@ -9,7 +9,11 @@ class UpdateService:
         self.c=controller;self.app=Path(app_dir or Path(__file__).parent);self.work=controller.base/'updates';self.work.mkdir(parents=True,exist_ok=True)
         self.lock=threading.RLock();self.worker=None;self.manifest=None;self.exit_ready=threading.Event()
         self.prefs=self.work/'source.json'
-        source=json.loads(self.prefs.read_text('utf-8')).get('manifest_url') if self.prefs.exists() else None
+        try:source=json.loads(self.prefs.read_text('utf-8')).get('manifest_url') if self.prefs.exists() else None
+        except (ValueError,OSError,AttributeError):source=None
+        if source:
+            try:source=updater.https_url(source)
+            except (ValueError,updater.UpdateError):source=None
         self.info={'source':source or updater.DEFAULT_FEED,'busy':False,'state':'idle','message':'Check for a new version here. Saved setup is preserved.','percent':None,'available':False,'version':'','notes':''}
         last=self.work/'last-result.json'
         if last.exists():

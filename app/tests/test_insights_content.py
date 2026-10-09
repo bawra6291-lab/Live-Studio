@@ -67,6 +67,10 @@ class FeatureTests(unittest.TestCase):
             with patch('updater.check_obs_idle') as idle,patch('updater.fetch',side_effect=fetch),patch('updater.prepare_update',return_value=(Path(d)/'stage',{})) as prepare,patch('updater.start_installer') as installer:
                 u.install({'confirmed':True});u.worker.join(2)
             self.assertEqual(idle.call_count,2);prepare.assert_called_once();installer.assert_called_once();self.assertTrue(u.exit_ready.is_set());self.assertTrue(c.maintenance);self.assertEqual(u.snapshot()['state'],'restarting')
+    def test_corrupt_update_preference_does_not_prevent_dashboard_start(self):
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d)/'updates').mkdir();(Path(d)/'updates'/'source.json').write_text('corrupt')
+            c=Controller(d,Service,Vault());self.assertTrue(c.updates.snapshot()['source'].startswith('https://'))
     def test_update_feed_failure_is_reported_without_install(self):
         with tempfile.TemporaryDirectory() as d:
             c=Controller(d,Service,Vault());u=c.updates

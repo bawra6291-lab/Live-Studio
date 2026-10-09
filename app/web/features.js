@@ -47,3 +47,5 @@ function renderUpdatePanel(){const view=$('view-updates');if(!updateBuilt){const
  view.prepend(panel);$('open-updates').textContent='Open recovery update window';updateBuilt=true;}
  const u=state.updates;$('dashboard-update').hidden=!state.local;if(!u)return;const source=$('update-source');if(document.activeElement!==source)source.value=u.source||'';$('update-status').textContent=u.message+(u.notes?' '+u.notes:'')+(u.last_result?' · Last installer result: '+JSON.stringify(u.last_result):'');const progress=$('update-progress');progress.hidden=!u.busy;if(u.percent===null)progress.removeAttribute('value');else progress.value=u.percent;source.disabled=u.busy;for(const name of ['check','install','rollback'])$('update-'+name).disabled=!online||u.busy||!!state.busy||(name==='install'&&!u.available);
 }
+
+if(state){renderFeatures();updateFeatureButtons();}

@@ -109,7 +109,10 @@ class LiveMonitor:
             if key!=self.record_key or time.monotonic()-self.last_platform>=60:
                 result.update(youtube='not recorded',facebook='not recorded',platform_at=now_ist().isoformat())
                 if record.get('yt_id'):
-                    try:service.yt.owned_channel();result['youtube']=service.yt.event(record['yt_id'])['status']['lifeCycleStatus']
+                    try:
+                        channel=service.yt.owned_channel();event=service.yt.event(record['yt_id'])
+                        if event.get('snippet',{}).get('channelId')!=channel['id']:raise ValueError('Wrong channel event')
+                        result['youtube']=event['status']['lifeCycleStatus']
                     except Exception:result['youtube']='unavailable'
                 if record.get('fb_id'):
                     try:
