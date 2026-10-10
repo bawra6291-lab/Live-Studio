@@ -1,0 +1,9 @@
+{
+  "app_id": "iskcon-live-desk",
+  "version": "0.8.5",
+  "update_format": 1,
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.8.5/ISKCON-Live-Desk.zip",
+  "size": 149274,
+  "sha256": "70176b9bd4c7c204baa5b143e7747edb1e8e8abfdc5e6fe5941645870b70c07d",
+  "notes": "PILOT 0.8.5: aligned visible automation setup with separate mode and Chrome sections, labels above fields, grouped Save and Connect controls, and narrow-window layout. Includes the 0.8.4 recorder fix. Pause automation and finish active live before installing; saved setup remains."
+}

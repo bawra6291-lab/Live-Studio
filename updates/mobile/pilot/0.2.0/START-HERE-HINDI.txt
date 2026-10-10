@@ -1,0 +1,30 @@
+LIVE DESK MOBILE 0.2.0 — Android 8 ya naya
+
+Pehli installation:
+1. Live-Desk-Mobile-0.2.0.apk phone par install karo.
+2. Agar purana 0.1.0 test APK install hai to ek baar uninstall karke naya install karna padega. Purane test APK ki temporary signing key alag thi. Iske baad naye releases isi signing key se milenge aur app ke andar update honge.
+
+Mobile internet — one-time setup:
+Server: https://live-desk-relay-production.up.railway.app
+1. PC par Live Desk chalu aur internet connected rakho.
+2. PC dashboard ko localhost se kholkar Mobile access > Internet remote access mein apna HTTPS control address aur PC ka separate agent token save karo. Enable karo. YouTube/Facebook/camera credentials PC par hi rehte hain.
+3. Android app mein wahi HTTPS control address enter karo. Apne workspace access code se phone ko ek baar pair karo.
+4. Enable automation se pehle PC ka saved schedule review karo. Confirm karne par PC request accept karega. Actual connection/live result status se verify karo.
+5. App dobara kholne, PC/server restart aur isi app ke update ke baad internet pairing yaad rahegi. Phone connection wapas aane par apne aap status refresh hota hai. Naya command offline PC ko nahi bheja jaata; purana command blindly repeat nahi hota.
+
+Pairing phir kab chahiye:
+Sign out/Forget phone, owner revocation, app uninstall/data clear, server data loss, ya 365 din tak phone use na karne par. Internet sessions server ke persistent data volume mein save rehte hain. Normal internet/Wi-Fi switch ya app close karne par dobara code nahi chahiye.
+
+App ke andar update:
+Updates > Check for updates > Download update > Install.
+Android pehli baar Allow from this source maangega. Allow karke app par wapas aao aur Updates > Install dabao. Agle updates same package/signing key se installed app ko update karenge; saved address aur pairing retained rahegi. Android har installation par approval tap maang sakta hai. App bina approval install nahi karega. Verified pending download wapas Updates se khola ja sakta hai.
+
+Same Wi-Fi alternative:
+PC launcher > Enable mobile access; phone par PC ka http://private-IP:8866 address enter karo aur PC ka pairing code use karo. LAN session abhi PC ka purana 12-hour policy follow karta hai; internet mode ka permanent pairing alag hai.
+
+Is release ka internet screen:
+PC status, recorded plans/runs, Check connections, Enable/Pause, command history aur owner phone/PC revocation. Detailed schedule editing local/LAN dashboard se hoti hai. Phone app PC ko power-on nahi karta. PC aur Live Desk chalu rakhna zaroori hai.
+Pause future automation ko rokta hai; existing live khud end nahi hota.
+
+Status:
+APK published aur public HTTPS relay online hai. TLS/login/CSRF aur container redeployment ke baad saved pairing ke checks pass hue. Private setup file se real PC enroll karna aur actual phone mobile-data test abhi operator ko karna hai. Kisi real live ya camera ko QA tests ne trigger nahi kiya.

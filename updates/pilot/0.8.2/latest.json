@@ -1,0 +1,9 @@
+{
+  "app_id": "iskcon-live-desk",
+  "version": "0.8.2",
+  "update_format": 1,
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.8.2/ISKCON-Live-Desk.zip",
+  "size": 147380,
+  "sha256": "10548a5ca05914df54d7cdc05619e4e9cc942541797fb8683591ca910b4ac396",
+  "notes": "PILOT 0.8.2: My running Chrome uses your existing browser login with explicit Chrome permission; no replacement browser launch. Reconnect locally after app/browser restart. Pause automation and finish active live/recording before installing. Existing connections, schedules and Official stream key are preserved. Visible workflows still need supervised calibration."
+}

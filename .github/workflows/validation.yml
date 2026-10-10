@@ -1,0 +1,89 @@
+name: Development validation
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: validation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  controller:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r app/requirements.txt
+      - run: python -m unittest discover -s app/tests -v
+      - run: python -m unittest discover -s qa -p 'test_remote*.py' -v
+      - run: python -m compileall -q app
+      - name: Windows native compatibility smoke check
+        if: runner.os == 'Windows'
+        run: python qa/windows_smoke.py
+  dashboard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --prefix qa
+      # Hosted Ubuntu already includes Chrome's system libraries. Avoid an
+      # unbounded apt mirror update and use the working Playwright binary mirror.
+      - name: Install validation Chromium
+        timeout-minutes: 4
+        env:
+          PLAYWRIGHT_DOWNLOAD_HOST: https://playwright.download.prss.microsoft.com/dbazure/download/playwright
+          PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: '60000'
+        run: node qa/node_modules/playwright/cli.js install chromium
+      - run: npm test --prefix qa
+      - run: python -m pip install requests websocket-client
+      - run: node qa/visible-browser.test.cjs
+      - run: node qa/remote-browser.test.cjs
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: dashboard-validation
+          path: qa/results/
+          retention-days: 7
+  windows-installer:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r app/requirements.txt
+      - name: Build private runtime and per-user installer
+        run: python packaging/build_windows.py --output installer-artifacts
+      - name: Install, validate relocated runtime, and uninstall
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem installer-artifacts/Live-Desk-*-Setup.exe).FullName
+          $target = Join-Path $env:RUNNER_TEMP 'LiveDeskInstallTest'
+          $process = Start-Process $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$target") -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Installer failed: $($process.ExitCode)" }
+          & "$target/runtime/python.exe" -E -s -c "import tkinter,win32api,keyring,requests,websocket,google_auth_oauthlib; r=tkinter.Tk(); r.withdraw(); r.destroy()"
+          if ($LASTEXITCODE -ne 0) { throw 'Installed runtime validation failed' }
+          $uninstaller = (Get-ChildItem "$target/unins*.exe").FullName
+          $process = Start-Process $uninstaller -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw 'Uninstaller failed' }
+      - uses: actions/upload-artifact@v5
+        with:
+          name: unsigned-windows-pilot-installer
+          path: |
+            installer-artifacts/Live-Desk-*-Setup.exe
+            installer-artifacts/stage/runtime-dependencies.txt
+          retention-days: 14

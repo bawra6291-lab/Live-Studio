@@ -8,3 +8,44 @@
 .schedule-program .section-head{align-items:center}.schedule-times{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-bottom:24px}.editor-field{display:flex;flex-direction:column;gap:8px;font-size:11px;color:#5a705c;min-width:0}.editor-field input,.editor-field select,#grace-minutes{width:100%;border:1px solid #dce2d5;border-radius:7px;background:#fcfdf9;padding:10px;color:#35513f;font:inherit;min-height:40px}.editor-field input[type=checkbox]{width:20px;height:20px;min-height:20px;accent-color:#376e51;margin:7px 0}.camera-editor-row{display:grid;grid-template-columns:1.2fr .5fr 1.3fr 1fr .65fr .9fr;gap:12px;align-items:end;padding:18px;background:#f6f7f1;border:1px solid #e4e9dc;border-radius:10px;margin:12px 0}.camera-editor-row .remove-action{grid-column:1/-1;justify-self:end;padding:0;color:#a25b46}.add-action{margin-top:8px}.schedule-save{margin:15px 0 28px}#grace-minutes{width:75px}#confirm-text{white-space:pre-line}.log-entry{grid-template-columns:150px 1fr}.schedule-program h3{margin:0}.slot-dest{overflow-wrap:anywhere}.slot>div{min-width:0}
 @media(max-width:900px){.camera-editor-row{grid-template-columns:1fr 1fr}.schedule-times{grid-template-columns:1fr 1fr}.log-entry{grid-template-columns:100px 1fr}}
 @media(max-width:540px){.camera-editor-row{padding:13px;gap:14px}.schedule-times{gap:12px}.schedule-program{padding:17px}.editor-field{font-size:10px}.editor-field input,.editor-field select{font-size:12px;padding:8px}.log-entry{grid-template-columns:80px 1fr}.schedule-program .section-head{flex-wrap:nowrap}.schedule-program .section-head h3{font-size:13px}}
+
+.setup-steps{padding-left:24px;line-height:1.65}.setup-steps li{padding:8px 0}.setup-done{color:var(--green,#245c42)}.brand-sub{max-width:140px;overflow-wrap:anywhere}
+.visible-step{border:1px solid #ced8c9;border-radius:10px;margin:12px 0;padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:14px}.visible-step>p{grid-column:1/-1;overflow-wrap:anywhere;color:#193d36}#visible-local .inline{margin:20px 0;flex-wrap:wrap}#visible-local select{min-height:42px;padding:9px;max-width:100%;color:#193d36;background:#fff;border:1px solid #bbcabb;border-radius:6px}#view-visible p{line-height:1.6;color:#35513f}#visible-local hr{margin:28px 0;border:0;border-top:1px solid #d7dfd2}@media(max-width:540px){.visible-step{grid-template-columns:1fr}#visible-local .inline button{width:100%}}
+
+/* Recovery and device controls remain readable outside settings grids. */
+#backup-tools>label,#remote-tools>label{display:block;margin:18px 0}
+#device-tools>button,#device-tools>select{margin:8px 8px 8px 0}
+#run-history .secondary,#run-history .primary{display:inline-block;margin:8px 8px 8px 0}
+.calendar-preview>summary{cursor:pointer;font-weight:700;font-size:18px}
+#upcoming-runs>.panel{margin:0;padding:16px 0;border:0;border-bottom:1px solid var(--line,#d9ddd3);border-radius:0}
+
+/* Keep each visible setup label, field and action together. */
+#visible-local .field{display:flex;flex-direction:column;gap:8px;min-width:0;font-size:12px;color:var(--ink)}
+#visible-local .field input,#visible-local .field select{display:block;width:100%;min-width:0;max-width:100%;min-height:42px;margin:0}
+#visible-local .settings-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}
+.visible-setup-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin:22px 0 16px}
+.visible-setup-card{min-width:0;border:1px solid var(--line);border-radius:12px;background:#f7f9f4;padding:22px}
+.visible-setup-card h3{margin:0 0 20px;font-size:15px}
+.visible-save-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+#visible-local .visible-connect-row{gap:10px;margin:12px 0 0}
+#visible-local .visible-connect-row button{flex:1 1 145px;gap:8px;padding:11px 12px}
+#view-visible .visible-connection-status{margin:18px 0 0;border-top:1px solid #dce4d7;padding-top:14px;font-size:12px;overflow-wrap:anywhere}
+.visible-browser-help{border:1px solid var(--line);border-radius:9px;padding:13px 16px;background:#fff}
+.visible-browser-help summary{cursor:pointer;font-size:12px;font-weight:600;color:var(--green);line-height:1.5}
+.visible-browser-help .hint{margin:12px 0 0;overflow-wrap:anywhere}
+.visible-workflow-field{grid-column:1/-1}
+@media(max-width:800px){.visible-setup-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:540px){#visible-local .settings-grid{grid-template-columns:minmax(0,1fr)}.visible-setup-card{padding:17px}.visible-save-row button{width:100%}.visible-setup-grid{gap:14px}}
+
+/* Desktop host controls share the main dashboard; no automatic launcher panel. */
+.pc-control-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:24px 0}
+.pc-control-card{padding:22px;border:1px solid var(--line);border-radius:12px;background:#fcfdf8;min-width:0}
+.pc-control-card h3{margin-top:0}.pc-control-card p{font-size:13px;line-height:1.65;color:#58705e}
+.pc-control-card .inline{flex-wrap:wrap;gap:10px;margin-top:20px}
+#pc-lan-tools>label{display:block;max-width:420px;margin:20px 0}
+#pc-lan-tools select{width:100%;padding:12px;border:1px solid var(--line);border-radius:8px;margin-top:8px}
+#pc-action-status{overflow-wrap:anywhere}
+@media(max-width:950px){.pc-control-grid{grid-template-columns:1fr}.pc-control-card{padding:18px}}
+.progress-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;padding:0;list-style:none}.progress-list li{padding:14px;border:1px solid #d5ded7;border-radius:12px}.progress-done{background:#e8f2eb}.progress-running{background:#fff0d9}.progress-failed{background:#fde8e3}.live-preview{width:100%;max-width:640px;display:block;border-radius:12px}.readiness-row{padding:12px 0;border-bottom:1px solid #dde3dc}.thumbnail-days{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px}.thumbnail-day{border:1px solid #dde3dc;border-radius:12px;padding:12px}.thumbnail-day img{display:block;width:100%;margin:8px 0}.thumbnail-day input{max-width:100%;font-size:12px}#content-description{width:100%;box-sizing:border-box;padding:14px;font:inherit}#update-progress{width:100%;height:22px}#content-program{padding:12px;margin-bottom:18px;max-width:100%}
+
+.thumbnail-day img{aspect-ratio:16/9;object-fit:cover;max-height:120px}.thumbnail-day{align-self:start}

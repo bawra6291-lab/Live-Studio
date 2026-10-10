@@ -7,14 +7,20 @@ from urllib.parse import quote
 from config import BASE
 from core import atomic_json
 from dashboard import Controller, DashboardServer, lan_addresses
+from desktop_host import DesktopHost
 
 class Launcher:
     def __init__(self, root):
         self.root=root; self.closing=False; self.mobile=None; self.updates_dialog=None
-        root.title('ISKCON Kolkata • Live Desk'); root.geometry('700x820');root.minsize(670,780)
+        root.title('Live Desk • Development preview'); root.geometry('700x820');root.minsize(670,780)
         root.configure(bg='#f5f4ef')
         self.controller=Controller()
-        self.controller.open_updates=lambda:root.after(0,self.open_updates)
+        self.host=DesktopHost();self.controller.desktop_host=self.host
+        self.controller.remote.start();self.controller.monitor.start()
+        from queue import SimpleQueue
+        from tray import Tray
+        self.tray_events=SimpleQueue();self.tray=Tray(self.tray_events.put);self.tray.start()
+        self.controller.open_updates=lambda:self.host.submit({'action':'updates'})
         self.server=DashboardServer(('127.0.0.1',8865),self.controller)
         self.controller.desktop_url='http://127.0.0.1:8865'
         threading.Thread(target=self.server.serve_forever,daemon=True).start()
@@ -24,7 +30,7 @@ class Launcher:
         style.configure('TButton',font=('Segoe UI',10),padding=10,background='#e5a473',foreground='#243b32')
         style.configure('TCombobox',padding=8)
         header=tk.Frame(root,bg='#193d36',padx=30,pady=26);header.pack(fill='x')
-        tk.Label(header,text='ISKCON KOLKATA',font=('Segoe UI',10,'bold'),fg='#b9ccba',bg='#193d36').pack(anchor='w')
+        tk.Label(header,text=self.controller.cfg['workspace_name'],font=('Segoe UI',10,'bold'),fg='#b9ccba',bg='#193d36').pack(anchor='w')
         tk.Label(header,text='Live Desk',font=('Segoe UI',28,'bold'),fg='#fff5e6',bg='#193d36').pack(anchor='w',pady=(6,3))
         tk.Label(header,text='Your livestream PC. Connected to your phone.',font=('Segoe UI',11),fg='#c4d0bb',bg='#193d36').pack(anchor='w')
         body=tk.Frame(root,bg='#f5f4ef',padx=30,pady=20);body.pack(fill='both',expand=True)
@@ -66,7 +72,51 @@ class Launcher:
             self.enable_mobile()
         if self.controller.cfg.get('armed'):self.controller.run('arm')
         root.after(500,self.open_dashboard);root.after(1000,self.update_status)
-    def open_dashboard(self):webbrowser.open(self.controller.desktop_url+'/#pair='+quote(self.server.pair_code))
+        root.after(100,self.drain_host)
+    def open_dashboard(self):
+        if not webbrowser.open(self.controller.desktop_url+'/#pair='+quote(self.server.pair_code)):
+            self.root.deiconify()
+            self.controller.log('Default browser could not open. Recovery controls are available in the Windows launcher.')
+    def drain_host(self):
+        if self.closing:return
+        result=self.host.drain(self.pc_action)
+        if result:self.controller.log(result)
+        self.root.after(100,self.drain_host)
+    def pc_action(self,action,ip):
+        if self.closing or self.controller.maintenance:raise ValueError('App is closing or updating.')
+        if action=='obs':
+            if self.obs_button.instate(['disabled']):raise ValueError('OBS action already in progress.')
+            self.open_obs();return None  # The worker reports completion in obs_finished.
+        if action=='obs-admin':
+            os.startfile(str(Path(__file__).with_name('SETUP-OBS-ADMIN.cmd')))
+            return 'OBS administrator setup opened. Approve Windows UAC on this PC.'
+        if action=='obs-layout':
+            if self.controller.armed or self.controller.mode:
+                raise ValueError('Pause automation and finish the current operation first.')
+            os.startfile(str(Path(__file__).with_name('SETUP-OBS-LAYOUT.cmd')))
+            return 'Layout protection setup opened. Finish active lives and close OBS normally before installing; approve Windows UAC on this PC.'
+        if action=='startup':return self.startup(notify=False)
+        if action=='startup-remove':return self.remove_startup(notify=False)
+        if action=='logs':
+            os.startfile(BASE);return 'Settings and logs folder opened on this PC.'
+        if action=='mobile-on':
+            if self.mobile:raise ValueError('Mobile access is already enabled.')
+            self.network.set(ip);self.enable_mobile(notify=False)
+            return 'Wi-Fi mobile access enabled: '+self.phone_url.get()
+        if action=='mobile-off':
+            if self.mobile:self.toggle_mobile()
+            return 'Wi-Fi mobile access disabled. Internet remote access is unchanged.'
+        if action=='launcher':
+            self.root.deiconify();self.root.lift();return 'Recovery launcher opened on this PC.'
+        if action=='updates':
+            self.open_updates();return 'Update controls opened on this PC.'
+        if action=='quit':
+            if self.controller.updates.snapshot()['busy'] or (self.updates_dialog and self.updates_dialog.busy):raise ValueError('Update in progress.')
+            self.host.update(available=False)
+            # Let the HTTP response and final status leave before closing the server.
+            self.root.after(500,lambda:self.close(confirmed=True))
+            return 'Live Desk is closing. Future automation and phone control will stop; existing live continues.'
+        raise ValueError('Unsupported PC action.')
     def open_updates(self):
         if self.closing:return
         if self.updates_dialog:self.updates_dialog.window.lift();return
@@ -89,21 +139,26 @@ class Launcher:
         threading.Thread(target=work,daemon=True).start()
     def obs_finished(self,result):
         self.obs_status.set(result);self.obs_button.configure(state='normal')
+        self.host.finish(result)
     def show_code(self):
-        messagebox.showinfo('Pair this phone',f'Pairing code (case-sensitive):\n\n{self.server.pair_code}\n\nShare only with the person controlling this livestream PC.\nA new code is generated whenever this Windows app restarts.')
-    def enable_mobile(self):
+        messagebox.showinfo('Pair this phone',f'Pairing code (case-sensitive):\n\n{self.server.pair_code}\n\nPhone codes expire after 30 minutes. Generate a fresh code in the dashboard’s Mobile access panel.\nShare only with the intended operator or viewer.')
+    def enable_mobile(self,notify=True):
         ip=self.network.get()
         if ip not in lan_addresses():
+            if not notify:raise ValueError('No matching local network address.')
             messagebox.showerror('Network','No matching local network address. Connect the PC to Wi-Fi/Ethernet and reopen the app.');return
         try:
             mobile=DashboardServer((ip,8866),self.controller,self.server.pair_code)
+            mobile.pair_expires=self.server.pair_expires;mobile.pair_role=self.server.pair_role
             mobile.allowed_hosts={ip}
             threading.Thread(target=mobile.serve_forever,daemon=True).start();self.mobile=mobile
             with self.controller.lock:
                 self.controller.mobile_enabled=True;self.controller.mobile_urls=[f'http://{ip}:8866']
             self.phone_url.set(f'http://{ip}:8866');self.mobile_button.configure(text='Disable mobile access');self.network_box.configure(state='disabled')
             self.prefs.update(mobile=True,ip=ip);atomic_json(self.pref_path,self.prefs)
-        except OSError:messagebox.showerror('Mobile access','Could not open port 8866 on this address. Close another copy or choose the correct network.')
+        except OSError:
+            if not notify:raise
+            messagebox.showerror('Mobile access','Could not open port 8866 on this address. Close another copy or choose the correct network.')
     def toggle_mobile(self):
         if self.mobile:
             self.mobile.shutdown();self.mobile.server_close();self.mobile=None
@@ -112,31 +167,51 @@ class Launcher:
             self.phone_url.set('Mobile access is off.');self.mobile_button.configure(text='Enable mobile access');self.network_box.configure(state='readonly')
         else:self.enable_mobile()
     def startup_path(self):return Path(os.environ['APPDATA'])/'Microsoft/Windows/Start Menu/Programs/Startup/ISKCON-Live-Start.lnk'
-    def startup(self):
+    def startup(self,notify=True):
         try:
             import win32com.client
             shortcut=win32com.client.Dispatch('WScript.Shell').CreateShortCut(str(self.startup_path()))
             exe=Path(sys.executable);gui=exe.with_name('pythonw.exe')
             shortcut.Targetpath=str(gui if gui.exists() else exe)
-            shortcut.Arguments='"'+str(Path(__file__).resolve())+'"'
+            shortcut.Arguments='-E -s "'+str(Path(__file__).with_name('desktop_start.py').resolve())+'"'
             shortcut.WorkingDirectory=str(Path(__file__).parent.resolve());shortcut.save()
-            messagebox.showinfo('Startup saved','Live Desk will open after Windows login. This replaces the old app startup shortcut. Keep this folder in its current location.')
-        except Exception:messagebox.showerror('Startup','Could not create shortcut. Install requirements with the same Python used to run this app.')
-    def remove_startup(self):
-        try:self.startup_path().unlink(missing_ok=True);messagebox.showinfo('Startup removed','Automatic app launch removed. Current automation is unchanged.')
-        except OSError:messagebox.showerror('Startup','Could not remove shortcut. Check Windows permissions.')
+            if notify:messagebox.showinfo('Startup saved','Live Desk will open after Windows login. This replaces the old app startup shortcut. Keep this folder in its current location.')
+            return 'Start with Windows enabled. Keep the app folder in its current location.'
+        except Exception:
+            if not notify:raise
+            messagebox.showerror('Startup','Could not create shortcut. Install requirements with the same Python used to run this app.')
+    def remove_startup(self,notify=True):
+        try:
+            self.startup_path().unlink(missing_ok=True)
+            if notify:messagebox.showinfo('Startup removed','Automatic app launch removed. Current automation is unchanged.')
+            return 'Start with Windows disabled. Current automation is unchanged.'
+        except OSError:
+            if not notify:raise
+            messagebox.showerror('Startup','Could not remove shortcut. Check Windows permissions.')
     def update_status(self):
+        self.code.set(self.server.pair_code)
         if self.closing:return
         with self.controller.lock:self.status.set(self.controller.message)
+        while not self.tray_events.empty():
+            event=self.tray_events.get()
+            if event=='dashboard':self.open_dashboard()
+            elif event=='pause' and not self.controller.maintenance:self.controller.pause()
+            elif event=='quit':self.close()
+        if self.controller.updates.exit_ready.is_set():
+            self.closing=True;self.tray.close();self.controller.shutdown();self.wait_close();return
+        self.tray.update(self.controller.armed)
+        self.host.update(tray_available=self.tray.available,addresses=lan_addresses(),startup=self.startup_path().exists())
         self.root.after(1000,self.update_status)
-    def close(self):
-        if self.updates_dialog and self.updates_dialog.busy:
+    def close(self,confirmed=False):
+        if self.controller.updates.snapshot()['busy'] or (self.updates_dialog and self.updates_dialog.busy):
             messagebox.showinfo('Update in progress','Wait for the update operation to finish.');return
-        if not messagebox.askyesno('Close Live Desk?','Future starts, scheduled endings, camera actions and phone control will stop. Existing broadcasts continue. Close the app?'):return
-        self.closing=True;self.controller.shutdown();self.status.set('Waiting for the current operation to finish…')
+        if not confirmed and not messagebox.askyesno('Close Live Desk?','Future starts, scheduled endings, camera actions and phone control will stop. Existing broadcasts continue. Close the app?'):return
+        self.closing=True;self.tray.close();self.controller.shutdown();self.status.set('Waiting for the current operation to finish…')
         self.wait_close()
     def wait_close(self):
         if self.controller.worker and self.controller.worker.is_alive():self.root.after(300,self.wait_close);return
+        worker=self.controller.updates.worker
+        if worker and worker.is_alive():self.root.after(300,self.wait_close);return
         for server in [self.mobile,self.server]:
             if server:server.shutdown();server.server_close()
         import ctypes
@@ -145,12 +220,37 @@ class Launcher:
 
 def main():
     if os.name!='nt':raise SystemExit('Run launcher.py on the Windows livestream PC.')
+    # The installer checks this named mutex before replacing the bundled runtime.
+    import ctypes
+    from ctypes import wintypes
+    ctypes.windll.kernel32.CreateMutexW.restype=wintypes.HANDLE
+    installation_mutex=ctypes.windll.kernel32.CreateMutexW(None,False,'LiveDeskController-v1')
     root=tk.Tk();root.withdraw();instance=socket.socket()
     try:instance.bind(('127.0.0.1',47639))
     except OSError:
-        messagebox.showinfo('App already running','Close the old ISKCON Live Start app or the other Live Desk window first. Only one controller can run.');root.destroy();return
+        try:
+            with socket.create_connection(('127.0.0.1',47639),timeout=2) as existing:existing.sendall(b'open')
+        except OSError:messagebox.showinfo('App already running','Another controller is running. Open http://127.0.0.1:8865 in your browser, or close the old app first.')
+        root.destroy();return
     try:
-        Launcher(root);root.deiconify()
+        launcher=Launcher(root)  # The designed dashboard is the primary window.
+        instance.listen(4);instance.settimeout(1)
+        # Only a fixed local reopen request; no commands, URLs or credentials.
+        reopen=threading.Event()
+        def listen():
+            while not launcher.closing:
+                try:
+                    conn,_=instance.accept()
+                    with conn:
+                        conn.settimeout(1)
+                        if conn.recv(16)==b'open':reopen.set()
+                except (OSError,socket.timeout):continue
+        threading.Thread(target=listen,daemon=True).start()
+        def check_reopen():
+            if launcher.closing:return
+            if reopen.is_set():reopen.clear();launcher.open_dashboard()
+            root.after(250,check_reopen)
+        root.after(250,check_reopen)
         ready=os.environ.pop('ISKCON_UPDATE_READY',None)
         if ready:Path(ready).write_text('ready',encoding='utf-8')
         root.mainloop()

@@ -49,19 +49,21 @@ class HTTPSRedirects(HTTPRedirectHandler):
         https_url(newurl)
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
-def fetch(url, limit, destination=None):
+def fetch(url, limit, destination=None, progress=None):
     https_url(url)
     request = Request(url, headers={'User-Agent':'ISKCON-Live-Desk-Updater/1','Cache-Control':'no-cache'})
     try:
         with build_opener(HTTPSRedirects()).open(request, timeout=25) as response:
             https_url(response.url)
             data = bytearray(); total = 0
+            length=int(getattr(response,'headers',{}).get('Content-Length','0'))
             out = open(destination,'wb') if destination else None
             try:
                 while True:
                     chunk = response.read(64*1024)
                     if not chunk:break
                     total += len(chunk)
+                    if progress:progress(total,length)
                     if total > limit:raise UpdateError('Update download exceeds its size limit.')
                     if out:out.write(chunk)
                     else:data.extend(chunk)
@@ -168,6 +170,7 @@ def reserve_install(controller):
     """Block all new dashboard operations while an update checks OBS and exits."""
     with controller.lock:
         controller.require_idle()
+        if getattr(controller,'desktop_host',None) and controller.desktop_host.snapshot()['busy']:raise UpdateError('Wait for the PC/OBS action to finish.')
         if controller.armed or controller.cfg.get('armed'):
             raise UpdateError('Pause automation before installing an update.')
         controller.maintenance=True
@@ -192,8 +195,10 @@ def check_obs_idle(controller):
 def start_installer(app_dir, stage, work_dir):
     work_dir=Path(work_dir);job=work_dir/uuid.uuid4().hex;job.mkdir(parents=True)
     worker=job/'updater_worker.py';shutil.copyfile(Path(__file__).resolve(),worker)
+    gui=Path(sys.executable).with_name('pythonw.exe')
+    restart_python=str(gui) if os.name=='nt' and gui.exists() else sys.executable
     plan={'app_dir':str(Path(app_dir).resolve()),'stage':str(Path(stage).resolve()),
-          'pid':os.getpid(),'python':sys.executable,'job':str(job.resolve())}
+          'pid':os.getpid(),'python':restart_python,'job':str(job.resolve())}
     path=job/'plan.json';path.write_text(json.dumps(plan),encoding='utf-8')
     # The worker must live outside the app folder being renamed. No shell/UAC.
     process=subprocess.Popen([sys.executable,str(worker),'--apply',str(path)],cwd=str(job),
@@ -210,7 +215,12 @@ def rename_when_released(source,target):
 
 def swap_folders(app_dir,stage):
     app_dir=Path(app_dir);stage=Path(stage)
-    if app_dir.is_symlink() or stage.is_symlink() or stage.parent!=app_dir.parent:
+    # Reject redirected endpoints before resolving Windows short-name aliases.
+    # prepare_update resolves its path; callers can still hold the 8.3 spelling.
+    if any(p.is_symlink() or (hasattr(p,'is_junction') and p.is_junction()) for p in (app_dir,stage)):
+        raise UpdateError('Unsafe installation directory.')
+    app_dir=app_dir.resolve();stage=stage.resolve()
+    if stage.parent!=app_dir.parent or stage==app_dir or not app_dir.is_dir() or not stage.is_dir():
         raise UpdateError('Unsafe installation directory.')
     backup=app_dir.with_name(app_dir.name+'-previous-'+uuid.uuid4().hex[:8])
     rename_when_released(app_dir,backup)

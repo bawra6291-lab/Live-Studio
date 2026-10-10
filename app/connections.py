@@ -6,14 +6,16 @@ from datetime import datetime
 from core import IST, SLOTS, title_for, atomic_json
 
 class SetupError(RuntimeError):
-    def __init__(self, message, *, request_type=None, code=None):
+    def __init__(self, message, *, request_type=None, code=None, retryable=True):
         super().__init__(message)
         self.request_type=request_type
         self.code=code
+        self.retryable=retryable
 
 class Vault:
     SERVICE='ISKCON-Live-Start'
-    def __init__(self):
+    def __init__(self, service=SERVICE):
+        self.SERVICE=service
         import keyring
         self.k=keyring
         # Do not silently use plaintext/fallback storage.
@@ -118,6 +120,10 @@ class OBS:
         if self.cfg['obs_scene'] not in names:raise SetupError('Configured program scene does not exist.')
     def key(self):
         return self.call('GetStreamServiceSettings')['streamServiceSettings'].get('key','')
+    def layout_request(self,action,token=''):
+        from obs_layout import request,LayoutError
+        try:return request(action,token)
+        except LayoutError as exc:raise SetupError(str(exc),retryable=False) from None
     def wait_profile(self,name):
         # CreateProfile queues frontend work: its reply is not proof that the
         # new profile is present/current yet. Never edit an active profile file.
@@ -147,8 +153,11 @@ class OBS:
         backup.write_bytes(raw)
         temp='ISKCON-Reload-'+uuid.uuid4().hex[:8]
         original=self.cfg['obs_profile']
-        changed=False;stage='create temporary profile';restored=False
+        changed=False;stage='capture OBS layout';restored=False;layout_token=None
         try:
+            if self.cfg.get('obs_preserve_layout',True):
+                layout_token=self.layout_request('capture')['token']
+            stage='create temporary profile'
             self.call('CreateProfile',profileName=temp)
             stage='wait for temporary profile'
             self.wait_profile(temp)
@@ -178,12 +187,21 @@ class OBS:
             stage='remove temporary profile'
             self.idle()
             self.call('RemoveProfile',profileName=temp)
+            stage='restore OBS layout'
+            if layout_token:
+                self.layout_request('restore',layout_token)
+                layout_token=None
         except Exception as exc:
             # Best effort restore only while inactive; never terminate an active output.
             try:
                 self.idle()
                 if changed:
-                    self.call('SetCurrentProfile',profileName=temp)
+                    profiles=self.call('GetProfileList').get('profiles',[])
+                    # The temporary profile may already have been removed if
+                    # the final layout acknowledgement failed. Recreate it
+                    # only while idle so the original FB backup can reload.
+                    if temp not in profiles:self.call('CreateProfile',profileName=temp)
+                    else:self.call('SetCurrentProfile',profileName=temp)
                     self.wait_profile(temp)
                     self.idle()
                     path.write_bytes(raw)
@@ -191,6 +209,9 @@ class OBS:
                     self.call('SetCurrentProfile',profileName=original)
                 self.wait_profile(original)
                 self.check_profile();restored=True
+                if layout_token:
+                    self.layout_request('restore',layout_token)
+                    layout_token=None
             except Exception:pass
             reason=str(exc) if type(exc) is SetupError else type(exc).__name__
             recovery='Original profile restored.' if restored else 'Original profile restore could not be confirmed; select it manually in OBS.'
@@ -218,7 +239,7 @@ class YouTube:
             try:creds.refresh(Request())
             except Exception:creds=None
         if not creds or not creds.valid:
-            if not interactive:raise SetupError('YouTube login is missing/expired. Use Connect YouTube locally.')
+            if not interactive:raise SetupError('YouTube login is missing/expired. Use Connect YouTube locally.',retryable=False)
             from google_auth_oauthlib.flow import InstalledAppFlow
             flow=InstalledAppFlow.from_client_secrets_file(self.cfg['google_client_file'],self.SCOPES)
             creds=flow.run_local_server(port=0,access_type='offline',prompt='consent',timeout_seconds=180)
@@ -236,7 +257,7 @@ class YouTube:
         except Exception:raise SetupError(f'YouTube {resource}: connection/response failed. Check Studio before retrying a write.') from None
         if not r.ok:
             reason=out.get('error',{}).get('errors',[{}])[0].get('reason','request_failed')
-            raise SetupError(f'YouTube {resource}: HTTP {r.status_code}, {reason}.')
+            raise SetupError(f'YouTube {resource}: HTTP {r.status_code}, {reason}.',retryable=r.status_code in (429,500,502,503,504))
         return out
     def list(self,resource,max_pages=40,allow_partial=False,**params):
         result=[]
@@ -249,6 +270,13 @@ class YouTube:
         raise SetupError('Too many YouTube pages to inspect safely.')
     def owned_channel(self):
         mine=self.list('channels',part='id,snippet',mine='true')
+        selected=self.cfg.get('youtube_channel_id','')
+        if selected:
+            channel=next((x for x in mine if x['id']==selected),None)
+            if not channel:raise SetupError('Connected YouTube account does not own the configured channel ID. Reconnect the intended channel locally.')
+            return channel
+        if not self.cfg.get('legacy_setup'):
+            raise SetupError('Save your YouTube channel ID in Connections before connecting or enabling automation.')
         refs=self.list('videos',part='snippet',id=','.join(x['reference'] for x in SLOTS))
         ids={x['snippet']['channelId'] for x in refs}
         if len(refs)!=4 or len(ids)!=1:raise SetupError('The four reference videos could not be verified.')
@@ -263,15 +291,17 @@ class YouTube:
         streams=self.list('liveStreams',part='id,snippet,cdn,status',mine='true',maxResults=50)
         matches=[s for s in streams if s['cdn']['ingestionInfo']['streamName']==key]
         if len(matches)!=1:raise SetupError('OBS stream key does not match exactly one reusable stream on the connected YouTube channel.')
-        if matches[0].get('snippet',{}).get('title','').strip()!=self.STREAM_TITLE:
-            raise SetupError('OBS must use the existing YouTube Official Livestream key. Select that same existing key in Studio and OBS; do not create or reset a key.')
+        expected=self.cfg.get('youtube_stream_title',self.STREAM_TITLE if self.cfg.get('legacy_setup') else '')
+        if not expected:raise SetupError('Save the name of your existing YouTube stream key in Connections.')
+        if matches[0].get('snippet',{}).get('title','').strip()!=expected:
+            raise SetupError('OBS must use the configured existing YouTube stream key name. Select that same existing key in Studio and OBS; do not create or reset a key.')
         return matches[0]
     def bind_stream(self,event,stream):
         if event['contentDetails'].get('boundStreamId')!=stream['id']:
             self.api('POST','liveBroadcasts/bind',{'id':event['id'],'streamId':stream['id'],'part':'id,contentDetails'})
         verified=self.event(event['id'])
         if verified['contentDetails'].get('boundStreamId')!=stream['id']:
-            raise SetupError('YouTube did not confirm the Official stream binding. Inspect Studio before retrying.')
+            raise SetupError('YouTube did not confirm the selected stream binding. Inspect Studio before retrying.')
         if verified['status']['privacyStatus']!='public':
             raise SetupError('YouTube API project restricted this broadcast to private. Resolve API access; it has not been made live.')
         return verified
@@ -305,7 +335,12 @@ class YouTube:
         return original,metadata
     def prepare(self,slot,due,obs_key,persist):
         channel=self.owned_channel();self.no_other_live()
-        previous=self.list('liveBroadcasts',part='id,snippet,status,contentDetails',broadcastStatus='completed',broadcastType='all',maxResults=50,max_pages=4,allow_partial=True)
+        from content import ContentStore
+        from config import BASE
+        assets=ContentStore(self.cfg.get('_data_base',BASE))
+        chosen=slot.get('thumbnail_days',{}).get(str(due.day),'')
+        local_thumb=assets.get(chosen) if chosen else None
+        previous=[] if slot.get('title_template') else self.list('liveBroadcasts',part='id,snippet,status,contentDetails',broadcastStatus='completed',broadcastType='all',maxResults=50,max_pages=4,allow_partial=True)
         previous=[x for x in previous if slot['name'].casefold() in x['snippet']['title'].casefold() and x['snippet']['channelId']==channel['id']]
         previous.sort(key=lambda x:x['snippet'].get('actualStartTime',x['snippet'].get('publishedAt','')),reverse=True)
         if previous: source=previous[0]
@@ -313,6 +348,7 @@ class YouTube:
             refs=self.list('liveBroadcasts',part='id,snippet,status,contentDetails',id=slot['reference'])
             if len(refs)!=1:raise SetupError('Previous live settings unavailable through the connected account.')
             source=refs[0]
+        if source['snippet'].get('channelId')!=channel['id']:raise SetupError('Reference livestream belongs to another channel.')
         title=title_for(source['snippet']['title'],slot,due.date())
         stream=self.stream_for_obs(obs_key)
         upcoming=self.list('liveBroadcasts',part='id,snippet,status,contentDetails',broadcastStatus='upcoming',broadcastType='all',maxResults=50)
@@ -320,6 +356,9 @@ class YouTube:
         if len(matches)>1:raise SetupError('Duplicate YouTube schedules already exist for this title. Resolve them manually.')
         if matches:
             event=matches[0];details=event['contentDetails']
+            if slot.get('description_mode')=='custom' and event['snippet'].get('description','')!=slot['description']:
+                persist(yt_id=event['id'],title=title,stage='youtube_metadata')
+                raise SetupError('Existing YouTube draft description differs from the saved plan. Correct the retained draft in Studio; no duplicate was created.')
             scheduled=datetime.fromisoformat(event['snippet']['scheduledStartTime'].replace('Z','+00:00'))
             if abs((scheduled-due).total_seconds())>60:raise SetupError('Existing YouTube schedule has a different start time; review it in Studio.')
             if details.get('enableAutoStop') or details.get('enableAutoStart'):
@@ -328,13 +367,17 @@ class YouTube:
                 raise SetupError('Existing schedule requires testing mode. Disable its monitor stream or create the schedule with this app.')
             if event['status']['privacyStatus']!='public':raise SetupError('Existing schedule is not public; check Studio.')
             if details.get('boundStreamId') not in (None,'',stream['id']):raise SetupError('Existing YouTube schedule uses another stream key.')
+            if local_thumb:
+                persist(yt_id=event['id'],title=title,stage='youtube_thumbnail')
+                self.api('POST','thumbnails/set',{'videoId':event['id'],'uploadType':'media'},data=local_thumb[0],content_type=local_thumb[1])
         else:
             original,metadata=self.video_template(source['id'],slot['reference'],title,channel['id'])
+            if slot.get('description_mode')=='custom':metadata['description']=slot['description']
             details={k:v for k,v in source.get('contentDetails',{}).items() if k in ('enableDvr','recordFromStart','enableEmbed','enableClosedCaptions','closedCaptionsType','latencyPreference','projection')}
             details.update(enableAutoStart=False,enableAutoStop=False,monitorStream={'enableMonitorStream':False,'broadcastStreamDelayMs':0})
             status={'privacyStatus':'public','selfDeclaredMadeForKids':source['status'].get('selfDeclaredMadeForKids',source['status'].get('madeForKids',False))}
             event=self.api('POST','liveBroadcasts',{'part':'snippet,status,contentDetails'},body={
-                'snippet':{'title':title,'description':source['snippet'].get('description',''),'scheduledStartTime':due.isoformat()},
+                'snippet':{'title':title,'description':slot['description'] if slot.get('description_mode')=='custom' else source['snippet'].get('description',''),'scheduledStartTime':due.isoformat()},
                 'status':status,'contentDetails':details})
             persist(yt_id=event['id'],title=title,yt_stream_id=stream['id'],stage='youtube_bind')
             event=self.bind_stream(event,stream)
@@ -344,18 +387,23 @@ class YouTube:
                 self.api('PUT','videos',{'part':'snippet'},body={'id':event['id'],'snippet':metadata})
             except SetupError as exc:
                 raise SetupError(str(exc)+' Broadcast retained for review in YouTube Studio; title and categoryId were included. No automatic retry was sent.') from None
-            thumbs=original.get('thumbnails',{})
-            thumb=next((thumbs[k]['url'] for k in ('maxres','standard','high','medium','default') if k in thumbs),None)
-            if not thumb:raise SetupError('Previous thumbnail could not be found. New broadcast retained for manual review.')
-            # Download without OAuth headers, and only from YouTube image hosts.
-            import requests
-            host=urlsplit(thumb).hostname or ''
-            if not (host.endswith('.ytimg.com') or host=='ytimg.com'):raise SetupError('Unexpected YouTube thumbnail host.')
-            try:
-                r=requests.get(thumb,timeout=25);r.raise_for_status()
-            except Exception:raise SetupError('Previous thumbnail download failed.') from None
-            if len(r.content)>2*1024*1024:raise SetupError('Previous thumbnail exceeds YouTube upload limit.')
-            self.api('POST','thumbnails/set',{'videoId':event['id'],'uploadType':'media'},data=r.content,content_type=r.headers.get('Content-Type','image/jpeg'))
+            if local_thumb:
+                image_data,image_kind=local_thumb
+            else:
+                thumbs=original.get('thumbnails',{})
+                thumb=next((thumbs[k]['url'] for k in ('maxres','standard','high','medium','default') if k in thumbs),None)
+                if not thumb:raise SetupError('Previous thumbnail could not be found. New broadcast retained for manual review.')
+                # Download without OAuth headers, and only from YouTube image hosts.
+                import requests
+                host=urlsplit(thumb).hostname or ''
+                if not (host.endswith('.ytimg.com') or host=='ytimg.com'):raise SetupError('Unexpected YouTube thumbnail host.')
+                try:
+                    r=requests.get(thumb,timeout=25);r.raise_for_status()
+                except Exception:raise SetupError('Previous thumbnail download failed.') from None
+                if len(r.content)>2*1024*1024:raise SetupError('Previous thumbnail exceeds YouTube upload limit.')
+                image_data,image_kind=r.content,r.headers.get('Content-Type','image/jpeg')
+            persist(stage='youtube_thumbnail')
+            self.api('POST','thumbnails/set',{'videoId':event['id'],'uploadType':'media'},data=image_data,content_type=image_kind)
         persist(yt_id=event['id'],title=title)
         self.bind_stream(event,stream)
         return {'yt_id':event['id'],'yt_stream_id':stream['id'],'title':title}
@@ -370,14 +418,18 @@ class YouTube:
     def go(self,id):self.api('POST','liveBroadcasts/transition',{'id':id,'broadcastStatus':'live','part':'id,status'})
 
 class Facebook:
-    PAGE='113962385367196'
     def __init__(self,cfg,vault):self.cfg,self.vault=cfg,vault
+    @property
+    def PAGE(self):
+        page=self.cfg.get('facebook_page_id','')
+        if not re.fullmatch(r'[0-9]{5,30}',page):raise SetupError('Save the target Facebook Page ID in Connections.')
+        return page
     def api(self,method,path,params=None):
         import requests
         version=self.cfg.get('graph_version','v23.0')
         if not re.fullmatch(r'v\d+\.0',version):raise SetupError('Invalid Graph API version.')
         token=self.vault.get('facebook_page_token')
-        if not token:raise SetupError('Facebook Page access token missing. It must be configured locally.')
+        if not token:raise SetupError('Facebook Page access token missing. It must be configured locally.',retryable=False)
         try:
             r=requests.request(method,f'https://graph.facebook.com/{version}/{path}',
                 headers={'Authorization':'Bearer '+token},
@@ -386,11 +438,14 @@ class Facebook:
         except Exception:raise SetupError('Facebook connection/response failed. Check Live Producer before retrying a write.') from None
         if not r.ok or 'error' in out:
             err=out.get('error',{})
-            raise SetupError(f'Facebook API denied/failed request (code {err.get("code",r.status_code)}, subcode {err.get("error_subcode",0)}). Check Page token, live eligibility and app permissions.')
+            if err.get('code')==190:
+                raise SetupError('Facebook Page token expired or invalid. Replace the Page token in Connections on this PC, save and check connections. Automation is paused.',retryable=False)
+            raise SetupError(f'Facebook API denied/failed request (code {err.get("code",r.status_code)}, subcode {err.get("error_subcode",0)}). Check Page token, live eligibility and app permissions.',retryable=bool(err.get('is_transient')) or r.status_code in (429,500,502,503,504))
         return out
     def identity(self):
+        page=self.PAGE
         me=self.api('GET','me',{'fields':'id,name'})
-        if me.get('id')!=self.PAGE:raise SetupError('Facebook token is not a Page token for target 113962385367196. Browser login is not API authorization.')
+        if me.get('id')!=page:raise SetupError('Facebook token does not match the configured Page ID. Use that Page’s token; browser login is not API authorization.')
         return me
     def recent(self):
         # Bounded to the last 100 sessions; no writes use untrusted pagination URLs.
@@ -398,7 +453,7 @@ class Facebook:
     def no_other_live(self,allowed=None):
         if any(x.get('status') in ('LIVE','LIVE_NOW') and x['id']!=allowed for x in self.recent()):
             raise SetupError('Another Facebook live is active. End it manually first.')
-    def prepare(self,title,persist):
+    def prepare(self,title,persist,description=''):
         self.identity();self.no_other_live()
         matches=[x for x in self.recent() if x.get('title')==title and x.get('status') in ('UNPUBLISHED','SCHEDULED_UNPUBLISHED','SCHEDULED_LIVE')]
         if len(matches)>1:raise SetupError('Multiple matching Facebook drafts exist. Resolve them in Live Producer.')
@@ -406,9 +461,9 @@ class Facebook:
             event=matches[0]
             if event['status']!='UNPUBLISHED':raise SetupError('An existing Facebook event is scheduled. Use an unpublished draft for this app; it will not duplicate it.')
         else:
-            event=self.api('POST',self.PAGE+'/live_videos',{'title':title,'description':'','status':'UNPUBLISHED','stream_type':'REGULAR'})
+            event=self.api('POST',self.PAGE+'/live_videos',{'title':title,'description':description,'status':'UNPUBLISHED','stream_type':'REGULAR'})
         persist(fb_id=event['id'])
-        self.api('POST',event['id'],{'title':title,'is_manual_mode':'true'})
+        self.api('POST',event['id'],{'title':title,'is_manual_mode':'true',**({'description':description} if description else {})})
         detail=self.api('GET',event['id'],{'fields':'id,status,secure_stream_url'})
         if not detail.get('secure_stream_url'):raise SetupError('Facebook did not return an ingest URL for this draft.')
         return event['id'],detail['secure_stream_url']
@@ -417,6 +472,11 @@ class Facebook:
 
 class Camera:
     def __init__(self,cfg,vault):self.cfg,self.vault=cfg,vault
+    @property
+    def channel(self):
+        value=self.cfg.get('camera_channel','1')
+        if not re.fullmatch(r'[1-9][0-9]?',str(value)):raise SetupError('Invalid camera channel.')
+        return str(value)
     def request(self,method,path):
         import requests
         from requests.auth import HTTPDigestAuth
@@ -436,24 +496,24 @@ class Camera:
         return root
     def check(self):
         self.request('GET','/ISAPI/System/deviceInfo')
-        root=self.request('GET','/ISAPI/PTZCtrl/channels/1/patrols/8')
-        if not any(e.tag.split('}')[-1]=='id' and e.text=='8' for e in root.iter()):raise SetupError('Patrol 8 could not be verified on channel 1.')
+        root=self.request('GET',f'/ISAPI/PTZCtrl/channels/{self.channel}/patrols/8')
+        if not any(e.tag.split('}')[-1]=='id' and e.text=='8' for e in root.iter()):raise SetupError('Patrol 8 could not be verified on the configured channel.')
     def start(self):self.action({'kind':'patrol_start','number':8})
     def check_action(self,action):
         number=action['number'];kind=action['kind']
         if kind=='preset':
             if type(number)!=int or not 1<=number<=32:raise SetupError('Use an ordinary preset 1–32, not a special camera command.')
-            root=self.request('GET','/ISAPI/PTZCtrl/channels/1/presets')
+            root=self.request('GET',f'/ISAPI/PTZCtrl/channels/{self.channel}/presets')
         else:
             if type(number)!=int or not 1<=number<=8:raise SetupError('Patrol must be 1–8.')
-            root=self.request('GET',f'/ISAPI/PTZCtrl/channels/1/patrols/{number}')
+            root=self.request('GET',f'/ISAPI/PTZCtrl/channels/{self.channel}/patrols/{number}')
         if not any(e.tag.split('}')[-1]=='id' and e.text==str(number) for e in root.iter()):
-            raise SetupError(f'Camera {kind} {number} is not configured on channel 1.')
+            raise SetupError(f'Camera {kind} {number} is not configured on the configured channel.')
     def action(self,action):
         self.check_action(action);number=action['number'];kind=action['kind']
         suffix={'patrol_start':f'patrols/{number}/start','patrol_stop':f'patrols/{number}/stop','preset':f'presets/{number}/goto'}.get(kind)
         if not suffix:raise SetupError('Unsupported camera action.')
-        self.request('PUT','/ISAPI/PTZCtrl/channels/1/'+suffix)
+        self.request('PUT',f'/ISAPI/PTZCtrl/channels/{self.channel}/'+suffix)
 
 class Services:
     def __init__(self,cfg,vault,log=print):
@@ -462,6 +522,7 @@ class Services:
         self.obs=OBS(cfg,vault);self.yt=YouTube(cfg,vault);self.fb=Facebook(cfg,vault);self.cam=Camera(cfg,vault)
     def check(self):
         self.obs.connect(launch=True);self.obs.check_profile();self.obs.plugin_target()
+        if self.cfg.get('obs_preserve_layout',True):self.obs.layout_request('status')
         self.log('OBS connected. Program scene: '+self.cfg['obs_scene'])
         channel=self.yt.owned_channel();self.log('YouTube channel verified: '+channel['snippet']['title'])
         self.yt.stream_for_obs(self.obs.key())
@@ -472,7 +533,7 @@ class Services:
         for action in actions:
             key=('preset' if action['kind']=='preset' else 'patrol',action['number'])
             if key not in checked:self.cam.check_action(action);checked.add(key)
-        self.log('Camera reachable; configured camera actions checked. No movement requested.' if actions else 'Camera reachable; no scheduled camera actions enabled.')
+        self.log('Camera reachable; configured camera actions checked. No movement requested.' if actions else 'Camera skipped; no scheduled camera actions enabled.')
         self.log('Read-only checks passed. Live-start and locked-PC capture still require a supervised test.')
     def prepare(self,slot,due,persist):
         self.obs.close();self.obs.connect(launch=True);self.obs.idle();self.obs.check_profile()
@@ -480,7 +541,9 @@ class Services:
         self.fb.identity();self.fb.no_other_live()
         for action in slot.get('camera_actions',[]):self.cam.check_action(action)
         record=self.yt.prepare(slot,due,self.obs.key(),persist)
-        fb_id,url=self.fb.prepare(record['title'],persist)
+        persist(stage='facebook_prepare')
+        fb_id,url=self.fb.prepare(record['title'],persist,**({'description':slot['description']} if slot.get('description_mode')=='custom' else {}))
+        persist(stage='obs_configure')
         self.obs.prepare_fb_output(url)
         record['fb_id']=fb_id
         return record
@@ -492,7 +555,7 @@ class Services:
             raise SetupError('OBS stream key changed after preparation.')
         event=self.yt.event(record['yt_id'])
         if event['contentDetails'].get('boundStreamId')!=record['yt_stream_id']:
-            raise SetupError('YouTube broadcast stream binding changed after preparation. Select the existing Official stream in Studio; no OBS start was sent.')
+            raise SetupError('YouTube broadcast stream binding changed after preparation. Select the configured existing stream in Studio; no OBS start was sent.')
         self.obs.start()
         status=self.obs.call('GetStreamStatus')
         self.persist_run(obs_start_epoch=time.time()-status.get('outputDuration',0)/1000,stage='waiting_for_ingest')
@@ -510,8 +573,11 @@ class Services:
                 break
             time.sleep(2)
         else:raise SetupError('YouTube ingest and FB output sending were not both confirmed within 90 seconds.')
+        self.persist_run(stage='youtube_publish')
         self.yt.go(record['yt_id'])
+        self.persist_run(stage='facebook_publish')
         self.fb.go(record['fb_id'])
+        self.persist_run(stage='confirming_live')
         deadline=time.monotonic()+90
         while time.monotonic()<deadline:
             if self.both_live(record):return
@@ -544,9 +610,11 @@ class Services:
         if not status.get('outputActive'):return
         if expected is None or 'outputDuration' not in status or abs(time.time()-status['outputDuration']/1000-expected)>2:
             raise SetupError('OBS output was restarted or its identity cannot be verified. End manually.')
-    def end(self,record,persist):
+    def end(self,record,persist,*,manual=False):
         # Exact recorded IDs only. Never address whichever broadcast happens to be live.
-        if not record.get('plan',{}).get('end_at'):raise SetupError('No scheduled end is authorized for this run.')
+        if not manual and not record.get('plan',{}).get('end_at'):raise SetupError('No scheduled end is authorized for this run.')
+        if manual and not all(record.get(k) for k in ('yt_id','fb_id','yt_stream_id','obs_start_epoch','fb_output_name','fb_target_fingerprint')):
+            raise SetupError('This run lacks verified output ownership. End it manually in OBS and the platform dashboards.')
         self.fb.identity();self.yt.owned_channel()
         self.yt.no_other_live(record['yt_id']);self.fb.no_other_live(record['fb_id'])
         event=self.yt.event(record['yt_id'])

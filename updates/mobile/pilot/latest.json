@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "version_code": 2,
+  "apk_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/mobile/pilot/0.2.0/Live-Desk-Mobile-0.2.0.apk",
+  "sha256": "d50cbd0a8b631e6e4d31b9acdffa9ae3911e37af4ff2ee61d9d227c022b4a089",
+  "size_bytes": 29166,
+  "package": "org.livedesk.mobile",
+  "signer_sha256": "a4cedc315f39eb7d3093880ab037ea82f83bb0f140722f2b971a21c7f92807f9",
+  "min_android": "8.0",
+  "channel": "development-pilot",
+  "requires": "Online enrolled PC and deployed HTTPS relay for mobile data, or same private LAN for local mode",
+  "relay_status": "deployed-pc-enrollment-and-cellular-test-pending",
+  "legacy_0_1_0": "One-time replacement required; different temporary signer",
+  "url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/mobile/pilot/0.2.0/Live-Desk-Mobile-0.2.0.apk",
+  "size": 29166,
+  "relay_url": "https://live-desk-relay-production.up.railway.app"
+}

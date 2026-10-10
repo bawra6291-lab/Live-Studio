@@ -20,6 +20,10 @@ def date_prefix(day):
     return f'{n}{suffix} {month} {day.year}'
 
 def title_for(source_title, slot, day):
+    if slot.get('title_template'):
+        result=slot['title_template'].replace('{date}',date_prefix(day)).replace('{program}',slot['name'])
+        if not result.strip() or len(result)>100 or any(ord(c)<32 or c in '<>{}' for c in result):raise RuntimeError('Invalid expanded YouTube title.')
+        return result
     # Preserve the entire original program/channel suffix, replacing only its date.
     pattern = r'^\s*\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+\s+\d{4}\s*\|\s*'
     if not re.match(pattern, source_title, re.I):
@@ -75,17 +79,22 @@ class Scheduler:
                 self.run_slot(slot,day,now)
     def run_slot(self,current,day,now):
         from copy import deepcopy
-        from schedule_config import action_time,end_time,get_schedule
+        from schedule_config import action_time,end_time,get_schedule,occurs_on
         rec=self.journal.get(current,day)
-        if not current['enabled'] and not rec.get('plan'):return
+        if rec.get('phase') in ('reviewed','ended'):return
+        if not rec.get('plan') and not occurs_on(current,day):return
         plan=rec.get('plan',current);due=slot_time(day,plan)
         clocks=[action_time(day,a,rec) for a in plan['camera_actions'] if a['timing']=='clock']
-        if now<min([due-timedelta(minutes=5)]+clocks):return
+        if now<min([due-timedelta(minutes=plan.get('prepare_minutes',5))]+clocks):return
         def put(**kw):return self.journal.put(current,day,**kw)
         if not rec.get('plan'):
             # Old journals never gain newly configured ending/movement permissions.
             if rec and rec.get('phase') not in ('new','missed'):
-                plan=next(x for x in get_schedule({}) if x['id']==current['id']);due=slot_time(day,plan)
+                legacy=next((x for x in get_schedule({}) if x['id']==current['id']),None)
+                if legacy is None:
+                    put(phase='needs_review',last_error='Saved run has no original plan. Inspect platforms; no automatic action was sent.')
+                    return
+                plan=legacy;due=slot_time(day,plan)
             states={}
             if rec.get('phase')=='done':states['0']=rec.get('patrol_result','sent')
             if rec.get('phase')=='patrol_sending':states['0']='needs_review'
@@ -101,7 +110,7 @@ class Scheduler:
             if now>due+timedelta(seconds=self.grace):
                 rec=put(phase='missed',last_error=f'Start window passed: scheduled {due.isoformat()}, worker reached it at {now.isoformat()}.')
                 self.log(plan['name']+': skipped; start window passed. Check app launch time, pause state and PC/network availability.')
-            elif now>=due-timedelta(minutes=5):
+            elif now>=due-timedelta(minutes=plan.get('prepare_minutes',5)):
                 try:
                     if phase=='new':
                         put(phase='preparing',stage='prepare',attempt_at=now.isoformat())

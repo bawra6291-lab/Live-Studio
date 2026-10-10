@@ -148,3 +148,17 @@ Start with Windows sirf Windows login ke baad app kholta hai.
 Default settings: %LOCALAPPDATA%\ISKCON-Live-Start
 Secrets: Windows Credential Manager, same ISKCON-Live-Start service.
 Python-based Windows app; standalone EXE/installer ya Android APK nahi.
+OBS LAYOUT PROTECTION (0.9.1, one-time setup)
+1. Automation Pause karo aur current live/recording ko normally finish karo.
+2. OBS ko normally close karo. Setup OBS ko force-close nahi karta.
+3. Live Desk -> This PC -> Set up OBS layout protection.
+4. Windows UAC approve karo; READY ke baad Enter dabao.
+5. Open / Show OBS, phir Check connections.
+6. OBS panels apni pasand se arrange karo. FB profile reload se pehle current
+   layout capture hota hai aur original profile par lautne ke baad restore hota hai.
+   Open / Show OBS visible window ko resize/maximize nahi karega.
+7. Hidden YouTube Live Control Panel hidden rahega. Chrome login aur Official
+   stream key unchanged hain. Helper missing/restore unconfirmed ho to new live
+   start nahi bheja jayega; Activity ki instruction follow karo.
+Helper Windows x64 / standard OBS 32 ke liye hai; pehla real PC test supervised rakho.
+

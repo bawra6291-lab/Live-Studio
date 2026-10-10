@@ -1,0 +1,9 @@
+{
+  "app_id": "iskcon-live-desk",
+  "version": "0.8.6",
+  "update_format": 1,
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.8.6/ISKCON-Live-Desk.zip",
+  "size": 155970,
+  "sha256": "8c4ba953fd2d558624e806537eb01d3ff3c6b9b2ee84c0208273852ea8d323e5",
+  "notes": "PILOT 0.8.6: OBS, Windows startup, logs and Quit controls are now inside the dashboard. Normal launch runs the host in the background without the Python console or separate launcher. Closing the browser keeps automation running; reopening Live Desk returns to the same controller. Saved connections and schedules are preserved. Pause automation and finish live before installing. Open OPEN-LIVE-DESK.cmd after updating."
+}

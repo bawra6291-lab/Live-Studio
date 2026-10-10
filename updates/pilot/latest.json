@@ -1,0 +1,9 @@
+{
+  "app_id": "iskcon-live-desk",
+  "version": "0.9.1",
+  "update_format": 1,
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.9.1/ISKCON-Live-Desk.zip",
+  "size": 205085,
+  "sha256": "9e527333d7c665eea863469606a74d657eb3c0aa782a0662146135c601e10e7c",
+  "notes": "PILOT 0.9.1: Preserve your OBS dock layout during idle Facebook output reload; Open / Show OBS no longer resizes or forces maximization. One-time setup: pause automation, finish live/recording, close OBS normally, then This PC -> Set up OBS layout protection and approve Windows UAC. Reopen OBS and Check connections. The helper supports standard Windows x64 OBS 32 and only restores dock positions, sizes, visibility and lock. Saved settings, YouTube Official stream key and logins are preserved. Real OBS/operator-PC test remains supervised."
+}

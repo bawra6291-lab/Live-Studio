@@ -1,0 +1,9 @@
+{
+  "app_id": "iskcon-live-desk",
+  "version": "0.8.1",
+  "update_format": 1,
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.8.1/ISKCON-Live-Desk.zip",
+  "size": 143017,
+  "sha256": "69fe00cfebf0b20bdfa2eb143da555ce4a4f99c64939738d795904221477473f",
+  "notes": "PILOT 0.8.1: Reuses the persistent Live Desk browser and same-site tabs after an app restart; prefers Chrome when installed and refuses duplicate launch if the existing browser is unresponsive. Sign in once per site in the Live Desk profile; external sites may still expire sessions. Normal Chrome profile is separate. Existing Official stream selection, settings and credentials are retained. Pause automation and finish any live, recording or replay before installing."
+}

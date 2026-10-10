@@ -1,0 +1,51 @@
+'use strict';
+const contentNav=el('button','nav','Program content');contentNav.dataset.view='content';contentNav.onclick=()=>navigate('content');document.querySelector('nav').append(contentNav);
+const contentView=el('section','view');contentView.id='view-content';contentView.hidden=true;$('view-schedule').parentNode.insertBefore(contentView,$('view-schedule').parentNode.querySelector('footer'));
+const progressPanel=el('section','panel'),monitorPanel=el('section','panel'),readinessPanel=el('section','panel');progressPanel.id='live-progress';monitorPanel.id='live-monitor';readinessPanel.id='readiness';$('view-overview').append(progressPanel,monitorPanel,readinessPanel);
+let contentLoaded=false,contentSlot='',contentDraft=null,contentSignature='';
+function featureButton(parent,label,callback){const b=el('button','secondary',label);b.type='button';b.onclick=callback;parent.append(b);return b;}
+function updateFeatureButtons(){if(!state)return;const blocked=!online||pending||!!state.busy||state.role==='viewer';contentView.querySelectorAll('input,select,textarea,button').forEach(n=>n.disabled=blocked);['check','install','rollback'].forEach(n=>{const b=$('update-'+n);if(b)b.disabled=!online||!!state.updates?.busy||!!state.busy||(n==='install'&&!state.updates?.available);});}
+function renderFeatures(){
+ if(!state)return;
+ progressPanel.replaceChildren(el('h2','','Live progress'));const p=state.progress;
+ if(p){progressPanel.append(el('h3','',p.name),el('p','',p.stage));const list=el('ol','progress-list');for(const step of p.steps||[]){const n=el('li','progress-'+step.status,step.label+' · '+step.status);list.append(n);}progressPanel.append(list);for(const a of p.camera||[])progressPanel.append(el('p','hint',a.label+' · '+a.state+' · '+(a.due?formatRunTime(a.due):'Waiting for both live')));if(p.error)progressPanel.append(el('p','error',p.error));featureButton(progressPanel,'Open run history',()=>navigate('recovery'));}
+ monitorPanel.replaceChildren(el('h2','','Observed live status'));const m=state.monitor||{},stale=!m.observed_at||Date.now()-Date.parse(m.observed_at)>45000;
+ monitorPanel.append(el('p','',stale?'Current status is unavailable or stale.':('OBS: '+(m.obs?.connected?(m.obs.active?'Streaming':'Idle'):'Unavailable')+' · YouTube: '+(m.youtube||'unknown')+' · Facebook: '+(m.facebook||'unknown'))));
+ if(!stale&&m.obs?.connected)monitorPanel.append(el('p','hint','Scene: '+(m.obs.scene||'—')+' · '+(m.obs.kbps??'—')+' kbps · '+(m.obs.reconnecting?'Reconnecting':'Connected')));
+ if(m.frame&&!stale&&/^data:image\/(jpeg|jpg);base64,[A-Za-z0-9+/=]+$/.test(m.frame)&&m.frame.length<=22000){const image=el('img','live-preview');image.src=m.frame;image.alt='Sample of the OBS program scene';monitorPanel.append(image);}
+ monitorPanel.append(el('p','hint','OBS sample: '+(m.frame_at||'Unavailable')+' · Platform read: '+(m.platform_at||'Not read')+'. Samples refresh about every 15 seconds; platform reads about every minute.'));
+ readinessPanel.replaceChildren(el('h2','','Ready for automation?'));
+ for(const item of state.readiness?.items||[]){const row=el('div','readiness-row');row.append(el('b','',item.label+' · '+item.status),el('p','hint',item.detail));if(item.status!=='ready'){const b=featureButton(row,'Open '+item.view,()=>navigate(item.view));if(item.action&&state.local)featureButton(row,item.action==='youtube'?'Connect YouTube':'Check connections',()=>action(item.action)).disabled=state.busy||!online;}readinessPanel.append(row);}
+ renderUpdatePanel();
+ const signature=JSON.stringify(state.schedule.map(s=>[s.id,s.name,s.title_template,s.description_mode,s.description,s.thumbnail_days]));
+ if(signature!==contentSignature){contentSignature=signature;contentLoaded=false;}
+ if(!contentLoaded)buildContent();
+}
+function buildContent(){
+ contentView.replaceChildren(el('h2','','Program content'),el('p','hint','Each program has its own title. {date} uses the run’s IST date; {program} uses its name. The existing Official stream key stays unchanged. Unmapped days reuse the reference thumbnail.'));
+ if(!state.local){contentView.append(el('p','','Edit titles, descriptions and thumbnail files on the PC.'));contentLoaded=true;return;}
+ const select=el('select');select.id='content-program';for(const s of state.schedule){const o=el('option','',s.name);o.value=s.id;select.append(o);}if(state.schedule.some(s=>s.id===contentSlot))select.value=contentSlot;contentView.append(select);
+ const editor=el('div','panel');editor.id='content-editor';contentView.append(editor);select.onchange=()=>{contentSlot=select.value;buildContentEditor();};contentSlot=select.value;contentLoaded=true;buildContentEditor();
+}
+function buildContentEditor(){
+ const root=$('content-editor');root.replaceChildren();const slot=state.schedule.find(s=>s.id===contentSlot);if(!slot)return;contentDraft=structuredClone(slot);
+ const title=inputField(root,'Title template','title_template','text',slot.title_template||'{date} | {program}');title.id='content-title';
+ const mode=selectField(root,'Description','description_mode',slot.description_mode||'reference',[['reference','Reuse reference livestream'],['custom','Use saved description for every run']]);mode.id='content-mode';
+ const description=el('textarea');description.id='content-description';description.rows=8;description.value=slot.description||'';description.maxLength=5000;root.append(description);description.hidden=mode.value!=='custom';mode.onchange=()=>description.hidden=mode.value!=='custom';
+ const date=inputField(root,'Preview date (IST)','date','date',state.now.slice(0,10));date.id='content-date';
+ featureButton(root,'Preview saved plan',async()=>{try{const out=await api('/api/content/preview',{slot:contentSlot,date:date.value});const preview=$('content-preview');preview.replaceChildren(el('h3','',out.title),el('p','',out.description??out.description_source),el('p','hint',out.thumbnail_source));if(out.thumbnail_id){const img=el('img','live-preview');img.src='/api/media/'+out.thumbnail_id;img.alt='Saved calendar thumbnail';preview.append(img);}}catch(e){toast(e.message);}});
+ const preview=el('div','notice');preview.id='content-preview';root.append(preview,el('h3','','Day 1–31 thumbnails'));
+ const days=el('div','thumbnail-days');root.append(days);contentDraft.thumbnail_days=structuredClone(slot.thumbnail_days||{});
+ for(let d=1;d<=31;d++){const card=el('div','thumbnail-day');card.append(el('b','','Day '+d));const image=el('img');image.alt='Day '+d+' thumbnail';const update=()=>{image.hidden=!contentDraft.thumbnail_days[d];if(!image.hidden)image.src='/api/media/'+contentDraft.thumbnail_days[d];};update();card.append(image);
+ const file=el('input');file.type='file';file.accept='image/jpeg,image/png';file.setAttribute('aria-label','Upload thumbnail for day '+d);file.onchange=async()=>{const f=file.files[0];if(!f)return;file.disabled=true;try{if(f.size>2097152)throw Error('Use a JPEG or PNG up to 2 MB.');const encoded=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=reject;r.readAsDataURL(f);});const out=await api('/api/media/upload',{data:encoded});contentDraft.thumbnail_days[d]=out.id;update();toast('Thumbnail uploaded. Save this program content to apply it.');}catch(e){toast(e.message);}finally{file.disabled=false;file.value='';}};card.append(file);featureButton(card,'Reuse reference',()=>{delete contentDraft.thumbnail_days[d];update();});days.append(card);}
+ featureButton(root,'Save program content',async()=>{if(!await confirmAction('Save content for '+slot.name+'?','This changes future titles, descriptions and mapped thumbnails. Keep the existing Official stream key. Pause automation first; unfinished runs retain their plan.'))return;try{const schedule=structuredClone(state.schedule),target=schedule.find(s=>s.id===contentSlot);target.title_template=title.value;target.description_mode=mode.value;target.description=description.value;target.thumbnail_days=contentDraft.thumbnail_days;await api('/api/schedule',{schedule,grace_minutes:state.grace_minutes,confirmed:true});scheduleLoaded=false;contentLoaded=false;await refresh();toast('Program content saved.');}catch(e){toast(e.message);}}).id='content-save';
+ root.querySelectorAll('input,select,textarea,button').forEach(n=>n.disabled=!!state.busy||!online||state.role==='viewer');
+}
+let updateBuilt=false;
+function renderUpdatePanel(){const view=$('view-updates');if(!updateBuilt){const panel=el('div','panel');panel.id='dashboard-update';panel.append(el('h2','','Update Live Desk'));const source=inputField(panel,'Maintainer update address','source','url','');source.id='update-source';panel.append(el('p','notice'));panel.lastChild.id='update-status';const progress=el('progress');progress.id='update-progress';progress.max=100;panel.append(progress,el('p','hint','Installation verifies the package, preserves settings and creates a previous-version backup. Restart stays paused until you check connections.'));
+ for(const [name,label] of [['check','Check for updates'],['install','Download & install'],['rollback','Restore previous app version']]){const b=featureButton(panel,label,async()=>{if(name!=='check'&&!await confirmAction(label+'?','Pause automation and finish all OBS streams, recordings and replays first. The app will restart; saved setup remains.'))return;try{await api('/api/updates/'+name,{source:source.value,confirmed:true});await refresh();}catch(e){toast(e.message);}});b.id='update-'+name;}
+ view.prepend(panel);$('open-updates').textContent='Open recovery update window';updateBuilt=true;}
+ const u=state.updates;$('dashboard-update').hidden=!state.local;if(!u)return;const source=$('update-source');if(document.activeElement!==source)source.value=u.source||'';$('update-status').textContent=u.message+(u.notes?' '+u.notes:'')+(u.last_result?' · Last installer result: '+JSON.stringify(u.last_result):'');const progress=$('update-progress');progress.hidden=!u.busy;if(u.percent===null)progress.removeAttribute('value');else progress.value=u.percent;source.disabled=u.busy;for(const name of ['check','install','rollback'])$('update-'+name).disabled=!online||u.busy||!!state.busy||(name==='install'&&!u.available);
+}
+
+if(state){renderFeatures();updateFeatureButtons();}

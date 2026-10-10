@@ -1,0 +1,17 @@
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): true
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+Verified for SourceStamp: false
+Number of signers: 1
+Signer #1 certificate DN: CN=Live Desk Development Pilot
+Signer #1 certificate SHA-256 digest: 6e9b76a9ec35d70811ecf3a943e8957ef6fb475242e162f3cccf3b3e780fec0c
+Signer #1 certificate SHA-1 digest: 578d89feb08993aee5f7160dda2cbf22785b6e49
+Signer #1 certificate MD5 digest: 7ffcb32f589935007d63761422a16a21
+Signer #1 key algorithm: RSA
+Signer #1 key size (bits): 2048
+Signer #1 public key SHA-256 digest: 9ee2cfda748f13403f89184920faaaba98c4288bb5be45adfef9013b2cd06057
+Signer #1 public key SHA-1 digest: cf44df9dd1fc82cd1952ddb75dd83dd2c4819e81
+Signer #1 public key MD5 digest: 3562bb915e3895df4368088815be8378
