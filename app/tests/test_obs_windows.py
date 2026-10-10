@@ -93,6 +93,25 @@ class AdminTaskTests(unittest.TestCase):
         self.assertEqual(popen.call_count,1)
 
 class VisibleLaunchTests(unittest.TestCase):
+    def test_show_preserves_normal_and_maximized_windows_without_resizing(self):
+        gui=Mock();gui.GetWindowText.return_value='OBS Studio - Profile: Untitled'
+        gui.IsWindowVisible.return_value=True;gui.IsIconic.return_value=False
+        gui.EnumWindows.side_effect=lambda cb,arg:cb(100,arg)
+        process=Mock();process.GetWindowThreadProcessId.return_value=(1,123)
+        con=NS(SW_RESTORE=9,SW_SHOW=5,WM_SYSCOMMAND=274,SC_RESTORE=61728)
+        with patch.dict(sys.modules,{'win32gui':gui,'win32process':process,'win32con':con}):
+            self.assertTrue(ow._show({123}))
+        gui.ShowWindow.assert_not_called();gui.PostMessage.assert_not_called()
+        gui.SetForegroundWindow.assert_called_once_with(100)
+    def test_show_minimized_window_restores_once_without_maximizing(self):
+        gui=Mock();gui.GetWindowText.return_value='OBS Studio - Profile: Untitled'
+        gui.IsWindowVisible.return_value=True;gui.IsIconic.side_effect=[True,False,False]
+        gui.EnumWindows.side_effect=lambda cb,arg:cb(100,arg)
+        process=Mock();process.GetWindowThreadProcessId.return_value=(1,123)
+        con=NS(SW_RESTORE=9,SW_SHOW=5,WM_SYSCOMMAND=274,SC_RESTORE=61728)
+        with patch.dict(sys.modules,{'win32gui':gui,'win32process':process,'win32con':con}):
+            self.assertTrue(ow._show({123}))
+        gui.ShowWindow.assert_called_once_with(100,9)
     def test_existing_obs_only_shown_without_new_launch(self):
         with tempfile.TemporaryDirectory() as tmp:
             exe=Path(tmp)/'obs64.exe';exe.touch()

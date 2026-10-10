@@ -137,3 +137,14 @@ Operational constraints:
 - A requested platform end can partially succeed. Ambiguous writes are not replayed.
 - Camera preset support is limited to ordinary positions 1–32 to avoid special
   device commands. The selected preset/patrol must already exist on the camera.
+0.9.1 OBS layout protection
+- Open/Show OBS does not restore an already-visible window or force-maximize it.
+- The in-process Qt helper captures/restores dock state, visibility and lock before/
+  after idle FB profile reload, including a recreated hidden YouTube dock.
+- Local fixed-action IPC requires fresh nonce, matching instance snapshot token,
+  bounded request/response size and expiry. No network or live commands in helper.
+- Missing helper blocks preflight; final restoration failure blocks new live start.
+- Windows native Qt fixture and release DLL load test are required before publishing.
+- Real user OBS / UAC / live output / locked-desktop testing remains supervised.
+- This is layout recovery, not a fix for an unidentified OBS/native-plugin crash.
+

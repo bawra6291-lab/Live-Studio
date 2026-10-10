@@ -4,7 +4,7 @@ from threading import RLock
 
 
 class DesktopHost:
-    ACTIONS = {'obs', 'obs-admin', 'startup', 'startup-remove', 'logs',
+    ACTIONS = {'obs', 'obs-admin', 'obs-layout', 'startup', 'startup-remove', 'logs',
                'mobile-on', 'mobile-off', 'launcher', 'updates', 'quit'}
 
     def __init__(self):

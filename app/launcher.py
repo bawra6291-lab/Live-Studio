@@ -90,6 +90,11 @@ class Launcher:
         if action=='obs-admin':
             os.startfile(str(Path(__file__).with_name('SETUP-OBS-ADMIN.cmd')))
             return 'OBS administrator setup opened. Approve Windows UAC on this PC.'
+        if action=='obs-layout':
+            if self.controller.armed or self.controller.mode:
+                raise ValueError('Pause automation and finish the current operation first.')
+            os.startfile(str(Path(__file__).with_name('SETUP-OBS-LAYOUT.cmd')))
+            return 'Layout protection setup opened. Finish active lives and close OBS normally before installing; approve Windows UAC on this PC.'
         if action=='startup':return self.startup(notify=False)
         if action=='startup-remove':return self.remove_startup(notify=False)
         if action=='logs':

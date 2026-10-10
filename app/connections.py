@@ -120,6 +120,10 @@ class OBS:
         if self.cfg['obs_scene'] not in names:raise SetupError('Configured program scene does not exist.')
     def key(self):
         return self.call('GetStreamServiceSettings')['streamServiceSettings'].get('key','')
+    def layout_request(self,action,token=''):
+        from obs_layout import request,LayoutError
+        try:return request(action,token)
+        except LayoutError as exc:raise SetupError(str(exc),retryable=False) from None
     def wait_profile(self,name):
         # CreateProfile queues frontend work: its reply is not proof that the
         # new profile is present/current yet. Never edit an active profile file.
@@ -149,8 +153,11 @@ class OBS:
         backup.write_bytes(raw)
         temp='ISKCON-Reload-'+uuid.uuid4().hex[:8]
         original=self.cfg['obs_profile']
-        changed=False;stage='create temporary profile';restored=False
+        changed=False;stage='capture OBS layout';restored=False;layout_token=None
         try:
+            if self.cfg.get('obs_preserve_layout',True):
+                layout_token=self.layout_request('capture')['token']
+            stage='create temporary profile'
             self.call('CreateProfile',profileName=temp)
             stage='wait for temporary profile'
             self.wait_profile(temp)
@@ -180,12 +187,21 @@ class OBS:
             stage='remove temporary profile'
             self.idle()
             self.call('RemoveProfile',profileName=temp)
+            stage='restore OBS layout'
+            if layout_token:
+                self.layout_request('restore',layout_token)
+                layout_token=None
         except Exception as exc:
             # Best effort restore only while inactive; never terminate an active output.
             try:
                 self.idle()
                 if changed:
-                    self.call('SetCurrentProfile',profileName=temp)
+                    profiles=self.call('GetProfileList').get('profiles',[])
+                    # The temporary profile may already have been removed if
+                    # the final layout acknowledgement failed. Recreate it
+                    # only while idle so the original FB backup can reload.
+                    if temp not in profiles:self.call('CreateProfile',profileName=temp)
+                    else:self.call('SetCurrentProfile',profileName=temp)
                     self.wait_profile(temp)
                     self.idle()
                     path.write_bytes(raw)
@@ -193,6 +209,9 @@ class OBS:
                     self.call('SetCurrentProfile',profileName=original)
                 self.wait_profile(original)
                 self.check_profile();restored=True
+                if layout_token:
+                    self.layout_request('restore',layout_token)
+                    layout_token=None
             except Exception:pass
             reason=str(exc) if type(exc) is SetupError else type(exc).__name__
             recovery='Original profile restored.' if restored else 'Original profile restore could not be confirmed; select it manually in OBS.'
@@ -503,6 +522,7 @@ class Services:
         self.obs=OBS(cfg,vault);self.yt=YouTube(cfg,vault);self.fb=Facebook(cfg,vault);self.cam=Camera(cfg,vault)
     def check(self):
         self.obs.connect(launch=True);self.obs.check_profile();self.obs.plugin_target()
+        if self.cfg.get('obs_preserve_layout',True):self.obs.layout_request('status')
         self.log('OBS connected. Program scene: '+self.cfg['obs_scene'])
         channel=self.yt.owned_channel();self.log('YouTube channel verified: '+channel['snippet']['title'])
         self.yt.stream_for_obs(self.obs.key())

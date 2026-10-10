@@ -86,8 +86,12 @@ def _show(pids):
         return False
     for hwnd in windows:
         try:
-            win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
-            win32gui.ShowWindow(hwnd, win32con.SW_MAXIMIZE)
+            # Raising an already-visible window must not resize it. SW_RESTORE
+            # also unmaximizes a maximized window, briefly reflowing every dock.
+            if win32gui.IsIconic(hwnd):
+                win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+            elif not win32gui.IsWindowVisible(hwnd):
+                win32gui.ShowWindow(hwnd, win32con.SW_SHOW)
             if not win32gui.IsWindowVisible(hwnd) or win32gui.IsIconic(hwnd):
                 win32gui.PostMessage(hwnd, win32con.WM_SYSCOMMAND, win32con.SC_RESTORE, 0)
         except Exception:
