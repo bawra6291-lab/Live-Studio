@@ -21,12 +21,16 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r app/requirements.txt
+      - run: python -m pip install -r app/requirements-desktop.txt
       - run: python -m unittest discover -s app/tests -v
       - run: python -m unittest discover -s qa -p 'test_remote*.py' -v
       - run: python -m compileall -q app
       - name: Windows native compatibility smoke check
         if: runner.os == 'Windows'
         run: python qa/windows_smoke.py
+      - name: Desktop window lifecycle with isolated fake services
+        if: runner.os == 'Windows'
+        run: python qa/desktop_window_smoke.py
   dashboard:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -66,6 +70,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r app/requirements.txt
+      - run: python -m pip install -r app/requirements-desktop.txt
       - name: Build private runtime and per-user installer
         run: python packaging/build_windows.py --output installer-artifacts
       - name: Install, validate relocated runtime, and uninstall
@@ -75,7 +80,7 @@ jobs:
           $target = Join-Path $env:RUNNER_TEMP 'LiveDeskInstallTest'
           $process = Start-Process $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$target") -Wait -PassThru
           if ($process.ExitCode -ne 0) { throw "Installer failed: $($process.ExitCode)" }
-          & "$target/runtime/python.exe" -E -s -c "import tkinter,win32api,keyring,requests,websocket,google_auth_oauthlib; r=tkinter.Tk(); r.withdraw(); r.destroy()"
+          & "$target/runtime/python.exe" -E -s -c "import tkinter,win32api,keyring,requests,websocket,google_auth_oauthlib,webview; r=tkinter.Tk(); r.withdraw(); r.destroy()"
           if ($LASTEXITCODE -ne 0) { throw 'Installed runtime validation failed' }
           $uninstaller = (Get-ChildItem "$target/unins*.exe").FullName
           $process = Start-Process $uninstaller -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru

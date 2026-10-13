@@ -44,6 +44,7 @@ class WindowsHostTests(unittest.TestCase):
             controller=Controller(folder,Service,Vault())
             with patch.object(launcher,'Controller',return_value=controller),\
                  patch.object(launcher,'BASE',Path(folder)),\
+                 patch('desktop_window.available',return_value=False),\
                  patch.object(launcher.webbrowser,'open',return_value=True) as browser:
                 host=launcher.Launcher(root)
                 try:

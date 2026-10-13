@@ -1,0 +1,2 @@
+# Optional renderer only. Core requirements stay unchanged for in-app updates.
+pywebview==6.2.1; sys_platform == 'win32'

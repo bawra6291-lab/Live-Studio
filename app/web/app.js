@@ -192,6 +192,7 @@ function renderPC(){
  $('pc-nav').hidden=!state?.local;lanPanel.hidden=!available;
  $('pc-action-status').textContent=state?.local&&host?host.message:'PC controls are available in the Windows app on this PC.';
  $('pc-startup-status').textContent=host?.startup?'Live Desk opens after Windows login.':'Start with Windows is off.';
+ $('pc-desktop-status').textContent=host?.desktop_message||'Open Live Desk in its own window. Closing it keeps automation and mobile control running.';
  $('pc-local-help').hidden=available;
  if(!state?.local&&!$('view-pc').hidden)navigate('overview');
  if(available){
@@ -218,8 +219,11 @@ async function pcRequest(action,extra={}){
  finally{pending=false;updateButtons();}
 }
 for(const b of document.querySelectorAll('[data-pc]'))b.onclick=async()=>{
+ if(b.dataset.pc==='desktop-setup'){
+  if(!await confirmAction('Set up the desktop window?','Download the desktop component once on this PC. Pause automation and finish any OBS live or recording first. Saved logins and schedules stay in place.'))return;
+ }
  if(b.dataset.pc==='quit'){
-  if(!await confirmAction('Quit Live Desk on this PC?','Future starts, scheduled endings, camera actions and phone control will stop. Existing live broadcasts continue. Closing the browser alone keeps automation running.'))return;
+  if(!await confirmAction('Quit Live Desk on this PC?','Future starts, scheduled endings, camera actions and phone control will stop. Existing live broadcasts continue. Closing the desktop window or browser alone keeps automation running.'))return;
   return pcRequest('quit',{confirmed:true});
  }
  pcRequest(b.dataset.pc);

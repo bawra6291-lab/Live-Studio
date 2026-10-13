@@ -11,7 +11,7 @@ def build(output,compiler):
     # A full installation includes Tk, SSL, Windows DLLs and the installed dependencies.
     # Keep the runtime beside app/ so in-app source upgrades never replace the running interpreter.
     shutil.copytree(ROOT/'app',app,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
-    code="import sys,ssl,tkinter,requests,websocket,keyring,win32api,google.auth,google_auth_oauthlib; from pathlib import Path; assert Path(sys.prefix).resolve()==Path(sys.executable).resolve().parent; r=tkinter.Tk(); r.withdraw(); r.destroy(); print(sys.version)"
+    code="import sys,ssl,tkinter,requests,websocket,keyring,win32api,google.auth,google_auth_oauthlib,webview; from pathlib import Path; assert Path(sys.prefix).resolve()==Path(sys.executable).resolve().parent; r=tkinter.Tk(); r.withdraw(); r.destroy(); print(sys.version)"
     subprocess.run([str(runtime/'python.exe'),'-E','-s','-c',code],check=True,cwd=str(stage))
     # Record the actual wheel set in the artifact, for review/reproducibility.
     freeze=subprocess.check_output([str(runtime/'python.exe'),'-E','-s','-m','pip','freeze'],text=True)

@@ -8,6 +8,7 @@ from config import BASE
 from core import atomic_json
 from dashboard import Controller, DashboardServer, lan_addresses
 from desktop_host import DesktopHost
+from desktop_window import DesktopWindow
 
 class Launcher:
     def __init__(self, root):
@@ -26,6 +27,8 @@ class Launcher:
         threading.Thread(target=self.server.serve_forever,daemon=True).start()
         self.pref_path=BASE/'dashboard.json'
         self.prefs=json.loads(self.pref_path.read_text('utf-8')) if self.pref_path.exists() else {}
+        self.desktop=DesktopWindow(BASE,self.dashboard_url,self.open_browser,self.controller.log)
+        self.desktop_setup_worker=None
         style=ttk.Style();style.theme_use('clam')
         style.configure('TButton',font=('Segoe UI',10),padding=10,background='#e5a473',foreground='#243b32')
         style.configure('TCombobox',padding=8)
@@ -63,8 +66,8 @@ class Launcher:
         ttk.Button(row,text='Start with Windows',command=self.startup).pack(side='left',padx=(0,8))
         ttk.Button(row,text='Remove startup',command=self.remove_startup).pack(side='left',padx=(0,8))
         ttk.Button(row,text='Settings / logs',command=lambda:os.startfile(BASE)).pack(side='left')
-        tk.Label(body,text='Keep this window running; you can minimize it.\nClosing the browser is fine. Scheduled endings run only when configured and automation is enabled.',font=('Segoe UI',10),bg='#f5f4ef',fg='#52634d',justify='left').pack(anchor='w',pady=(18,0))
-        root.protocol('WM_DELETE_WINDOW',self.close)
+        tk.Label(body,text='Closing a dashboard or this recovery window keeps automation running.\nUse PC controls → Quit Live Desk to stop the background app.',font=('Segoe UI',10),bg='#f5f4ef',fg='#52634d',justify='left').pack(anchor='w',pady=(18,0))
+        root.protocol('WM_DELETE_WINDOW',root.withdraw)
         # A transient wake request, restored when the app exits. Does not unlock Windows.
         import ctypes
         ctypes.windll.kernel32.SetThreadExecutionState(0x80000001)
@@ -73,8 +76,14 @@ class Launcher:
         if self.controller.cfg.get('armed'):self.controller.run('arm')
         root.after(500,self.open_dashboard);root.after(1000,self.update_status)
         root.after(100,self.drain_host)
+    def dashboard_url(self):
+        return self.controller.desktop_url+'/#pair='+quote(self.server.pair_code)
     def open_dashboard(self):
-        if not webbrowser.open(self.controller.desktop_url+'/#pair='+quote(self.server.pair_code)):
+        if self.closing:return
+        if self.prefs.get('dashboard_mode','desktop')=='browser':self.open_browser()
+        else:self.desktop.open()
+    def open_browser(self):
+        if not webbrowser.open(self.dashboard_url()):
             self.root.deiconify()
             self.controller.log('Default browser could not open. Recovery controls are available in the Windows launcher.')
     def drain_host(self):
@@ -108,6 +117,12 @@ class Launcher:
             return 'Wi-Fi mobile access disabled. Internet remote access is unchanged.'
         if action=='launcher':
             self.root.deiconify();self.root.lift();return 'Recovery launcher opened on this PC.'
+        if action in ('desktop','browser'):
+            self.prefs['dashboard_mode']=action;atomic_json(self.pref_path,self.prefs)
+            self.open_dashboard()
+            return 'Dashboard preference saved: '+action+'. Automation is unchanged.'
+        if action=='desktop-setup':
+            self.setup_desktop();return None
         if action=='updates':
             self.open_updates();return 'Update controls opened on this PC.'
         if action=='quit':
@@ -117,6 +132,31 @@ class Launcher:
             self.root.after(500,lambda:self.close(confirmed=True))
             return 'Live Desk is closing. Future automation and phone control will stop; existing live continues.'
         raise ValueError('Unsupported PC action.')
+    def setup_desktop(self):
+        # Reserve the host slot through completion; updates and Quit must wait.
+        from desktop_window import install_runtime
+        with self.controller.lock:
+            self.controller.require_idle()
+            if self.controller.armed:raise ValueError('Pause automation before desktop setup.')
+        def work():
+            try:
+                from updater import check_obs_idle
+                check_obs_idle(self.controller)
+                install_runtime(BASE)
+                result='Desktop component installed. Opening Live Desk; if WebView2 Runtime is missing, the browser fallback stays available.'
+                success=True
+            except Exception:
+                result='Desktop setup could not finish. Finish all OBS outputs, check internet and Python pip, then retry. The browser dashboard remains available.'
+                success=False
+            if not self.closing:self.root.after(0,lambda:self.desktop_setup_finished(success,result))
+        self.desktop_setup_worker=threading.Thread(target=work,daemon=True)
+        self.desktop_setup_worker.start()
+        self.host.update(message='Installing desktop component. This can take several minutes; browser controls remain available.')
+    def desktop_setup_finished(self,success,result):
+        self.controller.log(result);self.host.finish(result)
+        if success:
+            self.prefs['dashboard_mode']='desktop';atomic_json(self.pref_path,self.prefs)
+            self.open_dashboard()
     def open_updates(self):
         if self.closing:return
         if self.updates_dialog:self.updates_dialog.window.lift();return
@@ -191,6 +231,7 @@ class Launcher:
     def update_status(self):
         self.code.set(self.server.pair_code)
         if self.closing:return
+        self.desktop.poll()
         with self.controller.lock:self.status.set(self.controller.message)
         while not self.tray_events.empty():
             event=self.tray_events.get()
@@ -200,9 +241,12 @@ class Launcher:
         if self.controller.updates.exit_ready.is_set():
             self.closing=True;self.tray.close();self.controller.shutdown();self.wait_close();return
         self.tray.update(self.controller.armed)
-        self.host.update(tray_available=self.tray.available,addresses=lan_addresses(),startup=self.startup_path().exists())
+        self.host.update(tray_available=self.tray.available,addresses=lan_addresses(),startup=self.startup_path().exists(),
+                         dashboard_mode=self.prefs.get('dashboard_mode','desktop'),desktop_message=self.desktop.message)
         self.root.after(1000,self.update_status)
     def close(self,confirmed=False):
+        if self.desktop_setup_worker and self.desktop_setup_worker.is_alive():
+            messagebox.showinfo('Desktop setup','Wait for desktop setup to finish.');return
         if self.controller.updates.snapshot()['busy'] or (self.updates_dialog and self.updates_dialog.busy):
             messagebox.showinfo('Update in progress','Wait for the update operation to finish.');return
         if not confirmed and not messagebox.askyesno('Close Live Desk?','Future starts, scheduled endings, camera actions and phone control will stop. Existing broadcasts continue. Close the app?'):return
@@ -212,6 +256,7 @@ class Launcher:
         if self.controller.worker and self.controller.worker.is_alive():self.root.after(300,self.wait_close);return
         worker=self.controller.updates.worker
         if worker and worker.is_alive():self.root.after(300,self.wait_close);return
+        self.desktop.close()
         for server in [self.mobile,self.server]:
             if server:server.shutdown();server.server_close()
         import ctypes
