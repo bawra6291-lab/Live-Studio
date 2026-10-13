@@ -1,5 +1,7 @@
 'use strict';
-const contentNav=el('button','nav','Program content');contentNav.dataset.view='content';contentNav.onclick=()=>navigate('content');document.querySelector('nav').append(contentNav);
+const contentNav=el('button','nav','Program content');contentNav.dataset.view='content';contentNav.onclick=()=>navigate('content');document.querySelector('nav').append(contentNav);decorateNavigation();
+$('save-schedule').prepend(icon('save'));
+
 const contentView=el('section','view');contentView.id='view-content';contentView.hidden=true;$('view-schedule').parentNode.insertBefore(contentView,$('view-schedule').parentNode.querySelector('footer'));
 const progressPanel=el('section','panel'),monitorPanel=el('section','panel'),readinessPanel=el('section','panel');progressPanel.id='live-progress';monitorPanel.id='live-monitor';readinessPanel.id='readiness';$('view-overview').append(progressPanel,monitorPanel,readinessPanel);
 let contentLoaded=false,contentSlot='',contentDraft=null,contentSignature='';
