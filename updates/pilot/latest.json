@@ -1,9 +1,9 @@
 {
   "app_id": "iskcon-live-desk",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "update_format": 1,
-  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.10.0/ISKCON-Live-Desk.zip",
-  "size": 291952,
-  "sha256": "24028ec7cfaf5ab60fedb4e7e51b52804aff24d705c0a5805742ea1304d80b54",
-  "notes": "Social Media pilot: media library, crop/colour/watermark editor, reviewed Facebook/Instagram/YouTube drafts, approved posting queue, recovery and Share link. Account permissions and Instagram media delivery need a supervised PC test. Posting uses APIs; RAW export and hosted Reels video are separate steps."
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.10.1/ISKCON-Live-Desk.zip",
+  "size": 304608,
+  "sha256": "d27ce58b24806288e76eb4fecfe4e2495be825a88b06758dc5d23bd32e8c25e1",
+  "notes": "Darshan batch from the supplied PPT: exact 7 portrait, 10 landscape and 17-photo Facebook order; crop checks, five draft creation and ordered manual photo packages for YouTube Community and Instagram portrait."
 }

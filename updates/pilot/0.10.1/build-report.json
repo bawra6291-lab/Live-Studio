@@ -1,0 +1,58 @@
+{
+  "version": "0.10.1",
+  "source_commit": "09e843f5644df377e9a1113805b2d5eb43707077",
+  "source_tree": "dac074da3287154cf6fa522c932603382b1458bd",
+  "package_sha256": "d27ce58b24806288e76eb4fecfe4e2495be825a88b06758dc5d23bd32e8c25e1",
+  "package_size": 304608,
+  "source_payload_files": 77,
+  "source_payload_matches_git_tree": true,
+  "upgrade_validation": {
+    "from": "0.10.0",
+    "to": "0.10.1",
+    "dependencies_unchanged": true
+  },
+  "validation": [
+    {
+      "name": "OBS layout helper validation",
+      "id": 38403627443,
+      "conclusion": "success",
+      "url": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/38403627443"
+    },
+    {
+      "name": "Development validation",
+      "id": 38403627337,
+      "conclusion": "success",
+      "url": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/38403627337"
+    },
+    {
+      "name": "Android companion validation",
+      "id": 38403626994,
+      "conclusion": "success",
+      "url": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/38403626994"
+    }
+  ],
+  "python_tests": 240,
+  "browser_flows": 14,
+  "browser_javascript_errors": 0,
+  "visual_qa": [
+    "1440px desktop",
+    "390px mobile",
+    "320px mobile"
+  ],
+  "verified_workflow": [
+    "17 photos assigned by subject/reference filename",
+    "3:4 and 4:3 crop checks with preserved slot",
+    "five atomic unapproved drafts, repeated build returns same IDs",
+    "exact Facebook order and cover",
+    "approved manual Community handoff package downloads with preserved bytes and caption",
+    "stale revision, missing/duplicate/crop/time checks",
+    "viewer cannot read batch caption/media or export packages"
+  ],
+  "limitations": [
+    "No real operator account posted by automated tests.",
+    "Facebook 17-photo API acceptance and Instagram CDN/permissions need supervised account testing.",
+    "YouTube Community photos and Instagram 3:4 portrait are manual handoffs, not automatic browser clicking or API posts.",
+    "Existing internet relay does not support the social composer/media upload."
+  ],
+  "official_stream_key_unchanged": true
+}
