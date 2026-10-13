@@ -94,6 +94,7 @@ class Publisher:
             if digest.hexdigest()!=ident:raise SetupError('Saved post media changed or is damaged. Import a fresh copy and approve a new draft.',retryable=False)
 
     def publish(self,job):
+        if job.get('delivery','api')!='api':raise SetupError('Manual photo handoffs cannot be sent through a posting API.',retryable=False)
         self.cancelled();self.verify_media(job)
         # Verify all selected accounts before the first platform write.
         if any(p in job['platforms'] for p in ('facebook','instagram')):

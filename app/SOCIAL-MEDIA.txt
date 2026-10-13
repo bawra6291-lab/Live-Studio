@@ -19,9 +19,10 @@ was not applied. Existing youtube.force-ssl authorization supports uploads.
 Upload up to 25 JPG, PNG or MP4/MOV files per batch. File limit: 1 GB; saved
 library limit: 5 GB. Export camera RAW files as JPG first. Photo crop, position,
 brightness, contrast, colour and optional text watermark are previewed locally. Save edited copy makes
-an immutable JPG, with its longest side up to 1600px, preserving the original.
-A post can use up to 10 photos, one video, or Facebook-only text.
-YouTube Community posts are not supported. YouTube posting here uploads a
+an immutable JPG, with its longest side up to 1440px, preserving the original.
+A Facebook-only post can use 17 photos; other photo posts can use 10.
+One video or Facebook-only text is also supported.
+YouTube Community photos use manual handoff. Automatic YouTube API posting uploads a
 video; it does not create a live broadcast or replace a stream key.
 
 3. Draft, preview and approve
@@ -41,7 +42,9 @@ Pause Social Media before installing an update. Quit Live Desk also stops
 future social posts. Closing only the dashboard leaves the host running.
 
 5. Instagram media
-Photos must be JPG, under 8 MB, and between 4:5 and 1.91:1 (square works).
+For API posting, photos must be JPG, under 8 MB, 320–1440px wide, and
+between 4:5 and 1.91:1 (square works). The PPT 3:4 portrait format is
+preserved in a manual photo package; it is not silently cropped to 4:5.
 For local JPGs the adapter creates unpublished Page photos and asks Instagram
 to fetch their Meta-hosted URLs. Their IDs are retained in the local receipt.
 This hosting path needs a supervised account test because fetch availability
@@ -71,6 +74,36 @@ link opens the mobile share sheet or copies text for WhatsApp. No WhatsApp
 Group, Community or Channel message is automatically sent. The intended
 WhatsApp destination must be specified before adding that integration.
 
+8. Darshan batch (the supplied Post_Structure PowerPoint)
+Social Media > Darshan batch > Import today's photos. Use reference filename
+matching for the example DSC filenames, or choose today's photos manually
+by subject. The template never assumes upload order or uses the PPT previews
+as posting originals. There are seven portrait (3:4) slots and ten landscape
+(4:3) slots; each group's first photo is its cover. Edit crop saves a new JPG
+and keeps that slot's position. Review deity faces before saving each crop.
+Landscape copies must meet Instagram API requirements before building.
+Set a shared caption and three IST times, then Save batch > Create five drafts.
+A missing/duplicate photo, incorrect crop, stale revision or invalid time
+prevents batch creation. Repeating a build of the same saved revision returns
+the existing five drafts. Editing a batch leaves previously created drafts
+unchanged; cancel obsolete drafts before approving replacements.
+Facebook order is landscape 1–4, portrait 1–7, then landscape 5–10 (17 total).
+Facebook and Instagram landscape drafts use the existing approved API queue.
+Instagram portrait and both YouTube Community drafts use manual photo handoff.
+Preview & approve freezes a manual package as Ready · manual upload. It does
+not queue an API request. Download ordered photos creates a ZIP with numeric
+filenames (01 is the cover), caption.txt and order.json. Download never posts
+or schedules. Open the platform in your browser, verify the account, upload
+photos in number order, paste caption and set that platform's time yourself.
+YouTube supports up to 10 images per Community post. The feed may display a
+square preview; opening a photo shows the full image. The package retains
+3:4 / 4:3 as requested. Mark completed only after checking the actual post.
+Completed by operator is your confirmation, not an API-verified receipt.
+The official YouTube Data API reference has no Community create-post method.
+This release does not add browser-click automation for photo posting.
+Manual packages are available to authenticated PC/Wi-Fi operators; viewer
+roles cannot download the package or see batch assignments/caption.
+
 No user tokens, passwords, stream keys or local media are included in releases.
 This pilot uses isolated fake accounts for automated tests. Actual posting and
 platform permission/audit checks require a supervised operator account test.
@@ -83,3 +116,6 @@ https://developers.facebook.com/docs/graph-api/reference/page/photos/
 https://developers.facebook.com/docs/graph-api/reference/page/videos/
 https://developers.facebook.com/docs/instagram-platform/instagram-api-with-facebook-login/content-publishing/
 https://www.postman.com/meta/instagram/documentation/6yqw8pt/instagram-api
+
+https://support.google.com/youtube/answer/7124474
+https://developers.google.com/youtube/v3/docs

@@ -4,11 +4,13 @@ All platform writes have a durable receipt before being sent. An interrupted
 write is held for manual review, never automatically sent a second time.
 """
 from __future__ import annotations
-import base64, copy, hashlib, ipaddress, json, re, secrets, threading, time
+import base64, copy, hashlib, ipaddress, json, re, secrets, threading, time, tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlsplit
 from core import atomic_json, now_ist
+from social_structure import structure, FACEBOOK_ORDER
+from zipfile import ZipFile, ZIP_STORED
 
 PLATFORMS = ('facebook', 'instagram', 'youtube')
 MAX_FILE = 1024 * 1024 * 1024
@@ -63,6 +65,7 @@ class Social:
         self.path=controller.base/'social-posts.json';self.lock=threading.RLock()
         self.stop=threading.Event();self.thread=None;self.worker=None;self.uploads={};self.error=''
         self.publisher_factory=publisher_factory
+        self.export_lock=threading.Lock()
         try:
             self.data=json.loads(self.path.read_text('utf-8')) if self.path.exists() else {'schema':1,'enabled':False,'instagram_id':'','assets':{},'jobs':[]}
             if self.data.get('schema')!=1 or not isinstance(self.data.get('assets'),dict) or not isinstance(self.data.get('jobs'),list):raise ValueError()
@@ -93,12 +96,59 @@ class Social:
         with self.lock:
             jobs=[]
             for job in self.data['jobs']:
-                item={k:copy.deepcopy(job.get(k)) for k in ('id','revision','title','caption','media','platforms','publish_at','privacy','made_for_kids','status','created_at','results','error','approved_at','targets')}
+                item={k:copy.deepcopy(job.get(k)) for k in ('id','revision','title','caption','media','platforms','publish_at','privacy','made_for_kids','status','created_at','results','error','approved_at','targets','delivery','manual_completed_at','batch_revision')}
                 jobs.append(item)
             return {'enabled':self.data['enabled'],'busy':self.busy,'error':self.error,
                     'instagram_id':self.data['instagram_id'],'accounts':copy.deepcopy(self.accounts),
                     'account_message':self.account_message,'assets':list(copy.deepcopy(self.data['assets']).values()),
-                    'jobs':list(reversed(jobs)),'upload_limit_mb':1024}
+                    'jobs':list(reversed(jobs)),'upload_limit_mb':1024,
+                    'structure':structure(),'batch':copy.deepcopy(self.batch_plan())}
+
+    def batch_plan(self):
+        return self.data.get('batch', {'revision':0,'slots':['']*17,'title':'Daily darshan',
+            'caption':'','times':{'portrait':'','landscape':'','facebook':''},'jobs':[], 'built_revision':None})
+
+    def batch(self, data):
+        """Persist mappings, then create exactly five unapproved drafts atomically."""
+        with self.c.lock,self.lock:
+            self.ready();plan=self.batch_plan()
+            if data.get('revision')!=plan['revision']:raise ValueError('The batch changed on another device. Reload the saved batch.')
+            if data.get('action')=='save':
+                slots=data.get('slots');title=data.get('title','');caption=data.get('caption','');times=data.get('times')
+                if not isinstance(slots,list) or len(slots)!=17 or any(not isinstance(m,str) or (m and m not in self.data['assets']) for m in slots):raise ValueError('Assign saved photos to the 17 slots.')
+                if any(m and not self.data['assets'][m]['type'].startswith('image/') for m in slots):raise ValueError('The darshan structure uses photos only.')
+                if not isinstance(title,str) or not title.strip() or len(title)>65 or not isinstance(caption,str) or len(caption)>2200:raise ValueError('Use a batch name up to 65 characters and shared caption up to 2200.')
+                if not isinstance(times,dict) or set(times)!={'portrait','landscape','facebook'} or any(not isinstance(v,str) or len(v)>40 for v in times.values()):raise ValueError('Set the three posting times in IST.')
+                fields={'slots':slots,'title':title.strip(),'caption':caption,'times':times}
+                if all(plan.get(k)==v for k,v in fields.items()):return copy.deepcopy(plan)
+                self.data['batch']={**copy.deepcopy(plan),**fields,'revision':plan['revision']+1}
+                self.persist();return copy.deepcopy(self.data['batch'])
+            if data.get('action')!='build':raise ValueError('Choose Save batch or Create drafts.')
+            if plan.get('built_revision')==plan['revision']:
+                if any(not any(j['id']==ident for j in self.data['jobs']) for ident in plan['jobs']):raise ValueError('This batch was already created and some drafts were removed. Change and save the batch before creating a new set.')
+                return {'jobs':copy.deepcopy(plan['jobs']),'already_built':True}
+            slots=plan['slots']
+            if len(slots)!=17 or any(not m or m not in self.data['assets'] for m in slots) or len(set(slots))!=17:raise ValueError('Choose 17 different photos. Fill every slot before creating drafts.')
+            for i,m in enumerate(slots):
+                _,a=self.media_path(m);ratio=3/4 if i<7 else 4/3
+                if not a['type'].startswith('image/') or abs(a['width']/a['height']-ratio)>0.002:raise ValueError(f'Slot {i+1}: crop to {"3:4" if i<7 else "4:3"} with Edit crop first. No silent crop was applied.')
+                if i<7 and a['size']>16*1024*1024:raise ValueError(f'Portrait photo {i+1}: save an edited copy under 16 MB for YouTube photo upload.')
+                if i>=7 and (a['type']!='image/jpeg' or a['size']>8*1024*1024 or not 320<=a['width']<=1440):raise ValueError(f'Landscape photo {i-6}: use Edit crop to save an Instagram JPG under 8 MB, 320–1440 pixels wide.')
+            if len(self.data['jobs'])+5>300:raise ValueError('Remove unused drafts before adding a batch (300 posts limit).')
+            backup=copy.deepcopy(self.data)
+            try:
+                ids=[]
+                for spec in structure()['posts']:
+                    group=spec['group'];media=slots[:7] if group=='portrait' else slots[7:] if group=='landscape' else [slots[i] for i in FACEBOOK_ORDER]
+                    job=self.draft({'title':plan['title']+' · '+{'youtube':'YouTube','facebook':'Facebook','instagram':'Instagram'}[spec['platform']]+' '+group,
+                        'caption':plan['caption'],'media':media,'platforms':[spec['platform']],
+                        'delivery':spec['delivery'],'publish_at':plan['times'][group],
+                        'batch_revision':plan['revision']},_persist=False)
+                    ids.append(job['id'])
+                self.data['batch'].update(jobs=ids,built_revision=plan['revision']);self.persist()
+                return {'jobs':ids,'already_built':False}
+            except Exception:
+                self.data=backup;raise
 
     def media_path(self, ident):
         if not isinstance(ident,str) or not re.fullmatch('[a-f0-9]{64}',ident):raise ValueError('Invalid media ID.')
@@ -106,6 +156,49 @@ class Social:
         path=self.folder/ident
         if not asset or not path.is_file() or path.stat().st_size!=asset['size']:raise ValueError('Saved media is missing or damaged.')
         return path,asset
+
+    def export_post(self, ident):
+        """Operator download; produces no platform writes or posting receipts.
+
+        A spooled archive bounds memory usage even for a full 17-photo batch.
+        Prefixes define upload order and the first file is always the cover.
+        """
+        if not self.export_lock.acquire(blocking=False):raise ValueError('Wait for the current photo package download.')
+        output=None
+        try:
+            with self.lock:
+                self.ready();job=copy.deepcopy(self.job(ident));assets=[]
+                for m in job['media']:
+                    path,a=self.media_path(m)
+                    if not a['type'].startswith('image/'):raise ValueError('Ordered packages are for photo posts.')
+                    assets.append((path,copy.deepcopy(a)))
+            if not assets:raise ValueError('Choose photos before downloading a package.')
+            output=tempfile.SpooledTemporaryFile(max_size=2*1024*1024)
+            manifest={'title':job['title'],'caption':job['caption'],'platforms':job['platforms'],
+                'delivery':job.get('delivery','api'),'publish_at':job['publish_at'],
+                'revision':job['revision'],'cover':1,'photos':[]}
+            with ZipFile(output,'w',ZIP_STORED) as archive:
+                for i,(path,a) in enumerate(assets,1):
+                    name=re.sub(r'[^\w. -]','_',a['name']).strip('. ')[:120] or 'photo'
+                    if not name.lower().endswith(('.jpg','.jpeg','.png')):name+='.jpg' if a['type']=='image/jpeg' else '.png'
+                    name=f'{i:02d}_{name}';digest=hashlib.sha256()
+                    with path.open('rb') as src,archive.open(name,'w') as dest:
+                        for chunk in iter(lambda:src.read(CHUNK),b''):digest.update(chunk);dest.write(chunk)
+                    if digest.hexdigest()!=a['id']:raise ValueError('A photo changed or is damaged. Re-import it before posting.')
+                    manifest['photos'].append({'position':i,'file':name,'original_name':a['name'],
+                        'sha256':a['id'],'width':a['width'],'height':a['height']})
+                archive.writestr('caption.txt',job['caption'].encode('utf-8'))
+                archive.writestr('order.json',json.dumps(manifest,ensure_ascii=False,indent=2).encode('utf-8'))
+                archive.writestr('READ-ME.txt',('Upload the numbered photos in ascending order. 01 is the cover.\n'
+                    'Copy caption.txt and check the correct account and posting date/time.\n'
+                    'This package has NOT posted or scheduled anything on a social platform.\n'
+                    'For YouTube: Create > Create post, select photos, paste caption, review then publish or schedule.\n'
+                    'Only mark Complete in Live Desk after checking the actual platform post.\n').encode('utf-8'))
+            output.seek(0);return output
+        except Exception:
+            if output:output.close()
+            raise
+        finally:self.export_lock.release()
 
     def begin_upload(self, data):
         with self.c.lock,self.lock:
@@ -157,8 +250,9 @@ class Social:
         with self.c.lock,self.lock:
             self.ready();ident=data.get('id');asset=self.data['assets'].get(ident)
             if not asset:raise ValueError('Choose a saved media file.')
-            if any(ident in j['media'] and j['status'] in ('queued','publishing','needs_review','published') for j in self.data['jobs']):raise ValueError('This media belongs to an approved or posted item. Use a new copy to change it.')
+            if any(ident in j['media'] and j['status'] in ('queued','publishing','needs_review','published','manual_ready','manual_done') for j in self.data['jobs']):raise ValueError('This media belongs to an approved or posted item. Use a new copy to change it.')
             if data.get('action')=='remove':
+                if ident in self.batch_plan()['slots']:raise ValueError('Unassign this photo from the saved batch first.')
                 if any(ident in j['media'] for j in self.data['jobs']):raise ValueError('Remove its unused drafts first.')
                 self.data['assets'].pop(ident);self.persist();(self.folder/ident).unlink(missing_ok=True)
             else:
@@ -173,7 +267,7 @@ class Social:
     def targets(self, platforms):
         return {p:(self.c.cfg.get({'facebook':'facebook_page_id','youtube':'youtube_channel_id'}.get(p,''),'') or (self.data.get('youtube_id','') if p=='youtube' else '')) if p!='instagram' else self.data['instagram_id'] for p in platforms}
 
-    def draft(self, data):
+    def draft(self, data, _persist=True):
         with self.c.lock,self.lock:
             self.ready();existing=self.job(data['id']) if data.get('id') else None
             if existing and data.get('revision')!=existing['revision']:raise ValueError('This draft changed on another device. Reload it before saving.')
@@ -181,14 +275,19 @@ class Social:
             title=data.get('title','').strip() if isinstance(data.get('title'),str) else ''
             caption=data.get('caption','')
             platforms=data.get('platforms',[]);media=data.get('media',[])
+            delivery=data.get('delivery','api')
+            if delivery not in ('api','manual'):raise ValueError('Choose API posting or manual handoff.')
             if not title or len(title)>100 or not isinstance(caption,str) or len(caption)>5000:raise ValueError('Use a title up to 100 characters and a caption up to 5000.')
             if not isinstance(platforms,list) or not platforms or len(platforms)!=len(set(platforms)) or any(p not in PLATFORMS for p in platforms):raise ValueError('Choose Facebook, Instagram or YouTube.')
-            if not isinstance(media,list) or len(media)>10 or len(media)!=len(set(media)) or any(m not in self.data['assets'] for m in media):raise ValueError('Choose up to 10 saved media files.')
+            limit=17 if platforms==['facebook'] else 10
+            if not isinstance(media,list) or any(not isinstance(m,str) for m in media) or len(media)>limit or len(media)!=len(set(media)) or any(m not in self.data['assets'] for m in media):raise ValueError('Choose up to 17 photos for Facebook alone, or 10 for other posts.')
+            if delivery=='manual' and (len(platforms)!=1 or not media or any(not self.data['assets'][m]['type'].startswith('image/') for m in media)):raise ValueError('Manual photo handoff needs one destination and saved photos.')
+            if delivery=='manual' and 'youtube' in platforms and any(self.data['assets'][m]['size']>16*1024*1024 for m in media):raise ValueError('YouTube photo uploads need images under 16 MB. Save an edited copy first.')
             if not caption.strip() and not media:raise ValueError('Add a caption or media.')
             if any(self.data['assets'][m]['type'].startswith('video/') for m in media) and len(media)!=1:raise ValueError('A video post needs exactly one video.')
             if 'youtube' in platforms and len(caption.encode('utf-8'))>5000:raise ValueError('YouTube descriptions must be at most 5000 UTF-8 bytes; shorten the caption.')
             if 'youtube' in platforms and any(c in title for c in '<>'):raise ValueError('YouTube titles cannot contain < or >.')
-            if 'youtube' in platforms and (len(media)!=1 or self.data['assets'][media[0]]['type']!='video/mp4'):raise ValueError('YouTube posting requires one video; Community posts are not supported by this API.')
+            if delivery=='api' and 'youtube' in platforms and (len(media)!=1 or self.data['assets'][media[0]]['type']!='video/mp4'):raise ValueError('YouTube API posting requires one video. Choose manual handoff for Community photos.')
             if 'instagram' in platforms and (not media or len(caption)>2200):raise ValueError('Instagram needs media and a caption up to 2200 characters.')
             when=data.get('publish_at','')
             try:
@@ -203,12 +302,14 @@ class Social:
             job={'id':existing['id'] if existing else secrets.token_hex(12),'revision':(existing['revision']+1) if existing else 1,
                  'title':title,'caption':caption,'platforms':platforms,'media':media,'publish_at':due.isoformat(),
                  'privacy':privacy,'made_for_kids':data.get('made_for_kids',False),'status':'draft',
-                 'created_at':existing['created_at'] if existing else now_ist().isoformat(),'results':{},'error':'','approved_at':None,'targets':{}}
+                 'created_at':existing['created_at'] if existing else now_ist().isoformat(),'results':{},'error':'','approved_at':None,'targets':{},
+                 'delivery':delivery,'batch_revision':data.get('batch_revision')}
             if existing:self.data['jobs'][self.data['jobs'].index(existing)]=job
             else:
                 if len(self.data['jobs'])>=300:raise ValueError('Remove unused drafts before adding more posts (300 limit).')
                 self.data['jobs'].append(job)
-            self.persist();return copy.deepcopy(job)
+            if _persist:self.persist()
+            return copy.deepcopy(job)
 
     def command(self,data):
         with self.c.lock,self.lock:
@@ -221,6 +322,10 @@ class Social:
             if action=='approve':
                 if data.get('confirmed') is not True:raise ValueError('Approve the exact preview first.')
                 if job['status']!='draft':raise ValueError('Only drafts can be approved.')
+                if job.get('delivery')=='manual':
+                    for m in job['media']:self.media_path(m)
+                    job.update(status='manual_ready',approved_at=now_ist().isoformat(),targets=self.targets(job['platforms']))
+                    self.persist();return {'ok':True}
                 targets=self.targets(job['platforms'])
                 if any(not re.fullmatch(r'UC[A-Za-z0-9_-]{22}' if p=='youtube' else r'[0-9]{5,30}',v or '') for p,v in targets.items()):raise ValueError('Save the selected Page/channel and linked Instagram account before approving.')
                 due=datetime.fromisoformat(job['publish_at'])
@@ -229,10 +334,14 @@ class Social:
                     path,asset=self.media_path(ident)
                     if 'instagram' in job['platforms'] and (asset['type']!='image/jpeg' and not asset.get('public_url')):raise ValueError('Instagram needs JPG images or a public HTTPS URL for a video. Edit PNG as JPG first.')
                     if 'instagram' in job['platforms'] and asset['type']=='image/jpeg' and asset['size']>8*1024*1024:raise ValueError('Export Instagram JPGs under 8 MB with the image editor.')
+                    if 'instagram' in job['platforms'] and asset['type']=='image/jpeg' and not 320<=asset['width']<=1440:raise ValueError('Instagram JPGs need width 320–1440 pixels. Save an edited copy first.')
                     if 'instagram' in job['platforms'] and asset['type']=='image/jpeg' and not 0.8<=asset['width']/asset['height']<=1.91:raise ValueError('Crop Instagram photos to square, 4:5 or landscape (up to 1.91:1).')
                 job.update(status='queued',approved_at=now_ist().isoformat(),targets=targets);self.persist()
+            elif action=='manual_done':
+                if data.get('confirmed') is not True or job.get('delivery')!='manual' or job['status']!='manual_ready':raise ValueError('Confirm that you completed this photo post on the platform.')
+                job.update(status='manual_done',manual_completed_at=now_ist().isoformat());self.persist()
             elif action=='cancel':
-                if job['status'] not in ('queued','draft'):raise ValueError('A started or uncertain post cannot be cancelled here. Inspect the platform first.')
+                if job['status'] not in ('queued','draft','manual_ready'):raise ValueError('A started or uncertain post cannot be cancelled here. Inspect the platform first.')
                 job.update(status='cancelled',approved_at=None);self.persist()
             elif action=='remove':
                 if job['status'] not in ('draft','cancelled'):raise ValueError('Only unused drafts/cancelled posts can be removed.')
@@ -312,7 +421,7 @@ class Social:
             if self.error or not self.data['enabled'] or self.c.closing or self.c.maintenance or self.busy:return
             # Keep upload traffic out of the live preparation/start/end window.
             if self.live_blocked():return
-            job=next((j for j in self.data['jobs'] if j['status']=='queued' and datetime.fromisoformat(j['publish_at'])<=now),None)
+            job=next((j for j in self.data['jobs'] if j['status']=='queued' and j.get('delivery','api')=='api' and datetime.fromisoformat(j['publish_at'])<=now),None)
             if not job:return
             if (now-datetime.fromisoformat(job['publish_at'])).total_seconds()>15*60:
                 job.update(status='needs_review',error='Posting window passed by more than 15 minutes. Review and create a new draft.');self.persist();return

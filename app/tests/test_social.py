@@ -151,6 +151,7 @@ class HttpTests(unittest.TestCase):
     def test_social_state_and_imports_require_session_role_and_csrf(self):
         from dashboard import Handler
         self.assertEqual(self.request('/api/social/state')[0],401)
+        self.assertEqual(self.request('/api/social/export/unknown')[0],401)
         self.login()
         body={'name':'darshan.png','size':len(PNG)}
         self.assertEqual(self.request('/api/social/upload/begin',body,**{'X-CSRF-Token':'wrong'})[0],403)
@@ -164,10 +165,15 @@ class HttpTests(unittest.TestCase):
         status,raw,_=self.request('/api/social/media/'+asset['id'],**{'Range':'bytes=0-7'});self.assertEqual(status,206);self.assertEqual(raw,PNG[:8])
         self.assertEqual(self.request('/api/social/media/../settings.json')[0],404)
         snapshot=self.request('/api/social/state')[1];self.assertNotIn('sensitive-page-token',json.dumps(snapshot));self.assertFalse(snapshot['enabled'])
-        self.request('/api/social/draft',{'title':'Private draft name','caption':'Unpublished private caption','media':[asset['id']],'platforms':['facebook'],'publish_at':(now_ist()+timedelta(minutes=10)).isoformat()})
+        _,job,_=self.request('/api/social/draft',{'title':'Private draft name','caption':'Unpublished private caption','media':[asset['id']],'platforms':['facebook'],'publish_at':(now_ist()+timedelta(minutes=10)).isoformat()})
+        status,raw,_=self.request('/api/social/export/'+job['id']);self.assertEqual(status,200);self.assertTrue(raw.startswith(b'PK'))
+        self.assertEqual(self.request('/api/social/batch',{'action':'save','revision':0,'slots':[asset['id']]+['']*16,'title':'Private batch','caption':'Private batch caption','times':dict.fromkeys(('portrait','landscape','facebook'),'')},**{'X-CSRF-Token':'wrong'})[0],403)
+        self.assertEqual(self.request('/api/social/batch',{'action':'save','revision':0,'slots':[asset['id']]+['']*16,'title':'Private batch','caption':'Private batch caption','times':dict.fromkeys(('portrait','landscape','facebook'),'')})[0],200)
         with self.server.auth_lock:self.server.sessions[self.cookie.split('=',1)[1]]['role']='viewer'
         self.assertEqual(self.request('/api/social/media/'+asset['id'])[0],403)
-        restricted=self.request('/api/social/state')[1];self.assertEqual(restricted['assets'],[]);self.assertNotIn('Unpublished private caption',json.dumps(restricted));self.assertNotIn('Private draft name',json.dumps(restricted))
+        self.assertEqual(self.request('/api/social/export/'+job['id'])[0],403)
+        self.assertEqual(self.request('/api/social/batch',{'action':'build','revision':1})[0],403)
+        restricted=self.request('/api/social/state')[1];self.assertEqual(restricted['assets'],[]);self.assertEqual(restricted['batch'],{});self.assertNotIn('Private batch',json.dumps(restricted));self.assertNotIn('Unpublished private caption',json.dumps(restricted));self.assertNotIn('Private draft name',json.dumps(restricted))
     def test_unconfirmed_approval_and_enable_rejected_at_http_boundary(self):
         self.login();payload={'title':'Darshan','caption':'Caption','media':[],'platforms':['facebook'],'publish_at':(now_ist()+timedelta(minutes=10)).isoformat()}
         status,j,_=self.request('/api/social/draft',payload);self.assertEqual(status,200)
