@@ -186,6 +186,7 @@ class Social:
             if not isinstance(media,list) or len(media)>10 or len(media)!=len(set(media)) or any(m not in self.data['assets'] for m in media):raise ValueError('Choose up to 10 saved media files.')
             if not caption.strip() and not media:raise ValueError('Add a caption or media.')
             if any(self.data['assets'][m]['type'].startswith('video/') for m in media) and len(media)!=1:raise ValueError('A video post needs exactly one video.')
+            if 'youtube' in platforms and len(caption.encode('utf-8'))>5000:raise ValueError('YouTube descriptions must be at most 5000 UTF-8 bytes; shorten the caption.')
             if 'youtube' in platforms and any(c in title for c in '<>'):raise ValueError('YouTube titles cannot contain < or >.')
             if 'youtube' in platforms and (len(media)!=1 or self.data['assets'][media[0]]['type']!='video/mp4'):raise ValueError('YouTube posting requires one video; Community posts are not supported by this API.')
             if 'instagram' in platforms and (not media or len(caption)>2200):raise ValueError('Instagram needs media and a caption up to 2200 characters.')

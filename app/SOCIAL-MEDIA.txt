@@ -14,7 +14,7 @@ was not applied. Existing youtube.force-ssl authorization supports uploads.
 2. Import and edit
 Upload up to 25 JPG, PNG or MP4/MOV files per batch. File limit: 1 GB; saved
 library limit: 5 GB. Export camera RAW files as JPG first. Photo crop, position,
-brightness, contrast and colour are previewed locally. Save edited copy makes
+brightness, contrast, colour and optional text watermark are previewed locally. Save edited copy makes
 an immutable JPG, with its longest side up to 1600px, preserving the original.
 A post can use up to 10 photos, one video, or Facebook-only text.
 YouTube Community posts are not supported. YouTube posting here uploads a

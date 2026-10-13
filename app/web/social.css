@@ -4,3 +4,4 @@
 .social-review{margin:16px 0;flex-wrap:wrap}.social-review input,.social-review select{min-width:0;max-width:100%;border:1px solid #d9e3d5;border-radius:7px;padding:10px;background:#fafcf8;color:#315641;font:inherit}.social-review input{flex:1}
 .social-caption-tools{gap:12px;margin:15px 0}.social-caption-tools .field{margin:0!important;max-width:170px}.social-caption-tools button{font-size:10px;padding:10px;align-self:end;min-height:39px}
 #confirm-dialog{max-height:calc(100dvh - 32px);overflow-y:auto}#confirm-dialog #confirm-text{max-height:55dvh;overflow-y:auto;padding-right:8px}
+.social-watermark-row{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:18px}.social-watermark-row .field{display:flex;flex-direction:column;gap:6px;font-size:11px;flex:1;min-width:180px}.social-watermark-row input[type=text]{padding:9px;border:1px solid #dce5d5;border-radius:6px;width:100%;color:#315641;background:#fff}
