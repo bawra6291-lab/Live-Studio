@@ -63,7 +63,8 @@ Never create a replacement without first checking whether the uncertain post
 was actually published.
 
 7. Mobile and WhatsApp
-The paired Wi-Fi dashboard can prepare and approve posts. Account setup remains
+A paired Wi-Fi operator can prepare and approve posts. Viewer devices receive
+status only; unpublished captions and local media are restricted to operators. Account setup remains
 local to the Windows PC. The existing internet relay's live controls are not a
 media uploader or social composer in this release. In Posting queue, Share
 link opens the mobile share sheet or copies text for WhatsApp. No WhatsApp

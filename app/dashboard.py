@@ -475,10 +475,19 @@ class Handler(BaseHTTPRequestHandler):
         if not self.valid_host():return self.reply(403,{'error':'Invalid host.'})
         path=urlsplit(self.path).path
         if path=='/api/social/state':
-            if not self.auth():return self.reply(401,{'error':'Pair this device to continue.'})
-            return self.reply(200,self.server.controller.social.snapshot())
+            session=self.auth()
+            if not session:return self.reply(401,{'error':'Pair this device to continue.'})
+            snapshot=self.server.controller.social.snapshot()
+            if session.get('role')=='viewer':
+                snapshot.update(assets=[],accounts={},instagram_id='',account_message='Status-only device. Post content is available to operators.')
+                for job in snapshot['jobs']:
+                    job.update(title='Social post',caption='',media=[],targets={})
+                    job['results']={p:{k:v for k,v in r.items() if k in ('status','stage','percent')} for p,r in (job['results'] or {}).items()}
+            return self.reply(200,snapshot)
         if path.startswith('/api/social/media/'):
-            if not self.auth():return self.reply(401,{'error':'Pair this device to continue.'})
+            session=self.auth()
+            if not session:return self.reply(401,{'error':'Pair this device to continue.'})
+            if session.get('role')=='viewer':return self.reply(403,{'error':'Post media is available to operators only.'})
             return self.social_media(path.rsplit('/',1)[1])
         if path=='/api/diagnostics':
             if not self.auth():return self.reply(401,{'error':'Pair this device to continue.'})

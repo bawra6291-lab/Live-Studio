@@ -164,6 +164,10 @@ class HttpTests(unittest.TestCase):
         status,raw,_=self.request('/api/social/media/'+asset['id'],**{'Range':'bytes=0-7'});self.assertEqual(status,206);self.assertEqual(raw,PNG[:8])
         self.assertEqual(self.request('/api/social/media/../settings.json')[0],404)
         snapshot=self.request('/api/social/state')[1];self.assertNotIn('sensitive-page-token',json.dumps(snapshot));self.assertFalse(snapshot['enabled'])
+        self.request('/api/social/draft',{'title':'Private draft name','caption':'Unpublished private caption','media':[asset['id']],'platforms':['facebook'],'publish_at':(now_ist()+timedelta(minutes=10)).isoformat()})
+        with self.server.auth_lock:self.server.sessions[self.cookie.split('=',1)[1]]['role']='viewer'
+        self.assertEqual(self.request('/api/social/media/'+asset['id'])[0],403)
+        restricted=self.request('/api/social/state')[1];self.assertEqual(restricted['assets'],[]);self.assertNotIn('Unpublished private caption',json.dumps(restricted));self.assertNotIn('Private draft name',json.dumps(restricted))
     def test_unconfirmed_approval_and_enable_rejected_at_http_boundary(self):
         self.login();payload={'title':'Darshan','caption':'Caption','media':[],'platforms':['facebook'],'publish_at':(now_ist()+timedelta(minutes=10)).isoformat()}
         status,j,_=self.request('/api/social/draft',payload);self.assertEqual(status,200)
