@@ -1,5 +1,9 @@
 LIVE DESK SOCIAL MEDIA — OPERATOR GUIDE
 
+Social posting uses API adapters with visible progress in Posting queue.
+The browser-click recipes in Visible automation currently cover live-stream
+workflows, not the new social posting adapters.
+
 1. Accounts
 Facebook Page and YouTube use the existing Connections settings and Windows
 Credential Manager. Open Social Media > Accounts > Check posting accounts.

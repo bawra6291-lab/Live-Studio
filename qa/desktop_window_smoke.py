@@ -43,7 +43,20 @@ def hwnd_for(pid):
     return matches[0] if matches else None
 
 
-with tempfile.TemporaryDirectory() as folder:
+class DesktopScratch(tempfile.TemporaryDirectory):
+    def cleanup(self):
+        # WebView2 descendants can release profile log handles shortly after the
+        # viewer PID exits. Retry deletion; all native lifecycle assertions above
+        # still have to pass. A persistent lock remains a real test failure.
+        until=time.monotonic()+15
+        while True:
+            try:return super().cleanup()
+            except PermissionError:
+                if time.monotonic()>=until:raise
+                time.sleep(.2)
+
+
+with DesktopScratch() as folder:
     base = Path(folder)
     # Exercise the same isolated one-time setup used by existing installations,
     # not only the globally bundled renderer used in the new installer.
