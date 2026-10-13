@@ -1,0 +1,80 @@
+LIVE DESK SOCIAL MEDIA — OPERATOR GUIDE
+
+1. Accounts
+Facebook Page and YouTube use the existing Connections settings and Windows
+Credential Manager. Open Social Media > Accounts > Check posting accounts.
+For Instagram, link a Business/Creator professional account to that Page,
+grant instagram_basic + instagram_content_publish and pages_read_engagement
+with the relevant Page access. Use detected Instagram account, then Save.
+Page posting needs pages_manage_posts. Account reads do not prove publishing
+permissions. New/unaudited YouTube API projects can be restricted to private
+uploads; the app checks returned visibility and retains the video ID if it
+was not applied. Existing youtube.force-ssl authorization supports uploads.
+
+2. Import and edit
+Upload up to 25 JPG, PNG or MP4/MOV files per batch. File limit: 1 GB; saved
+library limit: 5 GB. Export camera RAW files as JPG first. Photo crop, position,
+brightness, contrast and colour are previewed locally. Save edited copy makes
+an immutable JPG, with its longest side up to 1600px, preserving the original.
+A post can use up to 10 photos, one video, or Facebook-only text.
+YouTube Community posts are not supported. YouTube posting here uploads a
+video; it does not create a live broadcast or replace a stream key.
+
+3. Draft, preview and approve
+Choose destinations, exact media, title, caption, IST posting time, YouTube
+visibility and audience. Save draft, then Preview & approve. Editing a
+cancelled/unused draft makes a new revision and clears previous approval.
+Another device cannot approve an old preview or silently overwrite a newer
+draft. Approval by itself does not enable posting. The Social Media switch
+is separate from the live automation switch.
+
+4. Enable posting
+Only approved queued posts run. Keep Windows awake and the host running.
+Posting waits for active OBS outputs, connection operations and the live
+preparation/start window. A post over 15 minutes late is held for review.
+Pause posting prevents future jobs. A network request already sent may finish.
+Pause Social Media before installing an update. Quit Live Desk also stops
+future social posts. Closing only the dashboard leaves the host running.
+
+5. Instagram media
+Photos must be JPG, under 8 MB, and between 4:5 and 1.91:1 (square works).
+For local JPGs the adapter creates unpublished Page photos and asks Instagram
+to fetch their Meta-hosted URLs. Their IDs are retained in the local receipt.
+This hosting path needs a supervised account test because fetch availability
+can depend on Page/media permissions. Uploaded PNGs can be edited as JPG.
+For a Reel, host the SAME video at a publicly fetchable HTTPS URL and save
+that address in Media library. Private PC/LAN addresses cannot be used. Hosting
+that video is a separate setup; this app does not expose local files publicly.
+
+6. Failures and existing post verification
+A receipt is saved before each platform write. A request timeout or restart
+holds the item for review and does not automatically repeat it. Posting pauses
+after a write failure. Successful destinations retain their IDs and links.
+If the post already exists, enter its platform post ID and Verify existing
+post. The adapter only reads it and checks account ownership (and YouTube
+visibility). Instagram lookup is bounded to the latest 100 account posts.
+If it is absent, inspect every unresolved destination, then Create corrected
+draft. Successful destinations are excluded. Review and approve it separately.
+Never create a replacement without first checking whether the uncertain post
+was actually published.
+
+7. Mobile and WhatsApp
+The paired Wi-Fi dashboard can prepare and approve posts. Account setup remains
+local to the Windows PC. The existing internet relay's live controls are not a
+media uploader or social composer in this release. In Posting queue, Share
+link opens the mobile share sheet or copies text for WhatsApp. No WhatsApp
+Group, Community or Channel message is automatically sent. The intended
+WhatsApp destination must be specified before adding that integration.
+
+No user tokens, passwords, stream keys or local media are included in releases.
+This pilot uses isolated fake accounts for automated tests. Actual posting and
+platform permission/audit checks require a supervised operator account test.
+
+Primary protocol references:
+https://developers.google.com/youtube/v3/docs/videos/insert
+https://developers.google.com/youtube/v3/guides/using_resumable_upload_protocol
+https://developers.facebook.com/docs/pages-api/posts/
+https://developers.facebook.com/docs/graph-api/reference/page/photos/
+https://developers.facebook.com/docs/graph-api/reference/page/videos/
+https://developers.facebook.com/docs/instagram-platform/instagram-api-with-facebook-login/content-publishing/
+https://www.postman.com/meta/instagram/documentation/6yqw8pt/instagram-api

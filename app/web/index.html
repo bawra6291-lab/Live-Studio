@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#152c2a"><title>Live Desk • Development preview</title><link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#152c2a"><title>Live Desk • Development preview</title><link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/social.css"><script src="/app.js" defer></script></head>
 <body>
 <section id="login" class="login" hidden>
  <form id="pair-form" class="pair-card"><img src="/icon.svg" width="64" height="64" alt=""><p class="eyebrow">LIVE DESK</p><h1>Your live desk.<br>Wherever you sit.</h1><p class="muted">Connect to your livestream PC using the pairing code from Mobile access in the PC dashboard.</p><label for="pair-code">Pairing code</label><input id="pair-code" type="password" autocomplete="off" required placeholder="Enter code from the PC dashboard"><button class="primary wide" type="submit">Connect this device <span>→</span></button><p id="pair-error" role="alert"></p><div class="pair-foot">PC and phone must be on the same trusted Wi-Fi.<br>The Windows app must stay open.</div></form>
@@ -89,5 +89,5 @@
  </main>
 </div>
 <dialog id="confirm-dialog"><p class="eyebrow">PLEASE CONFIRM</p><h2 id="confirm-title"></h2><p id="confirm-text"></p><div class="inline"><button id="confirm-cancel" class="secondary">Cancel</button><button id="confirm-ok" class="primary">Confirm</button></div></dialog><div id="toast" role="status" hidden></div>
-<script src="/features.js" defer></script>
+<script src="/features.js" defer></script><script src="/social.js" defer></script>
 </body></html>

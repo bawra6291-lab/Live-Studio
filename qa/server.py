@@ -28,11 +28,17 @@ class QAController(Controller):
         if mode != 'check': raise ValueError('QA server refuses automation and account login.')
         return super().run(mode)
 
+class SocialFixture:
+    def __init__(self,*args):pass
+    def check(self,ig):return {'facebook':{'id':'123456789','name':'Fixture Page'},'instagram':{'id':'1234567','name':'fixture_instagram'},'youtube':{'id':'UC'+'a'*22,'name':'Fixture Channel'}}
+    def publish(self,job):raise AssertionError('QA never executes a platform publish')
+
 class RemoteHandler(Handler):
     def local(self): return False
 
 with tempfile.TemporaryDirectory(prefix='live-desk-qa-') as directory:
     controller = QAController(directory, ReadOnlyFakeServices, MemoryVault())
+    controller.social.publisher_factory=SocialFixture
     controller.desktop_host=DesktopHost()
     controller.desktop_host.update(addresses=['192.168.1.42'])
     def fake_host():
@@ -57,3 +63,4 @@ with tempfile.TemporaryDirectory(prefix='live-desk-qa-') as directory:
         controller.shutdown()
         if controller.worker: controller.worker.join(3)
         for server in (local, remote): server.shutdown(); server.server_close()
+

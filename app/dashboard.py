@@ -43,6 +43,8 @@ class Controller:
         from insights import LiveMonitor
         from update_service import UpdateService
         self.content=ContentStore(self.base);self.monitor=LiveMonitor(self);self.updates=UpdateService(self)
+        from social import Social
+        self.social=Social(self)
         self.operation_serial=0;self.operation_results={}
         from remote_agent import Agent
         self.remote=Agent(self)
@@ -88,6 +90,7 @@ class Controller:
                     'progress':__import__('insights').progress(journal,self.mode,self.armed),
                     'readiness':__import__('insights').readiness(self),'monitor':self.monitor.snapshot(),
                     'updates':self.updates.snapshot() if local else None,
+                    'social':{'enabled':self.social.data['enabled'],'busy':self.social.busy,'error':self.social.error},
                     'schedule':schedule,'grace_minutes':int(self.cfg.get('grace_minutes',2)),
                     'upcoming':calendar,'runs':run_history(journal),'run_attention':issue,
                     'last_tick':self.last_tick,'started_at':self.started_at,'arm_requested':bool(self.cfg.get('armed')),
@@ -171,6 +174,7 @@ class Controller:
     def require_idle(self):
         if self.closing: raise ValueError('App is closing.')
         if self.maintenance: raise ValueError('An app update is in progress.')
+        if self.social.busy:raise ValueError('Wait for the social posting operation to finish.')
         if self.worker and self.worker.is_alive(): raise ValueError('Pause automation and wait for the current operation to finish first.')
 
     def backup(self):
@@ -418,7 +422,7 @@ class Controller:
     def shutdown(self):
         with self.lock: self.closing=True
         self.stop.set()  # Keep saved armed preference for the next Windows launch.
-        self.remote.close();self.monitor.close()
+        self.remote.close();self.monitor.close();self.social.close()
 
 class DashboardServer(ThreadingHTTPServer):
     daemon_threads=True
@@ -470,6 +474,12 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if not self.valid_host():return self.reply(403,{'error':'Invalid host.'})
         path=urlsplit(self.path).path
+        if path=='/api/social/state':
+            if not self.auth():return self.reply(401,{'error':'Pair this device to continue.'})
+            return self.reply(200,self.server.controller.social.snapshot())
+        if path.startswith('/api/social/media/'):
+            if not self.auth():return self.reply(401,{'error':'Pair this device to continue.'})
+            return self.social_media(path.rsplit('/',1)[1])
         if path=='/api/diagnostics':
             if not self.auth():return self.reply(401,{'error':'Pair this device to continue.'})
             if not self.local():return self.reply(403,{'error':'Export diagnostics from the PC dashboard.'})
@@ -497,9 +507,30 @@ class Handler(BaseHTTPRequestHandler):
                     for token,item in server.sessions.items():
                         if item['expires']>time.monotonic():rows.append({k:item.get(k,'') for k in ('id','label','role','created_at')})
             return self.reply(200,{'devices':rows,'pairing_minutes_left':max(0,int((self.server.pair_expires-time.monotonic())/60))})
-        assets={'/':('index.html','text/html; charset=utf-8'),'/style.css':('style.css','text/css; charset=utf-8'),'/app.js':('app.js','text/javascript; charset=utf-8'),'/icon.svg':('icon.svg','image/svg+xml'),'/features.js':('features.js','text/javascript; charset=utf-8')}
+        assets={'/':('index.html','text/html; charset=utf-8'),'/style.css':('style.css','text/css; charset=utf-8'),'/app.js':('app.js','text/javascript; charset=utf-8'),'/icon.svg':('icon.svg','image/svg+xml'),'/features.js':('features.js','text/javascript; charset=utf-8'),'/social.js':('social.js','text/javascript; charset=utf-8'),'/social.css':('social.css','text/css; charset=utf-8')}
         if path not in assets:return self.reply(404,{'error':'Not found.'})
         name,ctype=assets[path];return self.reply(200,(WEB/name).read_bytes(),ctype)
+    def social_media(self,ident):
+        try:
+            path,asset=self.server.controller.social.media_path(ident);size=asset['size'];start=0;end=size-1;status=200
+            request_range=self.headers.get('Range','')
+            if request_range:
+                match=re.fullmatch(r'bytes=(\d+)-(\d*)',request_range)
+                if not match:raise ValueError('Use a single byte range.')
+                start=int(match[1]);end=min(size-1,int(match[2]) if match[2] else size-1);status=206
+                if not 0<=start<=end<size:raise ValueError('Invalid media byte range.')
+            self.send_response(status);self.send_header('Content-Type',asset['type']);self.send_header('Content-Length',str(end-start+1));self.send_header('Accept-Ranges','bytes');self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff')
+            if status==206:self.send_header('Content-Range',f'bytes {start}-{end}/{size}')
+            self.end_headers()
+            with path.open('rb') as f:
+                f.seek(start);remaining=end-start+1
+                while remaining:
+                    chunk=f.read(min(512*1024,remaining))
+                    if not chunk:break
+                    self.wfile.write(chunk);remaining-=len(chunk)
+        except (ValueError,OSError) as exc:
+            if isinstance(exc,ValueError):return self.reply(404,{'error':str(exc)})
+
     def do_POST(self):
         if not self.valid_host():return self.reply(403,{'error':'Invalid host.'})
         # No cross-origin writes, including requests from malicious sites targeting the LAN.
@@ -510,7 +541,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             size=int(self.headers.get('Content-Length','0'))
             path=urlsplit(self.path).path
-            limit=2800000 if path=='/api/media/upload' and self.local() and self.auth() else 65536
+            limit=800000 if path=='/api/social/upload/chunk' and self.auth() else 2800000 if path=='/api/media/upload' and self.local() and self.auth() else 65536
             if not 0<size<=limit:raise ValueError()
             data=json.loads(self.rfile.read(size))
             if not isinstance(data,dict):raise ValueError()
@@ -527,6 +558,12 @@ class Handler(BaseHTTPRequestHandler):
                 with self.server.auth_lock:self.server.sessions.pop(self.token,None)
                 return self.reply(200,{'ok':True},cookie='iskcon_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0')
             if session.get('role')=='viewer':return self.reply(403,{'error':'This device has view-only access. Pair with an operator code to control the PC.'})
+            if path.startswith('/api/social/'):
+                if path in ('/api/social/account','/api/social/check') and not self.local():return self.reply(403,{'error':'Set up posting accounts on the PC.'})
+                routes={'/api/social/upload/begin':c.social.begin_upload,'/api/social/upload/chunk':c.social.upload_chunk,'/api/social/upload/finish':c.social.finish_upload,'/api/social/asset':c.social.asset_update,'/api/social/draft':c.social.draft,'/api/social/action':c.social.command,'/api/social/account':c.social.save_account,'/api/social/reconcile':c.social.reconcile}
+                if path=='/api/social/check':return self.reply(202,c.social.check_accounts())
+                if path not in routes:return self.reply(404,{'error':'Posting action not found.'})
+                return self.reply(200,routes[path](data))
             if path=='/api/devices/revoke':
                 if not self.local():return self.reply(403,{'error':'Manage paired devices on the PC.'})
                 ident=data.get('id')

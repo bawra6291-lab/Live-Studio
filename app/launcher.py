@@ -19,7 +19,7 @@ class Launcher:
         root.iconbitmap(default=str(ICON))
         self.controller=Controller()
         self.host=DesktopHost();self.controller.desktop_host=self.host
-        self.controller.remote.start();self.controller.monitor.start()
+        self.controller.remote.start();self.controller.monitor.start();self.controller.social.start()
         from queue import SimpleQueue
         from tray import Tray
         self.tray_events=SimpleQueue();self.tray=Tray(self.tray_events.put);self.tray.start()
@@ -256,6 +256,7 @@ class Launcher:
         self.closing=True;self.tray.close();self.controller.shutdown();self.status.set('Waiting for the current operation to finish…')
         self.wait_close()
     def wait_close(self):
+        if self.controller.social.busy:self.root.after(300,self.wait_close);return
         if self.controller.worker and self.controller.worker.is_alive():self.root.after(300,self.wait_close);return
         worker=self.controller.updates.worker
         if worker and worker.is_alive():self.root.after(300,self.wait_close);return

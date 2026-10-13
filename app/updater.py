@@ -170,6 +170,7 @@ def reserve_install(controller):
     """Block all new dashboard operations while an update checks OBS and exits."""
     with controller.lock:
         controller.require_idle()
+        if getattr(controller,'social',None) and controller.social.data['enabled']:raise UpdateError('Pause Social Media posting before installing an update.')
         if getattr(controller,'desktop_host',None) and controller.desktop_host.snapshot()['busy']:raise UpdateError('Wait for the PC/OBS action to finish.')
         if controller.armed or controller.cfg.get('armed'):
             raise UpdateError('Pause automation before installing an update.')
