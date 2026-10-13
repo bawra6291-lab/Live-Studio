@@ -1,0 +1,9 @@
+{
+  "app_id": "iskcon-live-desk",
+  "version": "0.9.3",
+  "update_format": 1,
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.9.3/ISKCON-Live-Desk.zip",
+  "size": 255257,
+  "sha256": "042fc752b9419e0924cc4925f61d49b8f217403483d63e7516deca824bd5eb35",
+  "notes": "Live Desk lotus icon and Windows taskbar identity. Pinned app windows reopen Live Desk instead of Python. Saved connections and schedules are preserved."
+}
