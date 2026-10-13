@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT/'app'), str(ROOT/'app'/'tests')]
 from core import atomic_json
 from dashboard import Controller, DashboardServer
-from desktop_window import DesktopWindow
+from desktop_window import DesktopWindow, install_runtime, runtime_ready
 from test_dashboard import Service, Vault
 import win32con
 import win32gui
@@ -43,6 +43,10 @@ def hwnd_for(pid):
 
 with tempfile.TemporaryDirectory() as folder:
     base = Path(folder)
+    # Exercise the same isolated one-time setup used by existing installations,
+    # not only the globally bundled renderer used in the new installer.
+    install_runtime(base)
+    assert runtime_ready(base), 'Isolated desktop component did not install.'
     atomic_json(base/'settings.json', {})
     controller = Controller(base, Service, Vault())
     server = DashboardServer(('127.0.0.1', 8865), controller, 'fixture-pair-code')
@@ -85,7 +89,7 @@ with tempfile.TemporaryDirectory() as folder:
         viewer.close()
         process.wait(timeout=10)
         assert not controller.stop.is_set()
-        print(json.dumps({'native_window':'passed','pairing':'passed',
+        print(json.dumps({'isolated_setup':'passed','native_window':'passed','pairing':'passed',
               'reopen_same_process':'passed','minimize_restore':'passed',
               'close_keeps_host_running':'passed','rotated_pairing':'passed',
               'shutdown_closes_viewer':'passed','real_live_services_contacted':False}))
