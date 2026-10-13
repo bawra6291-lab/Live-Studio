@@ -17,7 +17,40 @@ def local_url(value):
     return value
 
 
-def run(config, commands, report, webview):
+def pipe_messages(stream, stopped):
+    """Poll the inherited Windows pipe so closing a window can join the reader.
+
+    A blocking readline inside pywebview.start's non-daemon worker would keep
+    the process alive after the native window is destroyed.
+    """
+    import ctypes
+    from ctypes import wintypes
+    import msvcrt
+    fd = stream.fileno()
+    handle = msvcrt.get_osfhandle(fd)
+    peek = ctypes.windll.kernel32.PeekNamedPipe
+    peek.argtypes = [wintypes.HANDLE, ctypes.c_void_p, wintypes.DWORD,
+                     ctypes.c_void_p, ctypes.POINTER(wintypes.DWORD), ctypes.c_void_p]
+    peek.restype = wintypes.BOOL
+    pending = b''
+    while not stopped.wait(0.05):
+        available = wintypes.DWORD()
+        if not peek(handle, None, 0, None, ctypes.byref(available), None):
+            return  # Parent closed the pipe or exited.
+        if not available.value:
+            continue
+        data = os.read(fd, min(4096, available.value))
+        if not data:
+            return
+        pending += data
+        if len(pending) > 8192:
+            raise ValueError('Invalid local window command.')
+        while b'\n' in pending:
+            line, pending = pending.split(b'\n', 1)
+            yield line.decode('utf-8')
+
+
+def run(config, commands, report, webview, closed=None):
     url = local_url(config.get('url'))
     base = Path(config['base'])
     webview.settings['ALLOW_DOWNLOADS'] = True  # Diagnostics and settings exports.
@@ -28,7 +61,7 @@ def run(config, commands, report, webview):
         min_size=(780, 560), background_color='#f5f4ef', text_select=True,
         zoomable=True, confirm_close=False)
     # No Python API bridge is exposed. All actions retain existing HTTP auth/CSRF.
-    closed = threading.Event()
+    closed = closed or threading.Event()
     minimized = threading.Event()
     def on_loaded():
         report('ready')
@@ -70,7 +103,9 @@ def run(config, commands, report, webview):
 def main():
     if os.name != 'nt':
         return 1
-    commands, output, errors = sys.stdin, sys.stdout, sys.stderr
+    output, errors = sys.stdout, sys.stderr
+    stopped = threading.Event()
+    commands = pipe_messages(sys.stdin, stopped)
     report_lock = threading.Lock()
     def report(message):
         try:
@@ -83,7 +118,7 @@ def main():
     with open(os.devnull, 'w') as quiet:
         sys.stdout = sys.stderr = quiet
         try:
-            config = json.loads(commands.readline(4096))
+            config = json.loads(next(commands))
             if config.get('action') != 'start':
                 return 1
             local_url(config.get('url'))
@@ -93,11 +128,12 @@ def main():
                 sys.path.insert(0, str(runtime_path(config['base'])))
                 site.addsitedir(str(runtime_path(config['base'])))
             import webview
-            run(config, commands, report, webview)
+            run(config, commands, report, webview, stopped)
             return 0
         except Exception:
             return 1
         finally:
+            stopped.set()
             sys.stdout = output
             sys.stderr = errors
 
