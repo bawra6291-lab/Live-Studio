@@ -90,6 +90,20 @@ async function noOverflow(page){assert.ok(await page.evaluate(()=>document.docum
   await desktop.locator('#schedule-dirty').filter({hasText:'Unsaved changes'}).waitFor();
   await desktop.locator('#reload-schedule').click();await confirm(desktop);
   assert.equal(await desktop.locator('.schedule-program').count(),1);assert.equal((await state(desktop)).schedule[0].title_template,saved.title_template);
+  // Four program summaries must fit without the old multi-page form stack.
+  for(const [name,at,end] of [['Mangal Arati Darshan','04:30','05:25'],['Darshan Arati','07:30','08:00'],['Rajbhog Arati','12:00','12:40']]){
+   await desktop.locator('#add-program').click();const p=desktop.locator('.schedule-program').last();await p.locator('[data-field="name"]').fill(name);await p.locator('[data-field="at"]').fill(at);await p.locator('[data-field="end_at"]').fill(end);await p.locator('[data-field="enabled"]').check();await p.locator('.program-summary').click();
+  }
+  assert.equal(await desktop.locator('.schedule-program[open]').count(),0);
+  assert.ok((await desktop.locator('#schedule-editor').boundingBox()).height<420,'Four collapsed programs should occupy less than 420 pixels');
+  await desktop.screenshot({path:path.join(output,'schedule-four-programs.png'),fullPage:true});
+  await programTab(desktop,'camera',0);
+  for(let i=0;i<7;i++)await desktop.locator('.schedule-program').first().locator('.add-action').click();
+  assert.equal(await desktop.locator('.schedule-program').first().locator('.camera-editor-row').count(),8);
+  assert.equal(await desktop.locator('.camera-editor-row[open]').count(),1);
+  const draft=await desktop.evaluate(()=>readEditor());await programTab(desktop,'content',0);await programTab(desktop,'camera',0);assert.deepEqual(await desktop.evaluate(()=>readEditor()),draft);
+  await desktop.screenshot({path:path.join(output,'schedule-eight-camera-steps.png'),fullPage:true});
+  await desktop.locator('#reload-schedule').click();await confirm(desktop);
   // The fake backend is unchanged; compact navigation performs no schedule writes.
   for(const width of [1440,980,390,320]){await desktop.setViewportSize({width,height:900});await noOverflow(desktop);await programTab(desktop,'camera');await noOverflow(desktop);await desktop.screenshot({path:path.join(output,'compact-schedule-'+width+'.png'),fullPage:true});}
   await desktop.setViewportSize({width:1440,height:1000});
