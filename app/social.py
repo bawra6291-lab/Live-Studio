@@ -79,7 +79,23 @@ class Social:
             self.data={'schema':1,'enabled':False,'instagram_id':'','assets':{},'jobs':[]}
         # Partial imports are not posts and are safe to remove after a restart.
         for p in self.folder.glob('*.part'):p.unlink(missing_ok=True)
+        # Recover an interrupted local deletion before exposing media again.
+        # A corrupt state file is retained for review, including its trash.
+        if not self.error:self.recover_deletions()
         self.accounts={};self.account_message='Check your posting accounts before approving a post.'
+
+    def recover_deletions(self):
+        for folder in self.folder.glob('.delete-*'):
+            if not folder.is_dir() or folder.is_symlink():continue
+            for file in folder.iterdir():
+                if not re.fullmatch('[a-f0-9]{64}',file.name) or file.is_symlink():continue
+                try:
+                    target=self.folder/file.name
+                    if file.name in self.data['assets'] and not target.exists():file.replace(target)
+                    else:file.unlink(missing_ok=True)
+                except OSError:pass
+            try:folder.rmdir()
+            except OSError:pass
 
     def persist(self):
         if self.error:raise ValueError(self.error)
@@ -258,6 +274,74 @@ class Social:
             else:
                 value=data.get('public_url','');asset['public_url']=https_media(value) if value else '';self.persist()
             return {'ok':True}
+
+    def removal_plan(self, ids, cleanup):
+        rows=[];eligible=[]
+        for ident in ids:
+            asset=self.data['assets'].get(ident)
+            if not asset:raise ValueError('The media selection changed. Reload Media library.')
+            refs=[j for j in self.data['jobs'] if ident in j['media']]
+            protected=next((j for j in refs if j['status'] not in ('draft','cancelled')),None)
+            reason=('Used by '+protected['title']+' ('+protected['status']+')') if protected else 'Used by an unused draft' if refs and not cleanup else 'Assigned to the saved darshan batch' if ident in self.batch_plan()['slots'] and not cleanup else ''
+            rows.append({'id':ident,'name':asset['name'],'size':asset['size'],'reason':reason})
+            if not reason:eligible.append(ident)
+        drafts=[{'id':j['id'],'revision':j['revision'],'title':j['title']}
+            for j in self.data['jobs'] if cleanup and j['status'] in ('draft','cancelled') and any(m in eligible for m in j['media'])]
+        batch=self.batch_plan();cleared=[i for i,m in enumerate(batch['slots']) if cleanup and m in eligible]
+        plan={'files':rows,'drafts':drafts,'batch_slots':cleared,'batch_revision':batch['revision'] if cleared else None,'cleanup_drafts':cleanup}
+        plan['fingerprint']=hashlib.sha256(json.dumps(plan,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
+        return plan
+
+    def assets_bulk(self,data):
+        """One exact, confirmed local cleanup; never deletes a platform post."""
+        with self.c.lock,self.lock:
+            self.ready();ids=data.get('ids');cleanup=data.get('cleanup_drafts',False)
+            if not isinstance(ids,list) or not 1<=len(ids)<=500 or any(not isinstance(m,str) or not re.fullmatch('[a-f0-9]{64}',m) for m in ids) or len(ids)!=len(set(ids)) or type(cleanup)!=bool:raise ValueError('Select 1–500 saved media files.')
+            if self.busy:raise ValueError('Wait for the active social posting operation.')
+            plan=self.removal_plan(ids,cleanup)
+            if data.get('action')=='preview':return plan
+            if data.get('action')!='remove' or data.get('confirmed') is not True:raise ValueError('Review and confirm the selected media deletion first.')
+            if data.get('fingerprint')!=plan['fingerprint']:raise ValueError('A photo, batch or draft changed. Review the deletion again.')
+            eligible=[r['id'] for r in plan['files'] if not r['reason']]
+            if not eligible:return {'removed':[],'retained':plan['files'],'drafts_removed':0,'batch_slots_cleared':0}
+            trash=self.folder/('.delete-'+secrets.token_hex(12));trash.mkdir()
+            before=copy.deepcopy(self.data);staged=[];retained=[r for r in plan['files'] if r['reason']]
+            try:
+                for ident in eligible:
+                    try:
+                        path=self.folder/ident
+                        if path.exists():path.replace(trash/ident)
+                        staged.append(ident)
+                    except OSError:
+                        retained.append({**next(r for r in plan['files'] if r['id']==ident),'reason':'Local file is busy. Try again after closing its preview.'})
+                removed_drafts=[j for j in self.data['jobs'] if cleanup and j['status'] in ('draft','cancelled') and any(m in staged for m in j['media'])]
+                self.data['jobs']=[j for j in self.data['jobs'] if j not in removed_drafts]
+                cleared=0
+                if cleanup and any(m in staged for m in self.batch_plan()['slots']):
+                    batch=copy.deepcopy(self.batch_plan());cleared=sum(m in staged for m in batch['slots'])
+                    batch['slots']=['' if m in staged else m for m in batch['slots']];batch['revision']+=1
+                    batch['jobs']=[ident for ident in batch['jobs'] if any(j['id']==ident for j in self.data['jobs'])];self.data['batch']=batch
+                for ident in staged:self.data['assets'].pop(ident)
+                self.persist()
+            except Exception:
+                self.data=before
+                for ident in staged:
+                    try:
+                        file=trash/ident
+                        if file.exists():file.replace(self.folder/ident)
+                    except OSError:pass  # Startup recovery retains the original metadata.
+                raise
+            finally:
+                if not list(trash.iterdir()):trash.rmdir()
+            pending=[]
+            if trash.exists():
+                for file in trash.iterdir():
+                    try:file.unlink()
+                    except OSError:pending.append(file.name)
+                try:trash.rmdir()
+                except OSError:pass
+            return {'removed':staged,'retained':retained,'drafts_removed':len(removed_drafts),
+                'batch_slots_cleared':cleared,'batch_revision':self.batch_plan()['revision'],'cleanup_pending':pending}
 
     def job(self, ident):
         job=next((j for j in self.data['jobs'] if j['id']==ident),None)

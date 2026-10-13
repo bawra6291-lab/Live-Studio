@@ -584,7 +584,7 @@ class Handler(BaseHTTPRequestHandler):
             if session.get('role')=='viewer':return self.reply(403,{'error':'This device has view-only access. Pair with an operator code to control the PC.'})
             if path.startswith('/api/social/'):
                 if path in ('/api/social/account','/api/social/check') and not self.local():return self.reply(403,{'error':'Set up posting accounts on the PC.'})
-                routes={'/api/social/upload/begin':c.social.begin_upload,'/api/social/upload/chunk':c.social.upload_chunk,'/api/social/upload/finish':c.social.finish_upload,'/api/social/asset':c.social.asset_update,'/api/social/draft':c.social.draft,'/api/social/batch':c.social.batch,'/api/social/action':c.social.command,'/api/social/account':c.social.save_account,'/api/social/reconcile':c.social.reconcile}
+                routes={'/api/social/upload/begin':c.social.begin_upload,'/api/social/upload/chunk':c.social.upload_chunk,'/api/social/upload/finish':c.social.finish_upload,'/api/social/asset':c.social.asset_update,'/api/social/assets/bulk':c.social.assets_bulk,'/api/social/draft':c.social.draft,'/api/social/batch':c.social.batch,'/api/social/action':c.social.command,'/api/social/account':c.social.save_account,'/api/social/reconcile':c.social.reconcile}
                 if path=='/api/social/check':return self.reply(202,c.social.check_accounts())
                 if path not in routes:return self.reply(404,{'error':'Posting action not found.'})
                 return self.reply(200,routes[path](data))

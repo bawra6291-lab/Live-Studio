@@ -104,6 +104,23 @@ This release does not add browser-click automation for photo posting.
 Manual packages are available to authenticated PC/Wi-Fi operators; viewer
 roles cannot download the package or see batch assignments/caption.
 
+9. Delete several library photos together
+Social Media > Media library > Select all photos (or tick individual files) >
+Delete selected. Review the exact filenames. Cancel keeps every file intact.
+Select all photos selects images; individual deletion selections can also
+include videos. Up to 500 files can be reviewed/deleted per operation.
+By default, batch assignments and all draft/post references are retained.
+Optional: tick Also remove unused drafts and clear batch slots for these photos.
+The confirmation lists the unused draft titles and batch slot numbers that will
+be removed, in addition to filenames. Approved/queued, posting, posted, review,
+manual-ready and manually-completed records always protect their media.
+The app rechecks the selection and references when confirming; changed plans
+need a new review. Busy local files are retained, with a count in the result.
+Photos are staged for local deletion before committing metadata. Interrupted
+moves are restored on restart if still referenced in saved state, or cleaned
+up if the removal was already committed. Original imported PC files and live
+settings/credentials stay intact. No platform post is deleted or sent.
+
 No user tokens, passwords, stream keys or local media are included in releases.
 This pilot uses isolated fake accounts for automated tests. Actual posting and
 platform permission/audit checks require a supervised operator account test.

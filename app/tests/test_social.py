@@ -155,8 +155,10 @@ class HttpTests(unittest.TestCase):
         self.login()
         body={'name':'darshan.png','size':len(PNG)}
         self.assertEqual(self.request('/api/social/upload/begin',body,**{'X-CSRF-Token':'wrong'})[0],403)
+        self.assertEqual(self.request('/api/social/assets/bulk',{'action':'preview','ids':[]},**{'X-CSRF-Token':'wrong'})[0],403)
         with self.server.auth_lock:self.server.sessions[self.cookie.split('=',1)[1]]['role']='viewer'
         self.assertEqual(self.request('/api/social/upload/begin',body)[0],403)
+        self.assertEqual(self.request('/api/social/assets/bulk',{'action':'preview','ids':[]})[0],403)
         with self.server.auth_lock:self.server.sessions[self.cookie.split('=',1)[1]]['role']='owner'
         with patch.object(Handler,'local',return_value=False):self.assertEqual(self.request('/api/social/account',{'instagram_id':'1234567'})[0],403)
         status,start,_=self.request('/api/social/upload/begin',body);self.assertEqual(status,200)
