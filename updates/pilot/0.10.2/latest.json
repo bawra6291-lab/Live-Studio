@@ -1,0 +1,9 @@
+{
+  "app_id": "iskcon-live-desk",
+  "version": "0.10.2",
+  "update_format": 1,
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.10.2/ISKCON-Live-Desk.zip",
+  "size": 309179,
+  "sha256": "b01c62670fea0ca71b30ce533fabb920e8c9449f132174902ecb87a339bee46f",
+  "notes": "Media library: select all photos and reviewed bulk deletion, optional unused-draft and batch-slot cleanup, protected approved/posted media, interrupted local deletion recovery. Original PC files and platform posts stay intact."
+}
