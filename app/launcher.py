@@ -9,12 +9,14 @@ from core import atomic_json
 from dashboard import Controller, DashboardServer, lan_addresses
 from desktop_host import DesktopHost
 from desktop_window import DesktopWindow
+from windows_identity import ICON, set_process_identity, brand_window
 
 class Launcher:
     def __init__(self, root):
         self.root=root; self.closing=False; self.mobile=None; self.updates_dialog=None
         root.title('Live Desk • Development preview'); root.geometry('700x820');root.minsize(670,780)
         root.configure(bg='#f5f4ef')
+        root.iconbitmap(default=str(ICON))
         self.controller=Controller()
         self.host=DesktopHost();self.controller.desktop_host=self.host
         self.controller.remote.start();self.controller.monitor.start()
@@ -214,7 +216,8 @@ class Launcher:
             exe=Path(sys.executable);gui=exe.with_name('pythonw.exe')
             shortcut.Targetpath=str(gui if gui.exists() else exe)
             shortcut.Arguments='-E -s "'+str(Path(__file__).with_name('desktop_start.py').resolve())+'"'
-            shortcut.WorkingDirectory=str(Path(__file__).parent.resolve());shortcut.save()
+            shortcut.WorkingDirectory=str(Path(__file__).parent.resolve())
+            shortcut.IconLocation=str(ICON)+',0';shortcut.save()
             if notify:messagebox.showinfo('Startup saved','Live Desk will open after Windows login. This replaces the old app startup shortcut. Keep this folder in its current location.')
             return 'Start with Windows enabled. Keep the app folder in its current location.'
         except Exception:
@@ -265,12 +268,18 @@ class Launcher:
 
 def main():
     if os.name!='nt':raise SystemExit('Run launcher.py on the Windows livestream PC.')
+    set_process_identity()
     # The installer checks this named mutex before replacing the bundled runtime.
     import ctypes
     from ctypes import wintypes
     ctypes.windll.kernel32.CreateMutexW.restype=wintypes.HANDLE
     installation_mutex=ctypes.windll.kernel32.CreateMutexW(None,False,'LiveDeskController-v1')
     root=tk.Tk();root.withdraw();instance=socket.socket()
+    # Tk's shell window is the parent of the widget HWND.
+    root.update_idletasks()
+    import win32gui
+    try:brand_window(win32gui.GetParent(root.winfo_id()) or root.winfo_id())
+    except Exception:pass  # Shell branding must never prevent the host starting.
     try:instance.bind(('127.0.0.1',47639))
     except OSError:
         try:

@@ -24,7 +24,7 @@ Source: "{#Stage}\runtime\*"; DestDir: "{app}\runtime"; Flags: ignoreversion rec
 Source: "{#Stage}\runtime-dependencies.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#Stage}\RUNTIME-NOTICE.txt"; DestDir: "{app}"; Flags: ignoreversion
 [Icons]
-Name: "{group}\Live Desk"; Filename: "{app}\runtime\pythonw.exe"; Parameters: "-E -s ""{app}\app\desktop_start.py"""; WorkingDir: "{app}\app"; IconFilename: "{app}\app\web\icon.ico"
-Name: "{userdesktop}\Live Desk"; Filename: "{app}\runtime\pythonw.exe"; Parameters: "-E -s ""{app}\app\desktop_start.py"""; WorkingDir: "{app}\app"; IconFilename: "{app}\app\web\icon.ico"
+Name: "{group}\Live Desk"; Filename: "{app}\runtime\pythonw.exe"; Parameters: "-E -s ""{app}\app\desktop_start.py"""; WorkingDir: "{app}\app"; IconFilename: "{app}\app\web\icon.ico"; AppUserModelID: "ISKCON.LiveDesk.Desktop"
+Name: "{userdesktop}\Live Desk"; Filename: "{app}\runtime\pythonw.exe"; Parameters: "-E -s ""{app}\app\desktop_start.py"""; WorkingDir: "{app}\app"; IconFilename: "{app}\app\web\icon.ico"; AppUserModelID: "ISKCON.LiveDesk.Desktop"
 [Run]
 Filename: "{app}\runtime\pythonw.exe"; Parameters: "-E -s ""{app}\app\desktop_start.py"""; WorkingDir: "{app}\app"; Description: "Open Live Desk"; Flags: nowait postinstall skipifsilent

@@ -20,6 +20,8 @@ from test_dashboard import Service, Vault
 import win32con
 import win32gui
 import win32process
+from win32com.propsys import propsys
+from windows_identity import APP_ID, DISPLAY_NAME, ICON, relaunch_command
 
 
 def wait_for(test, viewer, timeout=50):
@@ -65,6 +67,17 @@ with tempfile.TemporaryDirectory() as folder:
         first_pid = viewer.process.pid
         hwnd = hwnd_for(first_pid)
         assert hwnd, 'No named native Live Desk window found.'
+        # Read the actual child HWND properties, not a mocked setter.
+        properties = propsys.SHGetPropertyStoreForWindow(hwnd)
+        for name, expected in (
+            ('System.AppUserModel.ID', APP_ID),
+            ('System.AppUserModel.RelaunchDisplayNameResource', DISPLAY_NAME),
+            ('System.AppUserModel.RelaunchIconResource', str(ICON)+',0'),
+            ('System.AppUserModel.RelaunchCommand', relaunch_command()),
+        ):
+            actual = properties.GetValue(propsys.PSGetPropertyKeyFromName(name)).GetValue()
+            assert actual == expected, (name, actual, expected)
+        assert win32gui.SendMessage(hwnd, win32con.WM_GETICON, win32con.ICON_BIG, 0), 'Taskbar icon missing.'
         win32gui.ShowWindow(hwnd, win32con.SW_MINIMIZE)
         wait_for(lambda: bool(win32gui.IsIconic(hwnd)), viewer)
         # Allow the renderer to observe the minimize event.
@@ -89,7 +102,7 @@ with tempfile.TemporaryDirectory() as folder:
         viewer.close()
         process.wait(timeout=10)
         assert not controller.stop.is_set()
-        print(json.dumps({'isolated_setup':'passed','native_window':'passed','pairing':'passed',
+        print(json.dumps({'isolated_setup':'passed','native_window':'passed','taskbar_branding':'passed','pairing':'passed',
               'reopen_same_process':'passed','minimize_restore':'passed',
               'close_keeps_host_running':'passed','rotated_pairing':'passed',
               'shutdown_closes_viewer':'passed','real_live_services_contacted':False}))

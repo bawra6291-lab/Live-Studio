@@ -138,7 +138,7 @@ class ViewerContract(unittest.TestCase):
     def test_force_modern_engine_and_no_python_bridge(self):
         webview = Mock(settings={})
         window = webview.create_window.return_value
-        for event in ('loaded', 'closed', 'minimized', 'restored'):
+        for event in ('loaded', 'closed', 'minimized', 'restored', 'before_show'):
             setattr(window.events, event, Event())
         run({'url': URL, 'base': '.'}, io.StringIO(), Mock(), webview)
         self.assertEqual(webview.start.call_args.kwargs['gui'], 'edgechromium')

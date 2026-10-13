@@ -72,6 +72,10 @@ def run(config, commands, report, webview, closed=None):
     window.events.closed += on_closed
     window.events.minimized += minimized.set
     window.events.restored += minimized.clear
+    def on_before_show():
+        from windows_identity import brand_window
+        brand_window(window.native.Handle.ToInt64())
+    window.events.before_show += on_before_show
 
     def listen():
         try:
@@ -122,6 +126,8 @@ def main():
             if config.get('action') != 'start':
                 return 1
             local_url(config.get('url'))
+            from windows_identity import set_process_identity
+            set_process_identity()
             from desktop_window import runtime_path, runtime_ready
             if runtime_ready(config['base']):
                 import site
