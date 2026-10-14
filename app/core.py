@@ -188,6 +188,7 @@ class Scheduler:
                         continue
                     if action['only_if_live'] and not self.service.both_live(rec):states[key]='skipped_not_live'
                     else:
+                        if self.cancelled():return
                         states[key]='sending';self.journal.put(slot,day,camera_states=dict(states))
                         if hasattr(self.service,'camera_action'):self.service.camera_action(action)
                         elif action['kind']=='patrol_start' and action['number']==8:self.service.camera_start()

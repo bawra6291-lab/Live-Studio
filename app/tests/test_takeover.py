@@ -86,6 +86,14 @@ class Management(unittest.TestCase):
             s=Mock();clock=NOW.replace(hour=5,minute=25)
             Scheduler(s,j,log=lambda _:None,clock=lambda:clock,slots=[slot],cancelled=lambda:True).tick(clock)
             s.end.assert_not_called();s.camera_action.assert_not_called()
+    def test_pause_during_verification_prevents_camera_write(self):
+        with tempfile.TemporaryDirectory() as d:
+            slot=plan();j=Journal(Path(d)/'j.json');j.put(slot,NOW.date(),**attach_record(slot,NOW.date(),discover(fixture(),NOW),NOW))
+            stopped=[False];s=Mock();s.both_live.return_value=True
+            def read(record):stopped[0]=True;return True
+            s.takeover_live.side_effect=read;clock=NOW.replace(minute=40)
+            Scheduler(s,j,log=lambda _:None,clock=lambda:clock,slots=[slot],cancelled=lambda:stopped[0]).run_slot(slot,NOW.date(),clock)
+            s.camera_action.assert_not_called();s.end.assert_not_called()
     def test_program_window_overnight_and_duplicate_journal(self):
         slot=plan()
         select_plan([slot],slot['id'],'2026-10-15',NOW)

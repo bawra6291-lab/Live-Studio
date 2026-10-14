@@ -231,7 +231,7 @@ async function noOverflow(page){assert.ok(await page.evaluate(()=>document.docum
   await desktop.locator('#takeover-panel summary').click();await desktop.locator('#takeover-date').fill(start.slice(0,10));
   await desktop.locator('#takeover-inspect').click();await desktop.waitForFunction(()=>!document.getElementById('takeover-confirm').hidden&&!document.getElementById('takeover-confirm').disabled);
   assert.match(await desktop.locator('#takeover-preview').innerText(),/QA existing YouTube live/);
-  assert.match(await desktop.locator('#takeover-preview').innerText(),/skipped_before_takeover/);
+  assert.match(await desktop.locator('#takeover-preview').innerText(),/Skipped · before control began/);
   assert.equal((await state(desktop)).armed,false);assert.equal((await state(desktop)).runs.length,0);
   await desktop.locator('#takeover-confirm').click();await desktop.locator('#confirm-cancel').click();assert.equal((await state(desktop)).runs.length,0);
   for(const width of [1440,390,320]){await desktop.setViewportSize({width,height:1000});await noOverflow(desktop);await desktop.locator('#takeover-panel').screenshot({path:path.join(output,'takeover-'+width+'.png')});}
