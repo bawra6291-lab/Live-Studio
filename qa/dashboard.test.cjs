@@ -113,9 +113,9 @@ async function noOverflow(page){assert.ok(await page.evaluate(()=>document.docum
   assert.deepEqual(current.batch.groups,before.batch.groups);assert.equal(current.jobs.length,before.jobs.length);
   // A move in Facebook must not reorder either shared Instagram/YouTube column.
   const groups=await desktop.evaluate(()=>structuredClone(batchGroups));
-  await desktop.locator('#batch-facebook select').first().selectOption('2');
+  assert.deepEqual(await desktop.locator('#batch-facebook select').first().selectOption({value:'2'}),['2']);
   let moved=await desktop.evaluate(()=>structuredClone(batchGroups));assert.deepEqual(moved.portrait,groups.portrait);assert.deepEqual(moved.landscape,groups.landscape);assert.deepEqual(moved.facebook.slice(0,3),[groups.facebook[1],groups.facebook[2],groups.facebook[0]]);
-  await desktop.locator('#batch-facebook select').nth(2).selectOption('0');
+  await desktop.locator('#batch-facebook select').nth(2).selectOption({value:'0'});
   await desktop.locator('#batch-portrait').getByRole('button',{name:'Move down portrait photo 1',exact:true}).click();
   await desktop.locator('#batch-portrait').getByRole('button',{name:'Move up portrait photo 2',exact:true}).click();
   assert.deepEqual(await desktop.evaluate(()=>batchGroups),groups);
