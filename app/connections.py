@@ -584,6 +584,14 @@ class Services:
             time.sleep(3)
         raise SetupError('Could not confirm BOTH platforms live. Check both dashboards; do not assume success.')
     def both_live(self,record):return self.yt.live(record['yt_id']) and self.fb.live(record['fb_id'])
+    def takeover_live(self,record):
+        # Recheck the exact external run before every adopted camera movement.
+        self.yt.owned_channel();self.fb.identity()
+        self.yt.no_other_live(record['yt_id']);self.fb.no_other_live(record['fb_id'])
+        if self.yt.event(record['yt_id'])['contentDetails'].get('boundStreamId')!=record['yt_stream_id']:
+            raise SetupError('Taken-over live binding changed. Camera control refused.')
+        main,fb=self.verify_run_outputs(record)
+        return bool(main.get('outputActive') and fb and fb.get('outputActive') and self.both_live(record))
     def camera_start(self):self.cam.start()
     def camera_action(self,action):self.cam.action(action)
     def close(self):self.obs.close()

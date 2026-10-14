@@ -8,6 +8,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'app'))
 from dashboard import Controller, DashboardServer, Handler
 from desktop_host import DesktopHost
 import time
+from datetime import datetime
+from core import IST
+from unittest.mock import Mock
+QA_LIVE_EPOCH=time.time()-360
 
 class MemoryVault:
     def __init__(self): self.values = {'facebook_page_token': 'qa-only-secret-not-a-real-token'}
@@ -15,7 +19,29 @@ class MemoryVault:
     def set(self, key, value): self.values[key] = value
 
 class ReadOnlyFakeServices:
-    def __init__(self, cfg, vault, log): self.log = log
+    def __init__(self, cfg, vault, log):
+        self.log = log
+        if any(s.get('id')=='qa-takeover' for s in cfg.get('schedule') or []):
+            self.obs=Mock();self.yt=Mock();self.fb=Mock();self.cam=Mock()
+            started=datetime.fromtimestamp(QA_LIVE_EPOCH,IST).isoformat()
+            self.yt.owned_channel.return_value={'id':'fixture-channel'};self.fb.identity.return_value={'id':'fixture-page'}
+            self.yt.stream_for_obs.return_value={'id':'fixture-official'}
+            event={'id':'abcdefghijk','snippet':{'channelId':'fixture-channel','title':'QA existing YouTube live','actualStartTime':started},'status':{'lifeCycleStatus':'live'},'contentDetails':{'boundStreamId':'fixture-official'}}
+            self.yt.list.return_value=[event];self.yt.event.return_value=event
+            self.fb.recent.return_value=[{'id':'123456789','status':'LIVE'}]
+            self.fb.api.return_value={'id':'123456789','title':'QA existing Facebook live','status':'LIVE','secure_stream_url':'rtmps://fixture.invalid/rtmp/qa-not-a-secret','broadcast_start_time':started}
+            self.obs.plugin_target.return_value=(None,None,{'service-param':{'server':'rtmps://fixture.invalid/rtmp/','key':'qa-not-a-secret'}})
+            def read(kind,**kw):
+                if kind=='GetOutputList':return {'outputs':[{'outputName':'multi-output-fixture','outputActive':True}]}
+                if kind in ('GetStreamStatus','GetOutputStatus'):return {'outputActive':True,'outputDuration':(time.time()-QA_LIVE_EPOCH)*1000}
+                raise AssertionError('QA refuses OBS writes: '+kind)
+            self.obs.call.side_effect=read
+            self.obs.start.side_effect=AssertionError('QA refuses any live start')
+    def verify_run_outputs(self,record):return ({'outputActive':True},{'outputActive':True})
+    def both_live(self,record):return True
+    def takeover_live(self,record):return True
+    def end(self,*args,**kw):raise AssertionError('QA refuses any live end')
+    def camera_action(self,*args,**kw):raise AssertionError('QA refuses any camera movement')
     def check(self):
         self.log('OBS connected. Program scene: QA only')
         self.log('YouTube channel verified: QA only')

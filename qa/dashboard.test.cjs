@@ -221,6 +221,25 @@ async function noOverflow(page){assert.ok(await page.evaluate(()=>document.docum
   const connectionStatus=await mobile.evaluate(async()=>{const s=await fetch('/api/state').then(r=>r.json());return (await fetch('/api/visible/browser',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':s.csrf},body:JSON.stringify({action:'connect'})})).status;});
   assert.equal(connectionStatus,403);assert.equal((await state(mobile)).visible.browser_source,undefined);
  });
+ await test('Existing live preview, cancellation, explicit takeover, mobile layout and pause',async()=>{
+  const before=await state(desktop), now=Date.parse(before.now);
+  const ist=ms=>new Date(ms).toLocaleString('sv-SE',{timeZone:'Asia/Kolkata'});
+  const start=ist(now-10*60000),end=ist(now+10*60000),camera=ist(now+3*60000);
+  const slot={id:'qa-takeover',name:'QA existing live',reference:'P8-DKvGQLDs',title_template:'{date} | {program}',enabled:true,at:start.slice(11,16),end_at:end.slice(11,16),end_next_day:end.slice(0,10)!==start.slice(0,10),repeat:'once',on_date:start.slice(0,10),camera_actions:[{kind:'patrol_start',number:8,timing:'after_live',delay_seconds:120,at:'',next_day:false,only_if_live:true},{kind:'preset',number:2,timing:'clock',delay_seconds:0,at:camera.slice(11,16),next_day:camera.slice(0,10)!==start.slice(0,10),only_if_live:true}]};
+  const saved=await desktop.evaluate(async schedule=>{const st=await fetch('/api/state').then(r=>r.json());return (await fetch('/api/schedule',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':st.csrf},body:JSON.stringify({schedule,grace_minutes:2,confirmed:true})})).status;},[slot]);assert.equal(saved,200);
+  await desktop.reload();await desktop.locator('#app').waitFor({state:'visible'});await view(desktop,'overview');
+  await desktop.locator('#takeover-panel summary').click();await desktop.locator('#takeover-date').fill(start.slice(0,10));
+  await desktop.locator('#takeover-inspect').click();await desktop.waitForFunction(()=>!document.getElementById('takeover-confirm').hidden&&!document.getElementById('takeover-confirm').disabled);
+  assert.match(await desktop.locator('#takeover-preview').innerText(),/QA existing YouTube live/);
+  assert.match(await desktop.locator('#takeover-preview').innerText(),/skipped_before_takeover/);
+  assert.equal((await state(desktop)).armed,false);assert.equal((await state(desktop)).runs.length,0);
+  await desktop.locator('#takeover-confirm').click();await desktop.locator('#confirm-cancel').click();assert.equal((await state(desktop)).runs.length,0);
+  for(const width of [1440,390,320]){await desktop.setViewportSize({width,height:1000});await noOverflow(desktop);await desktop.locator('#takeover-panel').screenshot({path:path.join(output,'takeover-'+width+'.png')});}
+  await desktop.setViewportSize({width:1440,height:1000});await desktop.locator('#takeover-confirm').click();await confirm(desktop);
+  await desktop.waitForFunction(()=>document.getElementById('arm-badge').textContent==='Automation enabled');
+  const active=await state(desktop);assert.equal(active.takeover.status,'active');assert.equal(active.runs.length,1);assert.equal(active.progress.origin,'manual_takeover');assert.equal(active.progress.started_by_app,false);assert.ok(!JSON.stringify(active).includes('qa-not-a-secret'));
+  await desktop.locator('#pause').click();await desktop.waitForFunction(()=>!document.getElementById('takeover-inspect').disabled);assert.equal((await state(desktop)).armed,false);assert.equal((await state(desktop)).takeover.status,'paused');
+ });
  assert.deepEqual(report.errors,[],'no uncaught browser errors');report.status='passed';
 })().catch(async error=>{report.status='failed';report.failure=error.stack;console.error(error);if(desktop)await desktop.screenshot({path:path.join(output,'failure.png'),fullPage:true}).catch(()=>{});process.exitCode=1;}).finally(async()=>{
  if(browser)await browser.close();if(server&&server.exitCode===null){const exit=once(server,'exit');server.stdin.end();const timer=setTimeout(()=>server.kill(),5000);await exit.catch(()=>{});clearTimeout(timer);}await fs.mkdir(output,{recursive:true});await fs.writeFile(path.join(output,'report.json'),JSON.stringify(report,null,2));

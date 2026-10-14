@@ -46,6 +46,7 @@ class Controller:
         from social import Social
         self.social=Social(self)
         self.operation_serial=0;self.operation_results={}
+        self.takeover_state={'status':'idle'};self.takeover_preview=None
         from remote_agent import Agent
         self.remote=Agent(self)
         self.started_at=now_ist().isoformat();self.last_tick=None;self.last_heartbeat=0
@@ -84,6 +85,7 @@ class Controller:
             return {'now':now.isoformat(), 'date':now.strftime('%A, %d %B %Y'),
                     'workspace_name':self.cfg['workspace_name'], 'setup_steps':setup_steps(self.cfg,self.checked),
                     'visible':self.visible.snapshot(local),
+                    'takeover':dict(self.takeover_state),
                     'remote':{'enabled':bool(self.cfg.get('remote_enabled')),'status':self.remote.status,
                         'last_seen':self.remote.last_seen,'url':self.cfg.get('remote_url','') if local else ''},
                     'destinations':{k:self.cfg.get(k,'') for k in ('youtube_channel_id','facebook_page_id','youtube_stream_title','camera_channel')},
@@ -112,6 +114,89 @@ class Controller:
             self.armed = False; self.cfg['armed'] = False; atomic_json(self.path, self.cfg)
             self.message = 'Paused: future starts, scheduled ends and camera actions are stopped. An operation already underway may finish.'
             self.log(self.message)
+
+    def take_control(self, data):
+        """Inspect first, then recheck and manage only the explicitly selected existing run."""
+        from copy import deepcopy
+        from takeover import select_plan, require_unused, discover, same_live, attach_record, preview, digest
+        with self.lock:
+            self.require_idle()
+            if self.visible.browser.recording:raise ValueError('Finish browser workflow recording first.')
+            action=data.get('action')
+            if action not in ('inspect','confirm'):raise ValueError('Choose inspect or confirm existing live.')
+            now=now_ist();schedule=get_schedule(self.cfg)
+            slot,day=select_plan(schedule,data.get('slot'),data.get('date'),now)
+            journal=Journal(self.base/'journal.json');require_unused(journal,slot,day)
+            expected=self.takeover_preview if action=='confirm' else None
+            if action=='confirm':
+                if data.get('confirmed') is not True:raise ValueError('Review and confirm this existing live first.')
+                if not expected or expected['expires']<time.monotonic() or not secrets.compare_digest(str(data.get('token','')),expected['token']):
+                    raise ValueError('Existing live preview expired. Inspect again before taking control.')
+                if expected['slot']!=slot or expected['day']!=day or expected['cfg_hash']!=digest(self.cfg) or expected['journal_hash']!=digest(journal.data):
+                    raise ValueError('Settings or run history changed. Inspect the running live again.')
+                if self.visible.config['mode']=='visible' and slot['end_at']:
+                    if not {'youtube_end','facebook_end'}.issubset(self.visible.config['recipes']):raise ValueError('Record both visible end workflows before taking control with an end time.')
+                    self.visible.browser.ready()
+            self.takeover_preview=None
+            cfg={**self.cfg,'_data_base':str(self.base)};cfg_hash=digest(self.cfg);journal_hash=digest(journal.data)
+            self.stop.clear();self.mode='takeover';self.error=False
+            self.takeover_state={'status':'checking','message':'Reading the active live and OBS outputs; no start/end or camera command is sent.'}
+            self.message=self.takeover_state['message']
+            def work():
+                service=None
+                try:
+                    service=self.factory(cfg,self.vault,self.log)
+                    observed=discover(service,now_ist())
+                    if expected and not same_live(expected['observed'],observed):raise ValueError('The live or OBS output changed after preview. Inspect again; no control was taken.')
+                    for a in slot['camera_actions']:service.cam.check_action(a)
+                    with self.lock:
+                        if self.stop.is_set():return
+                        if cfg_hash!=digest(self.cfg) or journal_hash!=digest(Journal(self.base/'journal.json').data):raise ValueError('Settings or run history changed during inspection. Inspect again.')
+                        select_plan(get_schedule(self.cfg),slot['id'],day.isoformat(),now_ist())
+                        latest=Journal(self.base/'journal.json');require_unused(latest,slot,day,observed)
+                        record=attach_record(slot,day,observed,now_ist())
+                        record['camera_states'].update(latest.get(slot,day).get('camera_states',{}))
+                        details=preview(record,day)
+                        if action=='inspect':
+                            token=secrets.token_urlsafe(24)
+                            self.takeover_preview=dict(slot=slot,day=day,observed=observed,token=token,expires=time.monotonic()+90,cfg_hash=cfg_hash,journal_hash=journal_hash)
+                            self.takeover_state={'status':'ready','token':token,**details}
+                            self.message='Running live verified. Review the titles, remaining camera steps and end time before taking control.'
+                            return
+                        # Old missed-window diagnostics are retained in the audit, not replayed.
+                        previous=deepcopy(latest.get(slot,day))
+                        record['audit']=[{'action':'explicit_manual_takeover','at':record['adopted_at'],'previous_phase':previous.get('phase'),'previous_error':previous.get('last_error','')}]
+                        latest.data[latest.key(slot,day)]=record
+                        atomic_json(latest.path,latest.data)
+                        self.armed=True;self.mode='arm'
+                        self.takeover_state={'status':'active',**details}
+                        self.message='Controlling this existing live only: future camera steps and its saved end time. No new broadcast or OBS restart was sent.'
+                        self.log(slot['name']+': '+self.message)
+                    if self.visible.config['mode']=='visible':
+                        service.close()
+                        from visible import VisibleServices
+                        service=VisibleServices(cfg,self.vault,self.log,self.visible)
+                    scheduler=Scheduler(service,Journal(self.base/'journal.json'),self.log,self.stop.is_set,slots=[slot])
+                    while not self.stop.is_set():
+                        self.heartbeat();scheduler.run_slot(slot,day,now_ist())
+                        if Journal(self.base/'journal.json').get(slot,day).get('phase')=='ended':
+                            with self.lock:self.takeover_state={'status':'ended','name':slot['name']};self.message='The controlled live ended at its saved end time.'
+                            break
+                        self.stop.wait(1)
+                except Exception as exc:
+                    with self.lock:
+                        self.error=True;self.message=str(exc) if isinstance(exc,ValueError) else safe_error(exc)
+                        self.takeover_state={'status':'failed','message':self.message};self.log(self.message)
+                finally:
+                    if service:
+                        try:service.close()
+                        except Exception:pass
+                    with self.lock:
+                        self.armed=False;self.mode=''
+                        if self.stop.is_set():
+                            self.takeover_state={'status':'paused','message':'Existing live control paused. Handle the live manually or resume the recorded plan.'}
+                            self.message=self.takeover_state['message']
+            self.worker=threading.Thread(target=work,daemon=True);self.worker.start()
 
     def save_visible(self,data):
         with self.lock:
@@ -537,7 +622,7 @@ class Handler(BaseHTTPRequestHandler):
                     for token,item in server.sessions.items():
                         if item['expires']>time.monotonic():rows.append({k:item.get(k,'') for k in ('id','label','role','created_at')})
             return self.reply(200,{'devices':rows,'pairing_minutes_left':max(0,int((self.server.pair_expires-time.monotonic())/60))})
-        assets={'/':('index.html','text/html; charset=utf-8'),'/style.css':('style.css','text/css; charset=utf-8'),'/app.js':('app.js','text/javascript; charset=utf-8'),'/icon.svg':('icon.svg','image/svg+xml'),'/features.js':('features.js','text/javascript; charset=utf-8'),'/social.js':('social.js','text/javascript; charset=utf-8'),'/social-arrange.js':('social-arrange.js','text/javascript; charset=utf-8'),'/social-batch.js':('social-batch.js','text/javascript; charset=utf-8'),'/social.css':('social.css','text/css; charset=utf-8')}
+        assets={'/takeover.js':('takeover.js','text/javascript; charset=utf-8'),'/':('index.html','text/html; charset=utf-8'),'/style.css':('style.css','text/css; charset=utf-8'),'/app.js':('app.js','text/javascript; charset=utf-8'),'/icon.svg':('icon.svg','image/svg+xml'),'/features.js':('features.js','text/javascript; charset=utf-8'),'/social.js':('social.js','text/javascript; charset=utf-8'),'/social-arrange.js':('social-arrange.js','text/javascript; charset=utf-8'),'/social-batch.js':('social-batch.js','text/javascript; charset=utf-8'),'/social.css':('social.css','text/css; charset=utf-8')}
         if path not in assets:return self.reply(404,{'error':'Not found.'})
         name,ctype=assets[path];return self.reply(200,(WEB/name).read_bytes(),ctype)
     def social_media(self,ident):
@@ -647,6 +732,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not self.local():return self.reply(403,{'error':'Enroll remote access on the Windows PC.'})
                 c.save_remote(data)
             elif path=='/api/runs':c.review_run(data)
+            elif path=='/api/takeover':c.take_control(data)
             elif path=='/api/settings':
                 if not self.local():return self.reply(403,{'error':'Change credentials on the Windows PC.'})
                 c.save(data)

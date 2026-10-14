@@ -23,7 +23,7 @@ def progress(journal,mode='',armed=False):
     for i,a in enumerate(r['plan'].get('camera_actions',[])):
         due=action_time(datetime.fromisoformat(key.split(':')[0]).date(),a,r)
         camera.append({'label':a['kind'].replace('_',' ')+' '+str(a['number']),'state':r.get('camera_states',{}).get(str(i),'pending'),'due':due.isoformat() if due else None})
-    return {'key':key,'name':r['plan']['name'],'phase':phase,'stage':stage.replace('_',' ') or phase,'steps':steps,'camera':camera,'error':r.get('last_error',''),'confirmed_at':r.get('confirmed_at'),'started_by_app':bool(r.get('obs_start_epoch')),'end_at':r['plan'].get('end_at','')}
+    return {'key':key,'name':r['plan']['name'],'phase':phase,'stage':stage.replace('_',' ') or phase,'steps':steps,'camera':camera,'error':r.get('last_error',''),'confirmed_at':r.get('confirmed_at'),'started_by_app':bool(r.get('obs_start_epoch')) and r.get('origin')!='manual_takeover','origin':r.get('origin','app'),'end_at':r['plan'].get('end_at','')}
 
 
 def readiness(controller):

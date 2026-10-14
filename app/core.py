@@ -104,6 +104,14 @@ class Scheduler:
             rec=put(phase='needs_review',last_error='Interrupted operation. Inspect OBS and both platforms before retrying.')
             self.log(plan['name']+': interrupted operation; manual review required.');phase='needs_review'
         end=end_time(day,plan)
+        # An attached manual live never replays camera steps from before attachment.
+        if rec.get('origin')=='manual_takeover':
+            states=dict(rec.get('camera_states',{}))
+            attached=datetime.fromisoformat(rec['adopted_at'])
+            for i,a in enumerate(plan['camera_actions']):
+                moment=action_time(day,a,rec)
+                if str(i) not in states and moment is not None and moment<=attached:states[str(i)]='skipped_before_takeover'
+            if states!=rec.get('camera_states',{}):rec=put(camera_states=states)
         # Camera steps scheduled before live (explicit "Only while live" off).
         self.camera_steps(current,day,now,rec,pre_start=True)
         if phase in ('new','prepared'):
@@ -170,6 +178,11 @@ class Scheduler:
             elif end and now>=end and action['kind']!='patrol_stop':states[key]='skipped_at_end'
             else:
                 try:
+                    if rec.get('origin')=='manual_takeover':
+                        if not self.service.takeover_live(rec):
+                            states[key]='skipped_not_live'
+                            self.journal.put(slot,day,camera_states=dict(states))
+                            continue
                     if action['only_if_live'] and (not rec.get('confirmed_at') and rec.get('phase') not in ('live','done') or not rec.get('yt_id') or not rec.get('fb_id')):
                         # Wait within the camera window while a scheduled start finishes.
                         continue
