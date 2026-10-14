@@ -1,0 +1,45 @@
+{
+  "version": "0.10.3",
+  "source_commit": "8a7fbb3d1a5d1ae7cb8b301e0c410746d528587d",
+  "source_tree": "5c44f54771dbf307f9047048e2fe3b7a368b607a",
+  "payload_files": 80,
+  "package_sha256": "992d561b1afdc1a2d027f261a148f3b13adf3a49a8dac694e8ee1c5eb5df58f9",
+  "checks": {
+    "python_tests": 248,
+    "dashboard_flows": 16,
+    "dashboard_javascript_errors": 0,
+    "arrangement_unit": "passed",
+    "windows_installer": "passed",
+    "windows_native_lifecycle": "passed",
+    "android_installed_pairing_controls": "passed",
+    "obs_layout": "passed",
+    "upgrade_from": "0.10.2",
+    "requirements_unchanged": true,
+    "payload_matches_source": true,
+    "private_reference_photos_in_release": false,
+    "private_local_reference_validation": "Shuffled source photos, changed brightness and JPEG recompression matched 17/17; future daily photo accuracy unverified.",
+    "visual_review": "1440px and 320px screenshots inspected; 390px overflow check passed."
+  },
+  "workflow_runs": [
+    {
+      "id": 38521856810,
+      "name": "OBS layout helper validation",
+      "conclusion": "success"
+    },
+    {
+      "id": 38521856909,
+      "name": "Development validation",
+      "conclusion": "success"
+    },
+    {
+      "id": 38521856898,
+      "name": "Android companion validation",
+      "conclusion": "success"
+    }
+  ],
+  "limits": [
+    "Visual similarity suggestions require review; not semantic deity recognition.",
+    "YouTube photo posts and Instagram 3:4 portrait still require manual handoff.",
+    "No real social account posting, stream or camera action performed."
+  ]
+}
