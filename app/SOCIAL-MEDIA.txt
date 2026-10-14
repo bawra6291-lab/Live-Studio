@@ -161,3 +161,33 @@ Facebook and Instagram landscape can use the existing API queue. YouTube photo
 posts and Instagram 3:4 portrait STILL need manual upload with the ordered
 package. This release does not implement automatic browser photo publishing.
 No new API key, paid vision service or Python dependency is required.
+
+
+11. Framing-aware suggestions and focused review (0.10.4)
+Your existing private reference JSON remains compatible; no re-import is needed.
+The comparison checks grayscale structure over small position and zoom changes.
+Dress colour is not used to choose the assignment. Upper-frame structure is
+compared separately as well as the whole photo. This improves tolerance to
+clothing and framing changes, but it is NOT a trained semantic deity model.
+New poses, large crops, lighting changes and similar angles can still be wrong.
+Labels now follow Post_Structure 2.0: straight/right/left full/half body,
+Gaura Natraj, Janardhan, Radha Gopinath, Radha Madan Mohan and Srila Prabhupada.
+Right/left follow the supplied reference photos, not an inferred viewpoint.
+
+Select Show only photos to check to focus on uncertain matches, missing slots
+and format warnings. Use this photo acknowledges a suggestion for this review;
+it does not approve or post it, train a model, or persist a learned example.
+Choosing another assigned photo swaps slots. Uncheck the filter to see all 17.
+Reloading a saved batch clears temporary review flags and shows the full order.
+A suggestion is not proof of correctness; review the full cover/order before
+creating drafts. Only photos from the explicit upload can fill slots.
+
+Private local engine comparison on two operator-supplied clothing sets placed
+17/17 photos in the visually reviewed order for each set, with 4 and 10 review
+flags respectively. Reversing input order did not change those results; removing
+Gaura, Jagannath or Prabhupada left their slots empty in the checked cases.
+These are limited sample results, not a guarantee for unseen daily uploads or
+a live platform publishing test. User photographs are not in the code/release.
+Synthetic regression checks cover framing shifts, exposure, missing/unrelated
+photos and UI review filtering. Originals remain byte-for-byte unchanged.
+Existing posting format/size limits and manual destinations still apply.

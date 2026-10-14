@@ -14,4 +14,16 @@ result=A.arrange(refs,photos.filter(a=>a.id!=='5'));assert.equal(result.slots[5]
 const blank={id:'blank',width:300,height:400,descriptor:A.describe(Array(1024).fill([127,127,127,255]).flat())};
 result=A.arrange(refs,[blank]);assert.ok(result.slots.every(x=>!x));assert.deepEqual(result.unused,['blank']);
 const wrong={...photos[0],id:'wrong',width:400,height:400};assert.ok(A.arrange(refs,[wrong]).slots.every(x=>!x));
+// A shifted camera frame must match by shape, not by the filename or dress colour.
+function shifted(seed){const src=pixels(seed),out=[];for(let y=0;y<32;y++)for(let x=0;x<32;x++){
+  const sx=Math.max(0,Math.min(31,x+3)),sy=Math.max(0,Math.min(31,y-3));
+  const value=src[(sy*32+sx)*4]*.8;out.push(value,value,value,255);
+}return out;}
+const moved=photos.map(p=>({...p,id:'shifted-'+p.id,descriptor:A.describe(shifted(Number(p.id)+1))}));
+result=A.arrange(refs,moved);assert.deepEqual(result.slots,refs.map((_,i)=>'shifted-'+i));
+assert.deepEqual(A.arrange(refs,[...moved].reverse()).slots,result.slots);
+result=A.arrange(refs,moved.filter(p=>p.id!=='shifted-3'));assert.equal(result.slots[3],'');
+const unrelated={id:'unrelated',width:300,height:400,descriptor:A.describe(pixels(90210))};
+assert.ok(A.arrange(refs,[unrelated]).slots.every(x=>!x));
 console.log('PASS arrangement: global assignment, shuffled new names, brightness, duplicates, missing, flat and incorrect-ratio images');
+console.log('PASS framing: camera shift, exposure, input-order independence, missing and unrelated photos');

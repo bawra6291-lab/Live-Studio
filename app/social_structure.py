@@ -3,16 +3,16 @@
 Reference filenames are examples for matching, never embedded posting assets.
 """
 PORTRAIT = [
-    ('Radha-Krishna', 'DSC03639'), ('Radha-Krishna', 'DSC03635'),
-    ('Radha-Krishna', 'DSC03641'), ('Gaura', 'DSC03638'),
+    ('Radha-Krishna · straight · full body', 'DSC03639'), ('Radha-Krishna · right · full body', 'DSC03635'),
+    ('Radha-Krishna · left · full body', 'DSC03641'), ('Gaura Natraj', 'DSC03638'),
     ('Baladeva', 'DSC03643'), ('Subhadra', 'DSC03644'), ('Jagannath', 'DSC03645'),
 ]
 LANDSCAPE = [
-    ('Full altar', 'DSC03654'), ('Radha-Krishna', 'DSC03640'),
-    ('Radha-Krishna', 'DSC03636'), ('Radha-Krishna', 'DSC03642'),
-    ('Jagannath trio', 'DSC03646'), ('Small deity, tulasi', 'DSC03649'),
-    ('Small deities', 'DSC03648'), ('Small deities', 'DSC03650'),
-    ('Guru-parampara', 'DSC03647'), ('Acharya murti', 'DSC03652'),
+    ('Full altar · RGM', 'DSC03654'), ('Radha-Krishna · straight · half body', 'DSC03640'),
+    ('Radha-Krishna · right · half body', 'DSC03636'), ('Radha-Krishna · left · half body', 'DSC03642'),
+    ('Full altar · JBS', 'DSC03646'), ('Janardhan', 'DSC03649'),
+    ('Radha Gopinath', 'DSC03648'), ('Radha Madan Mohan', 'DSC03650'),
+    ('Guru-parampara', 'DSC03647'), ('Srila Prabhupada', 'DSC03652'),
 ]
 FACEBOOK_ORDER = list(range(7, 11)) + list(range(7)) + list(range(11, 17))
 

@@ -106,6 +106,24 @@ async function noOverflow(page){assert.ok(await page.evaluate(()=>document.docum
   const actual=await desktop.evaluate(()=>batchSlots.map(id=>socialState.assets.find(a=>a.id===id).name));assert.deepEqual(actual,encoded.map(f=>f.name));
   let current=await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()));assert.equal(current.jobs.length,before.jobs.length);assert.deepEqual(current.batch.slots,before.batch.slots);assert.equal(current.enabled,false);
   const crypto=require('node:crypto');for(const file of files){const hash=crypto.createHash('sha256').update(file.buffer).digest('hex');assert.ok(current.assets.some(a=>a.id===hash));}
+  // Review filtering must never remove a selection or mutate saved drafts.
+  const filterSlots=await desktop.evaluate(()=>[...batchSlots]);
+  await desktop.evaluate(()=>{batchArrangeNotes=Array(17).fill('Suggested visual match');batchArrangeNotes[0]='Check subject / angle';batchSignature='';socialBatchRender();});
+  await desktop.locator('#batch-review-only').check();
+  assert.equal(await desktop.locator('.batch-slot:visible').count(),1);
+  assert.ok((await desktop.locator('.batch-slot:visible').innerText()).includes('straight · full body'));
+  await desktop.locator('.batch-slot:visible').getByRole('button',{name:'Use this photo',exact:true}).click();
+  assert.equal(await desktop.locator('.batch-slot:visible').count(),0);
+  assert.deepEqual(await desktop.evaluate(()=>batchSlots),filterSlots);
+  await desktop.locator('#batch-review-only').uncheck();
+  assert.equal(await desktop.locator('.batch-slot:visible').count(),17);
+  await desktop.locator('#batch-portrait select').nth(3).selectOption('');
+  await desktop.locator('#batch-review-only').check();assert.equal(await desktop.locator('.batch-slot:visible').count(),1);
+  assert.ok((await desktop.locator('.batch-slot:visible').innerText()).includes('Gaura Natraj'));
+  await desktop.locator('.batch-slot:visible select').selectOption(filterSlots[3]);
+  await desktop.locator('#batch-review-only').uncheck();
+  assert.deepEqual(await desktop.evaluate(()=>batchSlots),filterSlots);
+  assert.equal((await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()))).jobs.length,before.jobs.length);
   for(const width of [1440,390,320]){await desktop.setViewportSize({width,height:1000});await noOverflow(desktop);await desktop.screenshot({path:path.join(output,'auto-arrange-'+width+'.png'),fullPage:true});}await desktop.setViewportSize({width:1440,height:1000});
   const ids=await desktop.evaluate(()=>[...batchSlots]);await desktop.locator('#batch-portrait select').first().selectOption(ids[1]);assert.deepEqual(await desktop.evaluate(()=>batchSlots.slice(0,2)),[ids[1],ids[0]]);await desktop.locator('#batch-portrait select').first().selectOption(ids[0]);
   await desktop.locator('#batch-title').fill('Automatically arranged fixture');await desktop.locator('#batch-prepare').click();await desktop.locator('#confirm-cancel').click();assert.equal((await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()))).jobs.length,before.jobs.length);
