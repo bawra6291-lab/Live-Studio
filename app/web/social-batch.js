@@ -48,7 +48,7 @@ $('batch-files').onchange=async e=>{
   socialPending=true;socialButtons();let done=0;batchImportIds=[];
   try{for(const file of files){const a=await socialImport(file);batchImportIds.push(a.id);done++;$('batch-upload-status').textContent=done+' / '+files.length+' imported';}
     await socialRefresh(true);await batchArrangeUploaded(batchImportIds);toast('Suggested order ready. Check the preview, then create all five drafts.');
-  }catch(err){$('batch-upload-status').textContent=done+' imported · '+err.message+' You can arrange the successfully imported photos or choose the files again.';}
+  }catch(err){$('batch-upload-status').textContent=done+' / '+files.length+' imported · '+err.message+' You can arrange the successfully imported photos or choose the files again.';}
   finally{e.target.value='';socialPending=false;socialButtons();}
 };
 $('batch-arrange').onclick=async()=>{if(batchSlots.some(Boolean)&&!await confirmAction('Rearrange the last upload?','Replace current slot selections with a new visual suggestion from the last uploaded group?'))return;socialPending=true;socialButtons();try{await batchArrangeUploaded(batchImportIds);}catch(e){toast(e.message);}finally{socialPending=false;socialButtons();}};
