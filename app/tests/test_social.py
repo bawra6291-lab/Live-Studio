@@ -174,6 +174,8 @@ class HttpTests(unittest.TestCase):
         with self.server.auth_lock:self.server.sessions[self.cookie.split('=',1)[1]]['role']='viewer'
         self.assertEqual(self.request('/api/social/media/'+asset['id'])[0],403)
         self.assertEqual(self.request('/api/social/export/'+job['id'])[0],403)
+        self.assertEqual(self.request('/api/social/references')[0],403)
+        self.assertEqual(self.request('/api/social/references',{})[0],403)
         self.assertEqual(self.request('/api/social/batch',{'action':'build','revision':1})[0],403)
         restricted=self.request('/api/social/state')[1];self.assertEqual(restricted['assets'],[]);self.assertEqual(restricted['batch'],{});self.assertNotIn('Private batch',json.dumps(restricted));self.assertNotIn('Unpublished private caption',json.dumps(restricted));self.assertNotIn('Private draft name',json.dumps(restricted))
     def test_unconfirmed_approval_and_enable_rejected_at_http_boundary(self):

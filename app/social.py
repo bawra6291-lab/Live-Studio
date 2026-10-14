@@ -118,7 +118,31 @@ class Social:
                     'instagram_id':self.data['instagram_id'],'accounts':copy.deepcopy(self.accounts),
                     'account_message':self.account_message,'assets':list(copy.deepcopy(self.data['assets']).values()),
                     'jobs':list(reversed(jobs)),'upload_limit_mb':1024,
+                    'reference_ready':len(self.data.get('arrange_reference_images',[]))==17,
                     'structure':structure(),'batch':copy.deepcopy(self.batch_plan())}
+
+    def references(self, data=None):
+        """Private operator template, never bundled in the app or posting assets."""
+        with self.c.lock,self.lock:
+            self.ready()
+            if data is None:return {'images':copy.deepcopy(self.data.get('arrange_reference_images',[]))}
+            images=data.get('images')
+            if data.get('format')!='live-desk-darshan-reference-v1' or not isinstance(images,list) or len(images)!=17:
+                raise ValueError('Import a Live Desk reference file with 17 ordered photos.')
+            if any(not isinstance(s,str) or len(s)>8000 or not s.startswith('data:image/jpeg;base64,') for s in images) or sum(map(len,images))>60000:
+                raise ValueError('Use a small reference template under 60 KB, with JPG previews only.')
+            with tempfile.TemporaryDirectory() as tmp:
+                path=Path(tmp)/'reference.jpg'
+                for i,s in enumerate(images):
+                    try:path.write_bytes(base64.b64decode(s.split(',',1)[1],validate=True))
+                    except Exception:raise ValueError('Invalid reference image encoding.') from None
+                    kind,w,h=asset_type(path,'reference.jpg')
+                    if kind!='image/jpeg' or max(w,h)>128 or min(w,h)<24 or abs(w/h-(.75 if i<7 else 4/3))>.025:
+                        raise ValueError('Reference order must be 7 portrait 3:4, then 10 landscape 4:3 previews, up to 128 pixels.')
+            old=copy.deepcopy(self.data)
+            try:self.data['arrange_reference_images']=copy.deepcopy(images);self.persist()
+            except Exception:self.data=old;raise
+            return {'ok':True}
 
     def batch_plan(self):
         return self.data.get('batch', {'revision':0,'slots':['']*17,'title':'Daily darshan',

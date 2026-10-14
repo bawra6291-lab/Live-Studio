@@ -474,6 +474,12 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if not self.valid_host():return self.reply(403,{'error':'Invalid host.'})
         path=urlsplit(self.path).path
+        if path=='/api/social/references':
+            session=self.auth()
+            if not session:return self.reply(401,{'error':'Pair this device to continue.'})
+            if session.get('role')=='viewer':return self.reply(403,{'error':'References are available to operators only.'})
+            try:return self.reply(200,self.server.controller.social.references())
+            except (ValueError,OSError):return self.reply(409,{'error':'Could not read the private reference template.'})
         if path=='/api/social/state':
             session=self.auth()
             if not session:return self.reply(401,{'error':'Pair this device to continue.'})
@@ -531,7 +537,7 @@ class Handler(BaseHTTPRequestHandler):
                     for token,item in server.sessions.items():
                         if item['expires']>time.monotonic():rows.append({k:item.get(k,'') for k in ('id','label','role','created_at')})
             return self.reply(200,{'devices':rows,'pairing_minutes_left':max(0,int((self.server.pair_expires-time.monotonic())/60))})
-        assets={'/':('index.html','text/html; charset=utf-8'),'/style.css':('style.css','text/css; charset=utf-8'),'/app.js':('app.js','text/javascript; charset=utf-8'),'/icon.svg':('icon.svg','image/svg+xml'),'/features.js':('features.js','text/javascript; charset=utf-8'),'/social.js':('social.js','text/javascript; charset=utf-8'),'/social-batch.js':('social-batch.js','text/javascript; charset=utf-8'),'/social.css':('social.css','text/css; charset=utf-8')}
+        assets={'/':('index.html','text/html; charset=utf-8'),'/style.css':('style.css','text/css; charset=utf-8'),'/app.js':('app.js','text/javascript; charset=utf-8'),'/icon.svg':('icon.svg','image/svg+xml'),'/features.js':('features.js','text/javascript; charset=utf-8'),'/social.js':('social.js','text/javascript; charset=utf-8'),'/social-arrange.js':('social-arrange.js','text/javascript; charset=utf-8'),'/social-batch.js':('social-batch.js','text/javascript; charset=utf-8'),'/social.css':('social.css','text/css; charset=utf-8')}
         if path not in assets:return self.reply(404,{'error':'Not found.'})
         name,ctype=assets[path];return self.reply(200,(WEB/name).read_bytes(),ctype)
     def social_media(self,ident):
@@ -584,7 +590,7 @@ class Handler(BaseHTTPRequestHandler):
             if session.get('role')=='viewer':return self.reply(403,{'error':'This device has view-only access. Pair with an operator code to control the PC.'})
             if path.startswith('/api/social/'):
                 if path in ('/api/social/account','/api/social/check') and not self.local():return self.reply(403,{'error':'Set up posting accounts on the PC.'})
-                routes={'/api/social/upload/begin':c.social.begin_upload,'/api/social/upload/chunk':c.social.upload_chunk,'/api/social/upload/finish':c.social.finish_upload,'/api/social/asset':c.social.asset_update,'/api/social/assets/bulk':c.social.assets_bulk,'/api/social/draft':c.social.draft,'/api/social/batch':c.social.batch,'/api/social/action':c.social.command,'/api/social/account':c.social.save_account,'/api/social/reconcile':c.social.reconcile}
+                routes={'/api/social/upload/begin':c.social.begin_upload,'/api/social/upload/chunk':c.social.upload_chunk,'/api/social/upload/finish':c.social.finish_upload,'/api/social/asset':c.social.asset_update,'/api/social/assets/bulk':c.social.assets_bulk,'/api/social/draft':c.social.draft,'/api/social/batch':c.social.batch,'/api/social/references':c.social.references,'/api/social/action':c.social.command,'/api/social/account':c.social.save_account,'/api/social/reconcile':c.social.reconcile}
                 if path=='/api/social/check':return self.reply(202,c.social.check_accounts())
                 if path not in routes:return self.reply(404,{'error':'Posting action not found.'})
                 return self.reply(200,routes[path](data))

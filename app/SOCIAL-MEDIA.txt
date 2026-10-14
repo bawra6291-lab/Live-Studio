@@ -136,3 +136,28 @@ https://www.postman.com/meta/instagram/documentation/6yqw8pt/instagram-api
 
 https://support.google.com/youtube/answer/7124474
 https://developers.google.com/youtube/v3/docs
+
+10. Upload and arrange a complete darshan batch (0.10.3)
+Open Social Media > Darshan batch > Upload & arrange photos.
+First use Import reference file (once) to import your private 17-photo reference
+JSON. It stays on your PC and is not included in the published app. Then
+select all of today's edited photos together (up to 25). The app compares only
+that upload with small reference pictures from the supplied Post_Structure PPT.
+It suggests 7 portrait 3:4 slots and 10 landscape 4:3 slots with no filename rule.
+Extra, duplicate, unreadable, unrelated or incorrect-ratio photos are not forced
+into missing slots. They stay in the library. Existing drafts are untouched.
+
+This uses local visual similarity, NOT reliable semantic deity recognition.
+Daily clothing, lighting, camera angle or background changes can produce wrong
+matches. Similar Radha-Krishna views are especially important to review. The
+suggestion does not approve or publish anything. Review all covers/order once;
+choose a different photo only if needed. Choosing a photo already in another
+slot swaps the two photos. Original photo bytes, crop and colour stay intact.
+
+Enter caption/times, then Review order & create five drafts. One confirmation
+saves the reviewed order and creates all five unapproved drafts. Repeating the
+same batch reuses its drafts. Approve destinations in Posting queue as before.
+Facebook and Instagram landscape can use the existing API queue. YouTube photo
+posts and Instagram 3:4 portrait STILL need manual upload with the ordered
+package. This release does not implement automatic browser photo publishing.
+No new API key, paid vision service or Python dependency is required.
