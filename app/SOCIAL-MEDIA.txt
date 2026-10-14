@@ -74,20 +74,37 @@ link opens the mobile share sheet or copies text for WhatsApp. No WhatsApp
 Group, Community or Channel message is automatically sent. The intended
 WhatsApp destination must be specified before adding that integration.
 
-8. Darshan batch (the supplied Post_Structure PowerPoint)
-Social Media > Darshan batch > Import today's photos. Use reference filename
-matching for the example DSC filenames, or choose today's photos manually
-by subject. The template never assumes upload order or uses the PPT previews
-as posting originals. There are seven portrait (3:4) slots and ten landscape
-(4:3) slots; each group's first photo is its cover. Edit crop saves a new JPG
-and keeps that slot's position. Review deity faces before saving each crop.
-Landscape copies must meet Instagram API requirements before building.
-Set a shared caption and three IST times, then Save batch > Create five drafts.
-A missing/duplicate photo, incorrect crop, stale revision or invalid time
-prevents batch creation. Repeating a build of the same saved revision returns
-the existing five drafts. Editing a batch leaves previously created drafts
-unchanged; cancel obsolete drafts before approving replacements.
-Facebook order is landscape 1–4, portrait 1–7, then landscape 5–10 (17 total).
+8. Three photo columns (0.10.5)
+Social Media > Darshan batch now has three independent uploads:
+- 7 portrait photos (3:4), used in the same order for Instagram and YouTube.
+- 10 landscape photos (4:3), used in the same order for Instagram and YouTube.
+- 17 Facebook photos, in a separately selected order; mixed ratios are allowed.
+
+Upload each column, then use arrows, the position selector or drag within that
+column. Photo 1 is the cover. Moving a Facebook photo does not change either
+Instagram/YouTube group. Import order is the file order supplied by the browser;
+always check the numbered preview. There is no reference matching or inferred
+subject order. Repeated copies of the same file in one column are skipped.
+The same original may be reused across different columns.
+
+Upload fills empty positions. If the selection exceeds the remaining positions,
+the app asks before replacing that column. Clear column removes selections;
+Remove removes one position and shifts following photos up. Neither action
+deletes originals or already-created drafts. Edit copy is optional and creates
+a separate JPG only when explicitly saved. Imports preserve the original bytes.
+Desktop shows three columns side-by-side; narrow screens stack them, with a
+scrollable photo area per column. Counts, order and first-photo covers stay visible.
+
+Set the shared caption and three IST times, then Review & create five drafts.
+Save progress keeps incomplete columns for later. All positions must be filled
+with distinct photos within each column before creating drafts. Format warnings
+are displayed on affected photos. Current Instagram landscape API requirements
+remain JPG under 8 MB, width 320–1440; images are never silently resized.
+Repeated creation of the same saved batch reuses its five existing drafts.
+Changing a batch leaves previous drafts unchanged: review old drafts before
+approving replacements. Older saved batches migrate their existing Facebook
+order and media references without deleting anything or rebuilding posts.
+
 Facebook and Instagram landscape drafts use the existing approved API queue.
 Instagram portrait and both YouTube Community drafts use manual photo handoff.
 Preview & approve freezes a manual package as Ready · manual upload. It does
@@ -137,57 +154,8 @@ https://www.postman.com/meta/instagram/documentation/6yqw8pt/instagram-api
 https://support.google.com/youtube/answer/7124474
 https://developers.google.com/youtube/v3/docs
 
-10. Upload and arrange a complete darshan batch (0.10.3)
-Open Social Media > Darshan batch > Upload & arrange photos.
-First use Import reference file (once) to import your private 17-photo reference
-JSON. It stays on your PC and is not included in the published app. Then
-select all of today's edited photos together (up to 25). The app compares only
-that upload with small reference pictures from the supplied Post_Structure PPT.
-It suggests 7 portrait 3:4 slots and 10 landscape 4:3 slots with no filename rule.
-Extra, duplicate, unreadable, unrelated or incorrect-ratio photos are not forced
-into missing slots. They stay in the library. Existing drafts are untouched.
-
-This uses local visual similarity, NOT reliable semantic deity recognition.
-Daily clothing, lighting, camera angle or background changes can produce wrong
-matches. Similar Radha-Krishna views are especially important to review. The
-suggestion does not approve or publish anything. Review all covers/order once;
-choose a different photo only if needed. Choosing a photo already in another
-slot swaps the two photos. Original photo bytes, crop and colour stay intact.
-
-Enter caption/times, then Review order & create five drafts. One confirmation
-saves the reviewed order and creates all five unapproved drafts. Repeating the
-same batch reuses its drafts. Approve destinations in Posting queue as before.
-Facebook and Instagram landscape can use the existing API queue. YouTube photo
-posts and Instagram 3:4 portrait STILL need manual upload with the ordered
-package. This release does not implement automatic browser photo publishing.
-No new API key, paid vision service or Python dependency is required.
-
-
-11. Framing-aware suggestions and focused review (0.10.4)
-Your existing private reference JSON remains compatible; no re-import is needed.
-The comparison checks grayscale structure over small position and zoom changes.
-Dress colour is not used to choose the assignment. Upper-frame structure is
-compared separately as well as the whole photo. This improves tolerance to
-clothing and framing changes, but it is NOT a trained semantic deity model.
-New poses, large crops, lighting changes and similar angles can still be wrong.
-Labels now follow Post_Structure 2.0: straight/right/left full/half body,
-Gaura Natraj, Janardhan, Radha Gopinath, Radha Madan Mohan and Srila Prabhupada.
-Right/left follow the supplied reference photos, not an inferred viewpoint.
-
-Select Show only photos to check to focus on uncertain matches, missing slots
-and format warnings. Use this photo acknowledges a suggestion for this review;
-it does not approve or post it, train a model, or persist a learned example.
-Choosing another assigned photo swaps slots. Uncheck the filter to see all 17.
-Reloading a saved batch clears temporary review flags and shows the full order.
-A suggestion is not proof of correctness; review the full cover/order before
-creating drafts. Only photos from the explicit upload can fill slots.
-
-Private local engine comparison on two operator-supplied clothing sets placed
-17/17 photos in the visually reviewed order for each set, with 4 and 10 review
-flags respectively. Reversing input order did not change those results; removing
-Gaura, Jagannath or Prabhupada left their slots empty in the checked cases.
-These are limited sample results, not a guarantee for unseen daily uploads or
-a live platform publishing test. User photographs are not in the code/release.
-Synthetic regression checks cover framing shifts, exposure, missing/unrelated
-photos and UI review filtering. Originals remain byte-for-byte unchanged.
-Existing posting format/size limits and manual destinations still apply.
+10. Previous reference matching
+The 0.10.3/0.10.4 reference-import and automatic matching controls are no longer
+loaded by the daily photo screen. Saved references are not used in the three
+column workflow. Your explicit order is authoritative. No AI training, matching
+or automatic cross-column selection runs when importing photos.

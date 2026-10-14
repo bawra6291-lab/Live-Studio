@@ -145,41 +145,69 @@ class Social:
             return {'ok':True}
 
     def batch_plan(self):
-        return self.data.get('batch', {'revision':0,'slots':['']*17,'title':'Daily darshan',
-            'caption':'','times':{'portrait':'','landscape':'','facebook':''},'jobs':[], 'built_revision':None})
+        plan=copy.deepcopy(self.data.get('batch', {'revision':0,'slots':['']*17,'title':'Daily darshan',
+            'caption':'','times':{'portrait':'','landscape':'','facebook':''},'jobs':[], 'built_revision':None}))
+        # Read-only migration: retain legacy posting order and already-created jobs.
+        plan.setdefault('mode','legacy')
+        plan.setdefault('groups',{'portrait':plan['slots'][:7], 'landscape':plan['slots'][7:],
+            'facebook':[plan['slots'][i] for i in FACEBOOK_ORDER]})
+        return plan
+
+    def batch_references(self):
+        plan=self.batch_plan()
+        return sum((plan['groups'][g] for g in ('portrait','landscape','facebook')),[]) if plan['mode']=='columns' else plan['slots']
 
     def batch(self, data):
-        """Persist mappings, then create exactly five unapproved drafts atomically."""
+        """Three independent ordered columns; create five unapproved drafts atomically."""
         with self.c.lock,self.lock:
             self.ready();plan=self.batch_plan()
             if data.get('revision')!=plan['revision']:raise ValueError('The batch changed on another device. Reload the saved batch.')
             if data.get('action')=='save':
-                slots=data.get('slots');title=data.get('title','');caption=data.get('caption','');times=data.get('times')
-                if not isinstance(slots,list) or len(slots)!=17 or any(not isinstance(m,str) or (m and m not in self.data['assets']) for m in slots):raise ValueError('Assign saved photos to the 17 slots.')
-                if any(m and not self.data['assets'][m]['type'].startswith('image/') for m in slots):raise ValueError('The darshan structure uses photos only.')
+                mode=data.get('mode','legacy');title=data.get('title','');caption=data.get('caption','');times=data.get('times')
+                if mode not in ('legacy','columns'):raise ValueError('Unknown batch layout.')
+                if mode=='legacy' and plan['mode']=='columns':raise ValueError('Reload Live Desk to use the three-column photo layout.')
+                if mode=='columns':
+                    groups=data.get('groups')
+                    if not isinstance(groups,dict) or set(groups)!={'portrait','landscape','facebook'}:raise ValueError('Save the three photo columns.')
+                else:
+                    slots=data.get('slots')
+                    if not isinstance(slots,list) or len(slots)!=17:raise ValueError('Assign saved photos to the 17 slots.')
+                    groups={'portrait':slots[:7],'landscape':slots[7:],'facebook':[slots[i] for i in FACEBOOK_ORDER]}
+                for group,count in [('portrait',7),('landscape',10),('facebook',17)]:
+                    ids=groups[group]
+                    if not isinstance(ids,list) or len(ids)!=count or any(not isinstance(m,str) or (m and m not in self.data['assets']) for m in ids):raise ValueError(f'{group}: use {count} saved photo positions.')
+                    if any(m and not self.data['assets'][m]['type'].startswith('image/') for m in ids):raise ValueError('The photo columns use images only.')
                 if not isinstance(title,str) or not title.strip() or len(title)>65 or not isinstance(caption,str) or len(caption)>2200:raise ValueError('Use a batch name up to 65 characters and shared caption up to 2200.')
                 if not isinstance(times,dict) or set(times)!={'portrait','landscape','facebook'} or any(not isinstance(v,str) or len(v)>40 for v in times.values()):raise ValueError('Set the three posting times in IST.')
-                fields={'slots':slots,'title':title.strip(),'caption':caption,'times':times}
+                fields={'slots':groups['portrait']+groups['landscape'],'groups':groups,'mode':mode,'title':title.strip(),'caption':caption,'times':times}
                 if all(plan.get(k)==v for k,v in fields.items()):return copy.deepcopy(plan)
-                self.data['batch']={**copy.deepcopy(plan),**fields,'revision':plan['revision']+1}
-                self.persist();return copy.deepcopy(self.data['batch'])
+                backup=copy.deepcopy(self.data)
+                try:
+                    changed=any(plan.get(k)!=v for k,v in fields.items() if k!='mode')
+                    self.data['batch']={**copy.deepcopy(plan),**copy.deepcopy(fields),'revision':plan['revision']+int(changed)}
+                    self.persist();return copy.deepcopy(self.data['batch'])
+                except Exception:self.data=backup;raise
             if data.get('action')!='build':raise ValueError('Choose Save batch or Create drafts.')
             if plan.get('built_revision')==plan['revision']:
                 if any(not any(j['id']==ident for j in self.data['jobs']) for ident in plan['jobs']):raise ValueError('This batch was already created and some drafts were removed. Change and save the batch before creating a new set.')
                 return {'jobs':copy.deepcopy(plan['jobs']),'already_built':True}
-            slots=plan['slots']
-            if len(slots)!=17 or any(not m or m not in self.data['assets'] for m in slots) or len(set(slots))!=17:raise ValueError('Choose 17 different photos. Fill every slot before creating drafts.')
-            for i,m in enumerate(slots):
-                _,a=self.media_path(m);ratio=3/4 if i<7 else 4/3
-                if not a['type'].startswith('image/') or abs(a['width']/a['height']-ratio)>0.002:raise ValueError(f'Slot {i+1}: crop to {"3:4" if i<7 else "4:3"} with Edit crop first. No silent crop was applied.')
-                if i<7 and a['size']>16*1024*1024:raise ValueError(f'Portrait photo {i+1}: save an edited copy under 16 MB for YouTube photo upload.')
-                if i>=7 and (a['type']!='image/jpeg' or a['size']>8*1024*1024 or not 320<=a['width']<=1440):raise ValueError(f'Landscape photo {i-6}: use Edit crop to save an Instagram JPG under 8 MB, 320–1440 pixels wide.')
+            for group,count in [('portrait',7),('landscape',10),('facebook',17)]:
+                ids=plan['groups'][group]
+                if len(ids)!=count or any(not m or m not in self.data['assets'] for m in ids) or len(set(ids))!=count:raise ValueError(f'{group}: choose {count} different photos and fill every position.')
+                for i,m in enumerate(ids):
+                    _,asset=self.media_path(m)
+                    if not asset['type'].startswith('image/'):raise ValueError('Choose photos only.')
+                    if group=='facebook':continue
+                    ratio=3/4 if group=='portrait' else 4/3
+                    if abs(asset['width']/asset['height']-ratio)>.002:raise ValueError(f'{group} photo {i+1}: use {"3:4" if group=="portrait" else "4:3"}. Original photos are not automatically cropped.')
+                    if group=='portrait' and asset['size']>16*1024*1024:raise ValueError(f'Portrait photo {i+1}: use a photo under 16 MB.')
+                    if group=='landscape' and (asset['type']!='image/jpeg' or asset['size']>8*1024*1024 or not 320<=asset['width']<=1440):raise ValueError(f'Landscape photo {i+1}: Instagram API needs JPG under 8 MB, 320–1440 pixels wide.')
             if len(self.data['jobs'])+5>300:raise ValueError('Remove unused drafts before adding a batch (300 posts limit).')
             backup=copy.deepcopy(self.data)
             try:
                 ids=[]
                 for spec in structure()['posts']:
-                    group=spec['group'];media=slots[:7] if group=='portrait' else slots[7:] if group=='landscape' else [slots[i] for i in FACEBOOK_ORDER]
+                    group=spec['group'];media=list(plan['groups'][group])
                     job=self.draft({'title':plan['title']+' · '+{'youtube':'YouTube','facebook':'Facebook','instagram':'Instagram'}[spec['platform']]+' '+group,
                         'caption':plan['caption'],'media':media,'platforms':[spec['platform']],
                         'delivery':spec['delivery'],'publish_at':plan['times'][group],
@@ -292,7 +320,7 @@ class Social:
             if not asset:raise ValueError('Choose a saved media file.')
             if any(ident in j['media'] and j['status'] in ('queued','publishing','needs_review','published','manual_ready','manual_done') for j in self.data['jobs']):raise ValueError('This media belongs to an approved or posted item. Use a new copy to change it.')
             if data.get('action')=='remove':
-                if ident in self.batch_plan()['slots']:raise ValueError('Unassign this photo from the saved batch first.')
+                if ident in self.batch_references():raise ValueError('Unassign this photo from the saved batch first.')
                 if any(ident in j['media'] for j in self.data['jobs']):raise ValueError('Remove its unused drafts first.')
                 self.data['assets'].pop(ident);self.persist();(self.folder/ident).unlink(missing_ok=True)
             else:
@@ -306,12 +334,12 @@ class Social:
             if not asset:raise ValueError('The media selection changed. Reload Media library.')
             refs=[j for j in self.data['jobs'] if ident in j['media']]
             protected=next((j for j in refs if j['status'] not in ('draft','cancelled')),None)
-            reason=('Used by '+protected['title']+' ('+protected['status']+')') if protected else 'Used by an unused draft' if refs and not cleanup else 'Assigned to the saved darshan batch' if ident in self.batch_plan()['slots'] and not cleanup else ''
+            reason=('Used by '+protected['title']+' ('+protected['status']+')') if protected else 'Used by an unused draft' if refs and not cleanup else 'Assigned to the saved darshan batch' if ident in self.batch_references() and not cleanup else ''
             rows.append({'id':ident,'name':asset['name'],'size':asset['size'],'reason':reason})
             if not reason:eligible.append(ident)
         drafts=[{'id':j['id'],'revision':j['revision'],'title':j['title']}
             for j in self.data['jobs'] if cleanup and j['status'] in ('draft','cancelled') and any(m in eligible for m in j['media'])]
-        batch=self.batch_plan();cleared=[i for i,m in enumerate(batch['slots']) if cleanup and m in eligible]
+        batch=self.batch_plan();cleared=[i for i,m in enumerate(self.batch_references()) if cleanup and m in eligible]
         plan={'files':rows,'drafts':drafts,'batch_slots':cleared,'batch_revision':batch['revision'] if cleared else None,'cleanup_drafts':cleanup}
         plan['fingerprint']=hashlib.sha256(json.dumps(plan,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
         return plan
@@ -341,9 +369,10 @@ class Social:
                 removed_drafts=[j for j in self.data['jobs'] if cleanup and j['status'] in ('draft','cancelled') and any(m in staged for m in j['media'])]
                 self.data['jobs']=[j for j in self.data['jobs'] if j not in removed_drafts]
                 cleared=0
-                if cleanup and any(m in staged for m in self.batch_plan()['slots']):
-                    batch=copy.deepcopy(self.batch_plan());cleared=sum(m in staged for m in batch['slots'])
-                    batch['slots']=['' if m in staged else m for m in batch['slots']];batch['revision']+=1
+                if cleanup and any(m in staged for m in self.batch_references()):
+                    batch=copy.deepcopy(self.batch_plan());cleared=sum(m in staged for m in self.batch_references())
+                    batch['groups']={g:['' if m in staged else m for m in values] for g,values in batch['groups'].items()}
+                    batch['slots']=batch['groups']['portrait']+batch['groups']['landscape'];batch['revision']+=1
                     batch['jobs']=[ident for ident in batch['jobs'] if any(j['id']==ident for j in self.data['jobs'])];self.data['batch']=batch
                 for ident in staged:self.data['assets'].pop(ident)
                 self.persist()

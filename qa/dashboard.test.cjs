@@ -66,69 +66,68 @@ async function noOverflow(page){assert.ok(await page.evaluate(()=>document.docum
   await desktop.locator('#social-enable').click();await desktop.locator('#confirm-cancel').click();assert.equal((await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()))).enabled,false);
  });
  await test('Darshan structure creates exact five drafts and manual photo package without API posting',async()=>{
-  await desktop.locator('[data-social-tab="batch"]').click();await desktop.locator('#batch-portrait select').first().waitFor();
+  await desktop.locator('[data-social-tab="batch"]').click();await desktop.locator('#batch-files-portrait').waitFor();
   const structure=await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()).then(s=>s.structure));
   const files=[];for(const slot of structure.slots){const encoded=await desktop.evaluate(slot=>{const c=document.createElement('canvas');c.width=slot.index<7?300:400;c.height=slot.index<7?400:300;const ctx=c.getContext('2d');ctx.fillStyle=`hsl(${slot.index*21},35%,65%)`;ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#193b2b';ctx.font='24px sans-serif';ctx.fillText(slot.reference,20,80);return c.toDataURL('image/jpeg',.92).split(',')[1];},slot);files.push({name:slot.reference+'.jpg',mimeType:'image/jpeg',buffer:Buffer.from(encoded,'base64')});}
-  await desktop.locator('#batch-files').setInputFiles(files);await desktop.locator('#batch-upload-status').filter({hasText:'17 / 17 imported'}).waitFor();await desktop.waitForFunction(()=>!document.getElementById('batch-match').disabled);
-  await desktop.locator('#batch-match').click();await desktop.locator('#batch-count').filter({hasText:'17 / 17'}).waitFor();
+  for(const [g,selected] of [['portrait',files.slice(0,7)],['landscape',files.slice(7)],['facebook',[...files].reverse()]]){await desktop.locator('#batch-files-'+g).setInputFiles(selected);await desktop.locator('#batch-upload-'+g).filter({hasText:selected.length+' / '+selected.length+' imported'}).waitFor();await desktop.waitForFunction(()=>!socialPending);}
+  await desktop.locator('#batch-count').filter({hasText:'34 / 34'}).waitFor();assert.equal(await desktop.locator('#batch-reference-file').count(),0);
   await desktop.locator('#batch-title').fill('Test darshan');await desktop.locator('#batch-caption').fill('Same caption for all five posts.');
   await desktop.waitForResponse(r=>r.url().endsWith('/api/social/state'));assert.equal(await desktop.locator('#batch-caption').inputValue(),'Same caption for all five posts.');
   // Editing a batch photo preselects the PPT crop and retains its slot.
-  await desktop.locator('#batch-portrait .batch-slot').first().getByRole('button',{name:'Edit crop'}).click();await desktop.locator('#social-edit-dialog').waitFor({state:'visible'});assert.equal(await desktop.locator('#social-crop').inputValue(),'0.75');await desktop.locator('#social-edit-save').click();await desktop.locator('#social-edit-dialog').waitFor({state:'hidden'});
+  await desktop.locator('#batch-portrait .batch-photo').first().getByRole('button',{name:'Edit copy'}).click();await desktop.locator('#social-edit-dialog').waitFor({state:'visible'});assert.equal(await desktop.locator('#social-crop').inputValue(),'0.75');await desktop.locator('#social-edit-save').click();await desktop.locator('#social-edit-dialog').waitFor({state:'hidden'});
   const save=desktop.waitForResponse(r=>r.url().endsWith('/api/social/batch'));await desktop.locator('#batch-save').click();assert.equal((await save).status(),200);await desktop.waitForFunction(()=>!document.getElementById('batch-build').disabled);
   for(const width of [1440,390,320]){await desktop.setViewportSize({width,height:1000});await noOverflow(desktop);await desktop.screenshot({path:path.join(output,'darshan-batch-'+width+'.png'),fullPage:true});}await desktop.setViewportSize({width:1440,height:1000});
   const build=desktop.waitForResponse(r=>r.url().endsWith('/api/social/batch'));await desktop.locator('#batch-build').click();assert.equal((await build).status(),200);await desktop.locator('#social-queue').waitFor({state:'visible'});
-  let s=await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()));const jobs=s.batch.jobs.map(id=>s.jobs.find(j=>j.id===id));assert.deepEqual(jobs.map(j=>j.media.length),[7,10,7,10,17]);assert.ok(jobs.every(j=>j.status==='draft'));assert.equal(s.enabled,false);assert.deepEqual(jobs[4].media,structure.facebook_order.map(i=>s.batch.slots[i]));
+  let s=await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()));const jobs=s.batch.jobs.map(id=>s.jobs.find(j=>j.id===id));assert.deepEqual(jobs.map(j=>j.media.length),[7,10,7,10,17]);assert.ok(jobs.every(j=>j.status==='draft'));assert.equal(s.enabled,false);assert.deepEqual(jobs[4].media,s.batch.groups.facebook);
   await desktop.locator('[data-social-tab="batch"]').click();await desktop.locator('#batch-build').click();await desktop.locator('#social-queue').waitFor({state:'visible'});s=await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()));assert.equal(s.jobs.length,6);
   const job=jobs[2],card=desktop.locator('#social-job-list .social-job').filter({has:desktop.getByRole('heading',{name:job.title,exact:true})});await card.getByRole('button',{name:'Preview & approve'}).click();await desktop.locator('#confirm-text').filter({hasText:'Enabling posting will NOT send'}).waitFor();await confirm(desktop);await card.filter({hasText:'Ready · manual upload'}).waitFor();
   const download=desktop.waitForEvent('download');await card.getByRole('link',{name:'Download ordered photos'}).click();const file=await download;const raw=await fs.readFile(await file.path());assert.ok(raw.subarray(0,2).equals(Buffer.from('PK')));assert.ok(raw.includes(Buffer.from('Same caption for all five posts.')));assert.ok(raw.includes(Buffer.from('01_DSC03639')));
   await card.getByRole('button',{name:'Mark completed'}).click();await desktop.locator('#confirm-cancel').click();assert.equal((await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()))).jobs.find(j=>j.id===job.id).status,'manual_ready');
-  await desktop.locator('[data-social-tab="batch"]').click();await desktop.reload();await desktop.locator('#app').waitFor({state:'visible'});await view(desktop,'social');await desktop.locator('[data-social-tab="batch"]').click();await desktop.locator('#batch-count').filter({hasText:'17 / 17'}).waitFor();assert.equal(await desktop.locator('#batch-caption').inputValue(),'Same caption for all five posts.');
+  await desktop.locator('[data-social-tab="batch"]').click();await desktop.reload();await desktop.locator('#app').waitFor({state:'visible'});await view(desktop,'social');await desktop.locator('[data-social-tab="batch"]').click();await desktop.locator('#batch-count').filter({hasText:'34 / 34'}).waitFor();assert.equal(await desktop.locator('#batch-caption').inputValue(),'Same caption for all five posts.');
  });
  await test('Bulk media review, cancelled deletion, protected photos and explicit unused-draft cleanup',async()=>{
   await desktop.locator('[data-social-tab="library"]').click();await desktop.locator('#social-library-grid .social-media-item').first().waitFor();
-  const before=await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()));const unused=before.assets.filter(a=>!before.batch.slots.includes(a.id)&&!before.jobs.some(j=>j.media.includes(a.id)));assert.ok(unused.length>0);await desktop.locator('#social-select-all').click();assert.equal(await desktop.locator('#social-library-grid input[type=checkbox]:checked').count(),before.assets.length);
+  const before=await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()));const unused=before.assets.filter(a=>!Object.values(before.batch.groups).flat().includes(a.id)&&!before.jobs.some(j=>j.media.includes(a.id)));assert.ok(unused.length>0);await desktop.locator('#social-select-all').click();assert.equal(await desktop.locator('#social-library-grid input[type=checkbox]:checked').count(),before.assets.length);
   for(const width of [1440,390,320]){await desktop.setViewportSize({width,height:1000});await noOverflow(desktop);await desktop.screenshot({path:path.join(output,'bulk-media-'+width+'.png'),fullPage:true});}await desktop.setViewportSize({width:1440,height:1000});
   await desktop.locator('#social-delete-selected').click();await desktop.locator('#confirm-dialog').waitFor({state:'visible'});await desktop.locator('#confirm-text').filter({hasText:'Retained files:'}).waitFor();await desktop.locator('#confirm-cancel').click();let s=await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()));assert.equal(s.assets.length,before.assets.length);assert.equal(s.jobs.length,before.jobs.length);
   await desktop.locator('#social-delete-selected').click();let removed=desktop.waitForResponse(r=>r.url().endsWith('/api/social/assets/bulk')&&r.request().postDataJSON().action==='remove');await confirm(desktop);const result=await (await removed).json();assert.deepEqual(result.removed,unused.map(a=>a.id));assert.equal(result.drafts_removed,0);assert.equal(result.batch_slots_cleared,0);s=await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()));assert.equal(s.assets.length,before.assets.length-unused.length);assert.deepEqual(s.batch.slots,before.batch.slots);assert.equal(s.jobs.length,before.jobs.length);
-  await desktop.locator('#social-cleanup-drafts').check();await desktop.locator('#social-delete-selected').click();await desktop.locator('#confirm-text').filter({hasText:'Unused drafts to remove:'}).waitFor();await desktop.locator('#confirm-text').filter({hasText:'Saved batch slots to clear:'}).waitFor();removed=desktop.waitForResponse(r=>r.url().endsWith('/api/social/assets/bulk')&&r.request().postDataJSON().action==='remove');await confirm(desktop);const cleaned=await (await removed).json();assert.equal(cleaned.retained.length,7);assert.equal(cleaned.drafts_removed,4);assert.equal(cleaned.batch_slots_cleared,10);
+  await desktop.locator('#social-cleanup-drafts').check();await desktop.locator('#social-delete-selected').click();await desktop.locator('#confirm-text').filter({hasText:'Unused drafts to remove:'}).waitFor();await desktop.locator('#confirm-text').filter({hasText:'Saved batch slots to clear:'}).waitFor();removed=desktop.waitForResponse(r=>r.url().endsWith('/api/social/assets/bulk')&&r.request().postDataJSON().action==='remove');await confirm(desktop);const cleaned=await (await removed).json();assert.equal(cleaned.retained.length,7);assert.equal(cleaned.drafts_removed,4);assert.equal(cleaned.batch_slots_cleared,Object.values(before.batch.groups).flat().filter(id=>cleaned.removed.includes(id)).length);
   s=await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()));assert.equal(s.assets.length,7);assert.equal(s.jobs.length,2);assert.equal(s.batch.slots.filter(Boolean).length,7);assert.equal(s.jobs.find(j=>j.status==='manual_ready').media.length,7);assert.equal(s.enabled,false);await desktop.locator('#social-delete-result').filter({hasText:'unused drafts removed'}).waitFor();
  });
- await test('One upload visually arranges renamed shuffled photos, preserves bytes and prepares five drafts',async()=>{
+ await test('Three independent columns preserve upload order, reordering, removal and five exact drafts',async()=>{
   await desktop.locator('[data-social-tab="batch"]').click();
   const before=await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()));
-  const reference=await desktop.evaluate(()=>{const images=[];for(let i=0;i<17;i++){const c=document.createElement('canvas');c.width=i<7?48:64;c.height=i<7?64:48;const ctx=c.getContext('2d');ctx.fillStyle='#dedede';ctx.fillRect(0,0,c.width,c.height);let seed=i+1;for(let y=0;y<8;y++)for(let x=0;x<8;x++){seed=(Math.imul(seed,1664525)+1013904223)>>>0;ctx.fillStyle='hsl('+seed%360+',60%,40%)';ctx.fillRect(x*c.width/8,y*c.height/8,c.width/8,c.height/8);}images.push(c.toDataURL('image/jpeg',.65));}return {format:'live-desk-darshan-reference-v1',images};});
-  await desktop.locator('#batch-reference-file').setInputFiles({name:'fixture-reference.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(reference))});await desktop.locator('#batch-arrange-status').filter({hasText:'Reference saved'}).waitFor();
-  const encoded=await desktop.evaluate(async()=>{const files=[];const refs=await fetch('/api/social/references').then(r=>r.json());for(const [i,src] of refs.images.entries()){ const im=new Image();await new Promise((resolve,reject)=>{im.onload=resolve;im.onerror=reject;im.src=src;});const c=document.createElement('canvas');c.width=i<7?300:400;c.height=i<7?400:300;const ctx=c.getContext('2d');ctx.filter='brightness(0.9)';ctx.drawImage(im,0,0,c.width,c.height);files.push({name:'new-day-'+(800+i)+'.jpg',data:c.toDataURL('image/jpeg',.88).split(',')[1]});}return files;});
-  const files=encoded.map(f=>({name:f.name,mimeType:'image/jpeg',buffer:Buffer.from(f.data,'base64')})).reverse();
-  await desktop.locator('#batch-files').setInputFiles(files);await confirm(desktop);
-  await desktop.locator('#batch-arrange-status').filter({hasText:'17 / 17 photos arranged'}).waitFor();await desktop.waitForFunction(()=>!document.getElementById('batch-prepare').disabled);
-  const actual=await desktop.evaluate(()=>batchSlots.map(id=>socialState.assets.find(a=>a.id===id).name));assert.deepEqual(actual,encoded.map(f=>f.name));
-  let current=await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()));assert.equal(current.jobs.length,before.jobs.length);assert.deepEqual(current.batch.slots,before.batch.slots);assert.equal(current.enabled,false);
-  const crypto=require('node:crypto');for(const file of files){const hash=crypto.createHash('sha256').update(file.buffer).digest('hex');assert.ok(current.assets.some(a=>a.id===hash));}
-  // Review filtering must never remove a selection or mutate saved drafts.
-  const filterSlots=await desktop.evaluate(()=>[...batchSlots]);
-  await desktop.evaluate(()=>{batchArrangeNotes=Array(17).fill('Suggested visual match');batchArrangeNotes[0]='Check subject / angle';batchSignature='';socialBatchRender();});
-  await desktop.locator('#batch-review-only').check();
-  assert.equal(await desktop.locator('.batch-slot:visible').count(),1);
-  assert.ok((await desktop.locator('.batch-slot:visible').innerText()).includes('straight · full body'));
-  await desktop.locator('.batch-slot:visible').getByRole('button',{name:'Use this photo',exact:true}).click();
-  assert.equal(await desktop.locator('.batch-slot:visible').count(),0);
-  assert.deepEqual(await desktop.evaluate(()=>batchSlots),filterSlots);
-  await desktop.locator('#batch-review-only').uncheck();
-  assert.equal(await desktop.locator('.batch-slot:visible').count(),17);
-  await desktop.locator('#batch-portrait select').nth(3).selectOption('');
-  await desktop.locator('#batch-review-only').check();assert.equal(await desktop.locator('.batch-slot:visible').count(),1);
-  assert.ok((await desktop.locator('.batch-slot:visible').innerText()).includes('Gaura Natraj'));
-  await desktop.locator('.batch-slot:visible select').selectOption(filterSlots[3]);
-  await desktop.locator('#batch-review-only').uncheck();
-  assert.deepEqual(await desktop.evaluate(()=>batchSlots),filterSlots);
-  assert.equal((await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()))).jobs.length,before.jobs.length);
-  for(const width of [1440,390,320]){await desktop.setViewportSize({width,height:1000});await noOverflow(desktop);await desktop.screenshot({path:path.join(output,'auto-arrange-'+width+'.png'),fullPage:true});}await desktop.setViewportSize({width:1440,height:1000});
-  const ids=await desktop.evaluate(()=>[...batchSlots]);await desktop.locator('#batch-portrait select').first().selectOption(ids[1]);assert.deepEqual(await desktop.evaluate(()=>batchSlots.slice(0,2)),[ids[1],ids[0]]);await desktop.locator('#batch-portrait select').first().selectOption(ids[0]);
-  await desktop.locator('#batch-title').fill('Automatically arranged fixture');await desktop.locator('#batch-prepare').click();await desktop.locator('#confirm-cancel').click();assert.equal((await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()))).jobs.length,before.jobs.length);
+  const encoded=await desktop.evaluate(()=>Array.from({length:17},(_,i)=>{const c=document.createElement('canvas');c.width=i<7?300:400;c.height=i<7?400:300;const ctx=c.getContext('2d');ctx.fillStyle='hsl('+i*19+',60%,45%)';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#fff';ctx.font='30px sans-serif';ctx.fillText('Column photo '+i,10,90);return {name:'daily-'+i+'.jpg',data:c.toDataURL('image/jpeg',.92).split(',')[1]};}));
+  const files=encoded.map(f=>({name:f.name,mimeType:'image/jpeg',buffer:Buffer.from(f.data,'base64')}));
+  const desired={portrait:files.slice(0,7),landscape:files.slice(7),facebook:[...files].reverse()};
+  for(const [g,photos] of Object.entries(desired)){
+   const free=await desktop.evaluate(g=>batchGroups[g].filter(x=>!x).length,g);
+   await desktop.locator('#batch-files-'+g).setInputFiles(photos);if(photos.length>free)await confirm(desktop);
+   await desktop.locator('#batch-upload-'+g).filter({hasText:photos.length+' / '+photos.length+' imported'}).waitFor();await desktop.waitForFunction(()=>!socialPending);
+  }
+  await desktop.waitForFunction(()=>!document.getElementById('batch-prepare').disabled);
+  const actual=await desktop.evaluate(()=>Object.fromEntries(Object.entries(batchGroups).map(([g,ids])=>[g,ids.map(id=>socialState.assets.find(a=>a.id===id).name)])));
+  for(const g of Object.keys(desired))assert.deepEqual(actual[g],desired[g].map(f=>f.name));
+  const crypto=require('node:crypto');let current=await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()));
+  for(const f of files)assert.ok(current.assets.some(a=>a.id===crypto.createHash('sha256').update(f.buffer).digest('hex')));
+  assert.deepEqual(current.batch.groups,before.batch.groups);assert.equal(current.jobs.length,before.jobs.length);
+  // A move in Facebook must not reorder either shared Instagram/YouTube column.
+  const groups=await desktop.evaluate(()=>structuredClone(batchGroups));
+  await desktop.locator('#batch-facebook select').first().selectOption('2');
+  let moved=await desktop.evaluate(()=>structuredClone(batchGroups));assert.deepEqual(moved.portrait,groups.portrait);assert.deepEqual(moved.landscape,groups.landscape);assert.deepEqual(moved.facebook.slice(0,3),[groups.facebook[1],groups.facebook[2],groups.facebook[0]]);
+  await desktop.locator('#batch-facebook select').nth(2).selectOption('0');
+  await desktop.locator('#batch-portrait').getByRole('button',{name:'Move down portrait photo 1',exact:true}).click();
+  await desktop.locator('#batch-portrait').getByRole('button',{name:'Move up portrait photo 2',exact:true}).click();
+  assert.deepEqual(await desktop.evaluate(()=>batchGroups),groups);
+  await desktop.locator('#batch-facebook').getByRole('button',{name:'Remove facebook photo 17',exact:true}).click();
+  assert.equal(await desktop.locator('#batch-prepare').isDisabled(),true);
+  await desktop.locator('#batch-files-facebook').setInputFiles([desired.facebook[16]]);await desktop.waitForFunction(()=>!socialPending&&batchGroups.facebook.every(Boolean));assert.deepEqual(await desktop.evaluate(()=>batchGroups),groups);
+  await desktop.locator('#batch-clear-facebook').click();await desktop.locator('#confirm-cancel').click();assert.deepEqual(await desktop.evaluate(()=>batchGroups),groups);
+  for(const width of [1440,390,320]){await desktop.setViewportSize({width,height:1000});await noOverflow(desktop);await desktop.screenshot({path:path.join(output,'photo-columns-'+width+'.png'),fullPage:true});}await desktop.setViewportSize({width:1440,height:1000});
+  const boxes=await desktop.locator('.batch-upload-column').evaluateAll(nodes=>nodes.map(n=>({x:n.getBoundingClientRect().x,y:n.getBoundingClientRect().y})));assert.equal(new Set(boxes.map(b=>Math.round(b.y))).size,1);assert.equal(new Set(boxes.map(b=>Math.round(b.x))).size,3);
+  await desktop.locator('#batch-title').fill('Three daily photo columns');await desktop.locator('#batch-prepare').click();await desktop.locator('#confirm-cancel').click();assert.equal((await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()))).jobs.length,before.jobs.length);
   await desktop.locator('#batch-prepare').click();await confirm(desktop);await desktop.locator('#social-queue').waitFor({state:'visible'});
-  current=await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()));assert.equal(current.jobs.length,before.jobs.length+5);const jobs=current.batch.jobs.map(id=>current.jobs.find(j=>j.id===id));assert.ok(jobs.every(j=>j.status==='draft'));assert.deepEqual(jobs[4].media,current.structure.facebook_order.map(i=>current.batch.slots[i]));assert.equal(current.enabled,false);
+  current=await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()));const jobs=current.batch.jobs.map(id=>current.jobs.find(j=>j.id===id));assert.deepEqual(jobs.map(j=>j.media),[groups.portrait,groups.landscape,groups.portrait,groups.landscape,groups.facebook]);assert.ok(jobs.every(j=>j.status==='draft'));assert.equal(current.enabled,false);
   await desktop.locator('[data-social-tab="batch"]').click();await desktop.locator('#batch-prepare').click();await confirm(desktop);await desktop.locator('#social-queue').waitFor({state:'visible'});assert.equal((await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()))).jobs.length,current.jobs.length);
  });
  await test('Custom schedule, end time and camera action survive save/reload',async()=>{
