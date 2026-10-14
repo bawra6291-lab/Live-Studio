@@ -1,9 +1,9 @@
 {
   "app_id": "iskcon-live-desk",
-  "version": "0.10.3",
+  "version": "0.10.4",
   "update_format": 1,
-  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.10.3/ISKCON-Live-Desk.zip",
-  "size": 314883,
-  "sha256": "992d561b1afdc1a2d027f261a148f3b13adf3a49a8dac694e8ee1c5eb5df58f9",
-  "notes": "Upload daily photos together and suggest their darshan order using a private reference file imported once. Review one preview to create five drafts. Original photo bytes retained. Visual similarity can misidentify new clothing or angles. YouTube photos and Instagram portrait still use manual handoff."
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.10.4/ISKCON-Live-Desk.zip",
+  "size": 316744,
+  "sha256": "c460eefe1dee8fa01392621a848bd31bff9777e8ff881ddc401fcde5c8377ab3",
+  "notes": "Improved daily darshan shape and framing matching; clear full/half-body angle labels and focused review. Existing reference and settings retained. Check the suggested order before creating drafts. YouTube photos and Instagram portrait still use manual handoff."
 }

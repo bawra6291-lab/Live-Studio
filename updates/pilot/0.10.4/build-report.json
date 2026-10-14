@@ -1,0 +1,58 @@
+{
+  "version": "0.10.4",
+  "source_commit": "25e2c3034a229f35b95afaaae40c99bd1f466f29",
+  "source_tree": "757ca7b8e41e6a7e129d14ca6593cdf420ab8131",
+  "package": {
+    "size": 316744,
+    "sha256": "c460eefe1dee8fa01392621a848bd31bff9777e8ff881ddc401fcde5c8377ab3",
+    "files": 80,
+    "all_payload_files_match_source_tree": true
+  },
+  "validation": {
+    "python_tests": 248,
+    "dashboard_flows": 16,
+    "dashboard_js_errors": 0,
+    "workflows": [
+      {
+        "name": "OBS layout helper validation",
+        "id": 38533604213,
+        "conclusion": "success",
+        "url": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/38533604213"
+      },
+      {
+        "name": "Development validation",
+        "id": 38533604038,
+        "conclusion": "success",
+        "url": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/38533604038"
+      },
+      {
+        "name": "Android companion validation",
+        "id": 38533604031,
+        "conclusion": "success",
+        "url": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/38533604031"
+      }
+    ],
+    "upgrade_staging": "0.10.3 -> 0.10.4 passed; old folder unchanged",
+    "visual_review": "Desktop 1440 and mobile 320 screenshots inspected; 1440/390/320 no-overflow checks passed",
+    "private_engine_samples": {
+      "sets": 2,
+      "photos_per_set": 17,
+      "matched_reviewed_order": [
+        17,
+        17
+      ],
+      "review_flags": [
+        4,
+        10
+      ],
+      "reversed_input_order": "unchanged",
+      "missing_subject_checks": "Gaura, Jagannath and Prabhupada left empty in both sets",
+      "method": "Local engine comparison using 32x32 Pillow samples; no real account publishing test. Reference and operator photos not included in repository or package."
+    }
+  },
+  "limitations": [
+    "Local shape/template similarity, not a trained semantic deity recognizer.",
+    "Two dress sets do not establish accuracy on unseen daily uploads; review the full order before approving.",
+    "Original photo bytes and posting limits unchanged. YouTube photo posts and Instagram portrait still use manual handoff."
+  ]
+}
