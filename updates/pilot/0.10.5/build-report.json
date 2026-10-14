@@ -1,0 +1,22 @@
+{
+  "version": "0.10.5",
+  "source_commit": "f05d03f320300b382cd5dff8cea4a069bdf4a62a",
+  "source_tree": "4f6658e2e40330e2708d24c39282c4a128de703b",
+  "package_sha256": "82ab6c4c22928afe332061d9776e42865221406a5741187ca5d5b8ffff148661",
+  "source_files_verified": 81,
+  "python_tests": 253,
+  "python_skipped": 1,
+  "browser_flows": 16,
+  "validation_runs": {
+    "development": 38574552782,
+    "android": 38574553101,
+    "obs_layout": 38574552972
+  },
+  "validation_result": "all passed",
+  "upgrade_preparation": "0.10.4 to 0.10.5 passed",
+  "publication": "User approved GitHub publication; package and pilot feed prepared for 0.10.5",
+  "limitations": [
+    "YouTube photo posts and Instagram portrait posts remain manual ordered packages.",
+    "No real platform publishing or PC live controls were exercised."
+  ]
+}
