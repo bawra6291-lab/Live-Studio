@@ -1,11 +1,14 @@
-DARSHANFLOW — SUPPLIED STUDIO (0.10.7)
+DARSHANFLOW — LIVE DESK COLOURS (0.10.8)
 
 The previous Social Media interface has been replaced with the user's supplied
 DARSHANFLOW Pure Emerald Glass Studio HTML inside the existing dashboard.
 Open DARSHANFLOW from the left navigation, or use the existing #social bookmark.
 
-The HTML is preserved byte-for-byte, including its design, text, photo references,
-arrangement logic, crops, API versions, buttons and connector behavior. Its SHA-256 is
+The original HTML is preserved byte-for-byte. Live Desk applies a separate colour
+stylesheet after loading it: warm cream background, white cards, dark green text
+and navigation, and warm orange primary buttons. Layout, photo references,
+arrangement logic, crops, API versions, buttons and connector behavior are retained.
+The original HTML SHA-256 is
 662e41b5b4b8a03922446dc4fbe731a2ea52676f9670a9d6fabd3b03885aabcb
 
 The embedded page keeps its own original API & Caption Setup and browser storage.

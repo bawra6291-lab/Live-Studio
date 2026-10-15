@@ -570,7 +570,7 @@ class Handler(BaseHTTPRequestHandler):
             if session.get('role')=='viewer':return self.reply(403,{'error':'DARSHANFLOW is available to operators only.'})
             # Scoped to this document only: its inline UI and direct HTTPS API
             # connectors work without relaxing the rest of the dashboard policy.
-            policy="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob: https:; connect-src https:; manifest-src data:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'"
+            policy="default-src 'none'; script-src 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src data: blob: https:; connect-src https:; manifest-src data:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'"
             return self.reply(200,(WEB/'darshanflow.html').read_bytes(),'text/html; charset=utf-8',csp=policy)
         if path=='/api/social/references':
             session=self.auth()
@@ -635,7 +635,7 @@ class Handler(BaseHTTPRequestHandler):
                     for token,item in server.sessions.items():
                         if item['expires']>time.monotonic():rows.append({k:item.get(k,'') for k in ('id','label','role','created_at')})
             return self.reply(200,{'devices':rows,'pairing_minutes_left':max(0,int((self.server.pair_expires-time.monotonic())/60))})
-        assets={'/takeover.js':('takeover.js','text/javascript; charset=utf-8'),'/':('index.html','text/html; charset=utf-8'),'/style.css':('style.css','text/css; charset=utf-8'),'/app.js':('app.js','text/javascript; charset=utf-8'),'/icon.svg':('icon.svg','image/svg+xml'),'/features.js':('features.js','text/javascript; charset=utf-8'),'/darshanflow-host.js':('darshanflow-host.js','text/javascript; charset=utf-8'),'/darshanflow-host.css':('darshanflow-host.css','text/css; charset=utf-8')}
+        assets={'/takeover.js':('takeover.js','text/javascript; charset=utf-8'),'/':('index.html','text/html; charset=utf-8'),'/style.css':('style.css','text/css; charset=utf-8'),'/app.js':('app.js','text/javascript; charset=utf-8'),'/icon.svg':('icon.svg','image/svg+xml'),'/features.js':('features.js','text/javascript; charset=utf-8'),'/darshanflow-host.js':('darshanflow-host.js','text/javascript; charset=utf-8'),'/darshanflow-host.css':('darshanflow-host.css','text/css; charset=utf-8'),'/darshanflow-theme.css':('darshanflow-theme.css','text/css; charset=utf-8')}
         if path not in assets:return self.reply(404,{'error':'Not found.'})
         name,ctype=assets[path];return self.reply(200,(WEB/name).read_bytes(),ctype)
     def social_media(self,ident):

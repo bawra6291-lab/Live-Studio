@@ -55,7 +55,9 @@ async function noOverflow(page){assert.ok(await page.evaluate(()=>document.docum
   await view(desktop,'social');const frame=desktop.frameLocator('#darshanflow-frame');await frame.locator('#mainGrid .deity-col').first().waitFor();
   assert.equal(await desktop.locator('#social-compose').count(),0);assert.equal(await desktop.getByRole('button',{name:'Social Media',exact:true}).count(),0);
   assert.equal(await frame.locator('#mainGrid .deity-col').count(),7);
-  assert.equal(await frame.locator('body').evaluate(n=>getComputedStyle(n).color),'rgb(255, 255, 255)');
+  await frame.locator('html[data-live-desk-theme="ready"]').waitFor();
+  assert.deepEqual(await frame.locator('body').evaluate(n=>({ink:getComputedStyle(n).color,bg:getComputedStyle(n).backgroundColor})),await desktop.locator('html').evaluate(n=>({ink:getComputedStyle(n).color,bg:getComputedStyle(n).backgroundColor})));
+  assert.equal(await frame.locator('.btn-sage').first().evaluate(n=>getComputedStyle(n).backgroundColor),await desktop.locator('html').evaluate(n=>getComputedStyle(n).getPropertyValue('--orange').trim()).then(hex=>{const rgb=hex.match(/\w\w/g).map(x=>parseInt(x,16));return `rgb(${rgb.join(', ')})`;}));
   await frame.getByRole('button',{name:'Post 2 · Landscape (1→10)',exact:true}).click();assert.equal(await frame.locator('#mainGrid .deity-col').count(),10);
   await frame.getByRole('button',{name:'Facebook · Mixed (1→17)',exact:true}).click();assert.equal(await frame.locator('#mainGrid .deity-col').count(),17);
   await frame.getByRole('button',{name:'Post 1 · Portrait (1→7)',exact:true}).click();
@@ -64,7 +66,7 @@ async function noOverflow(page){assert.ok(await page.evaluate(()=>document.docum
   await view(desktop,'overview');await desktop.waitForResponse(r=>r.url().endsWith('/api/state'));await view(desktop,'social');assert.equal(await frame.locator('#captionTitle').inputValue(),'Unchanged studio test caption');
   const nonce=await frame.locator('body').evaluate(n=>{n.dataset.qaInstance='retained';return n.dataset.qaInstance;});
   await desktop.waitForResponse(r=>r.url().endsWith('/api/state'));assert.equal(await frame.locator('body').getAttribute('data-qa-instance'),nonce);
-  await desktop.reload();await desktop.locator('#app').waitFor({state:'visible'});await view(desktop,'social');await frame.locator('#mainGrid .deity-col').first().waitFor();assert.equal(await frame.locator('#captionTitle').inputValue(),'Unchanged studio test caption');
+  await desktop.reload();await desktop.locator('#app').waitFor({state:'visible'});await view(desktop,'social');await frame.locator('html[data-live-desk-theme="ready"]').waitFor();assert.equal(await frame.locator('#captionTitle').inputValue(),'Unchanged studio test caption');
   for(const width of [1440,390,320]){await desktop.setViewportSize({width,height:1000});await noOverflow(desktop);await desktop.locator('#darshanflow-frame').screenshot({path:path.join(output,'darshanflow-'+width+'.png')});}
   await desktop.setViewportSize({width:1440,height:1000});
  });
