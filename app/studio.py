@@ -111,7 +111,7 @@ class Studio:
                     'instagram_id':self.s.data.get('studio_instagram_id',''),
                     'instagram_token_saved':bool(self.c.vault.get('instagram_login_token')),
                     'hosting_key_saved':bool(self.c.vault.get('instagram_imgbb_key')),
-                    'jobs':[j for j in self.s.snapshot()['jobs'] if j['id'] in self.data.get('jobs',[])][-80:],
+                    'jobs':[j for j in self.s.snapshot()['jobs'] if j['id'] in self.data.get('jobs',[])][:80],
                     'live_links':[]}
             for key,rec in Journal(self.c.base/'journal.json').data.items():
                 if key.startswith(now_ist().date().isoformat()) and rec.get('confirmed_at'):

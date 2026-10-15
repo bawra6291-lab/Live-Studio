@@ -70,3 +70,7 @@ body .shell{max-width:1280px;margin:0 auto;padding:20px 22px 36px}
 @media(min-width:1100px){#sf-root .showcase-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
 @media(max-width:850px){.sf-grid.three{grid-template-columns:1fr}.sf-grid{grid-template-columns:1fr}#sf-root .showcase-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:520px){body .shell{padding:10px}.sf-head{gap:10px;padding:16px 4px}.sf-head h1{font-size:25px}.sf-seal{width:48px;height:48px}.sf-tabs{gap:4px}#sf-root .sf-tabs button{padding:9px;font-size:11px}.sf-panel,.sf-card{padding:16px;border-radius:12px}.sf-metrics{gap:7px}.sf-metric{padding:11px}.sf-metric b{font-size:21px}.sf-metric span{font-size:9px}.sf-form{grid-template-columns:1fr}#sf-root .showcase-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 12px}#sf-root .glass-section{padding:12px}.sf-target{grid-template-columns:22px minmax(0,1fr)}.sf-target .sf-actions{grid-column:2;margin:0}.sf-tabs svg{display:none}#sf-root button{padding:10px 12px}.sf-mark{width:34px;height:34px}}
+
+.sf-tabs{position:sticky;top:0;z-index:10;background:#f5f4ef;padding-top:8px}
+#sf-message{top:70px}
+@media(max-width:850px){#sf-whatsapp>.sf-grid>div:last-child{order:-1}}

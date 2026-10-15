@@ -97,6 +97,16 @@ async function noOverflow(page){assert.ok(await page.evaluate(()=>document.docum
   for(const width of [1440,390,320]){await desktop.setViewportSize({width,height:1000});await noOverflow(desktop);assert.ok(await frame.locator('body').evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await desktop.locator('#darshanflow-frame').screenshot({path:path.join(output,'darshanflow-sharing-'+width+'.png')});}
   await desktop.setViewportSize({width:1440,height:1000});
  });
+ await test('YouTube photo handoff saves exact sequence and requires an explicit published link',async()=>{
+  const frame=desktop.frameLocator('#darshanflow-frame');await frame.getByRole('button',{name:'Photos',exact:true}).click();
+  await frame.locator('body').evaluate(()=>{for(let i=1;i<=7;i++){const c=document.createElement('canvas');c.width=300;c.height=400;const x=c.getContext('2d');x.fillStyle='rgb('+i*25+',100,80)';x.fillRect(0,0,300,400);assignedSlots['P'+i]={dataUrl:c.toDataURL('image/png'),fileName:'qa-'+i+'.png'};}renderGrid();});
+  await frame.getByRole('button',{name:'Publish',exact:true}).click();await frame.locator('[data-prepare="youtube"]').click();await frame.locator('#sf-review').waitFor({state:'visible'});assert.equal(await frame.locator('#sf-review-photos img').count(),7);
+  await frame.locator('#sf-send').click();await frame.locator('#sf-export').waitFor({state:'visible'});assert.match(await frame.locator('#sf-youtube-open').getAttribute('href'),/youtube.com\/channel\/UC/);
+  const result=await context.request.get(endpoints.desktop+await frame.locator('#sf-export').getAttribute('href'));assert.equal(result.status(),200);assert.equal((await result.body()).slice(0,2).toString(),'PK');
+  await frame.locator('#sf-youtube-url').fill('https://www.youtube.com/post/qa-fixture');await frame.locator('#sf-youtube-done').click();await frame.locator('#sf-message').filter({hasText:'YouTube link saved as confirmed by you'}).waitFor();
+  await frame.getByRole('button',{name:'WhatsApp',exact:true}).click();await frame.locator('#sf-use-links').click();assert.ok((await frame.locator('#sf-share-preview').textContent()).includes('/post/qa-fixture'));
+  await desktop.reload();await desktop.locator('#app').waitFor({state:'visible'});await view(desktop,'social');await frame.locator('html[data-live-desk-theme="ready"]').waitFor();await frame.getByRole('button',{name:'Publish',exact:true}).click();await frame.locator('#sf-history').filter({hasText:'manual done'}).waitFor();
+ });
  await test('Custom schedule, end time and camera action survive save/reload',async()=>{
   await view(desktop,'schedule');await desktop.locator('#add-program').click();const p=desktop.locator('.schedule-program');await p.locator('[data-field="name"]').fill('Evening Service');await programTab(desktop,'content');await p.locator('[data-field="reference"]').fill('abcdefghijk');await programTab(desktop);await p.locator('[data-field="at"]').fill('18:00');await p.locator('[data-field="end_at"]').fill('18:30');await p.locator('[data-field="enabled"]').check();await programTab(desktop,'camera');await p.locator('.add-action').click();await p.locator('[data-field="kind"]').selectOption('preset');await p.locator('[data-field="number"]').fill('3');await saveSchedule(desktop);
   await desktop.reload();await desktop.locator('.schedule-program').waitFor();assert.equal(await desktop.locator('[data-field="name"]').inputValue(),'Evening Service');const saved=(await state(desktop)).schedule[0];assert.equal(saved.end_at,'18:30');assert.equal(saved.camera_actions[0].number,3);assert.equal(saved.camera_actions[0].kind,'preset');assert.equal(saved.camera_actions[0].only_if_live,true);await desktop.screenshot({path:path.join(output,'desktop-schedule.png'),fullPage:true});
@@ -201,7 +211,6 @@ async function noOverflow(page){assert.ok(await page.evaluate(()=>document.docum
   assert.match(await desktop.locator('#takeover-preview').innerText(),/Skipped · before control began/);
   assert.equal((await state(desktop)).armed,false);assert.equal((await state(desktop)).runs.length,0);
   await desktop.locator('#takeover-confirm').click();await desktop.locator('#confirm-cancel').click();assert.equal((await state(desktop)).runs.length,0);
-  await frame.getByRole('button',{name:'Photos',exact:true}).click();
   for(const width of [1440,390,320]){await desktop.setViewportSize({width,height:1000});await noOverflow(desktop);await desktop.locator('#takeover-panel').screenshot({path:path.join(output,'takeover-'+width+'.png')});}
   await desktop.setViewportSize({width:1440,height:1000});await desktop.locator('#takeover-confirm').click();await confirm(desktop);
   await desktop.waitForFunction(()=>document.getElementById('arm-badge').textContent==='Automation enabled');
