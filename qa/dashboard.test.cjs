@@ -77,6 +77,7 @@ async function noOverflow(page){assert.ok(await page.evaluate(()=>document.docum
   assert.equal(assigned.length,1);assert.equal(assigned[0].dataUrl,'data:image/png;base64,'+png.toString('base64'));
   const first=assigned[0].id,next=first==='P1'?'P2':'P1';
   await frame.locator('#mainGrid .deity-col').nth(Number(first.slice(1))-1).locator('select').selectOption(next);
+  await frame.locator('#mainGrid .deity-col').nth(Number(next.slice(1))-1).locator('.seq-num-pill').filter({hasText:'✓'}).waitFor();
   assert.equal(await frame.locator('body').evaluate(id=>!!assignedSlots[id],next),true);
   await view(desktop,'activity');await view(desktop,'social');assert.equal(await frame.locator('body').evaluate(id=>!!assignedSlots[id],next),true);
   assert.equal((await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()))).jobs.length,0);
