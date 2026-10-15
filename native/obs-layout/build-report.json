@@ -1,9 +1,9 @@
 {
-  "source_commit": "dadbab2ad85b8cf68369f6bf10f6421e7dd6021e",
-  "dll_sha256": "2ed65d8f7273171511369dc594b6a1eefc141d30aa6a14801bbe6f9a9a15054d",
+  "source_commit": "fb4f29993d3a66ff7c0e1c30de50e40f12cc5545",
+  "dll_sha256": "743c48d00f71ba3037f3adf0f7d57e2c9c4e1e31a75335889eeae91db9f748a1",
   "size": 35328,
   "platform": "windows-x64",
   "qt_fixture": "passed",
-  "run_id": 38008282905,
+  "run_id": 38776318517,
   "note": "No live streams, camera, user OBS or UAC operations tested."
 }
