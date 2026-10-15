@@ -1,0 +1,9 @@
+{
+  "app_id": "iskcon-live-desk",
+  "version": "0.10.8",
+  "update_format": 1,
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.10.8/ISKCON-Live-Desk.zip",
+  "size": 724789,
+  "sha256": "c8c73b49913fe38e6c6a02382c6d74e0521b4540f533b8e6baa5656c6dc7054b",
+  "notes": "Match DARSHANFLOW to Live Desk: cream background, white cards, dark green navigation and text, orange primary buttons. Original studio document, photos, layout, saved connection fields and posting behavior are retained."
+}

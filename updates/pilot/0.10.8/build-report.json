@@ -1,0 +1,55 @@
+{
+  "version": "0.10.8",
+  "source_commit": "b7b1fc15e7bca0a42d5913cee1020551c12e1732",
+  "source_tree": "9f08ce21d96c5bd2f1c452194ae3fbd069b3cac0",
+  "package": {
+    "size": 724789,
+    "sha256": "c8c73b49913fe38e6c6a02382c6d74e0521b4540f533b8e6baa5656c6dc7054b",
+    "files_matched_to_source": 89
+  },
+  "original_html": {
+    "sha256": "662e41b5b4b8a03922446dc4fbe731a2ea52676f9670a9d6fabd3b03885aabcb",
+    "preserved_byte_for_byte": true
+  },
+  "upgrade": {
+    "from": "0.10.7",
+    "to": "0.10.8",
+    "prepare_update": "passed",
+    "existing_app_untouched": true
+  },
+  "validation": {
+    "targeted_local_tests": 3,
+    "targeted_local_status": "passed",
+    "hosted_runs": {
+      "development": 38760494726,
+      "android": 38760494635,
+      "obs_layout": 38760494725
+    },
+    "real_platform_actions_sent": false,
+    "browser": {
+      "status": "passed",
+      "flows": 15,
+      "uncaught_errors": 0,
+      "artifact_id": 11984514827,
+      "colour_match": "Computed background and text match the dashboard; primary button matches its orange token.",
+      "screenshots_reviewed": [
+        1440,
+        390
+      ]
+    },
+    "hosted_results": {
+      "development": "success",
+      "android": "success",
+      "obs_layout": "success"
+    },
+    "release_status": "validated"
+  },
+  "scope": "Only studio colour presentation, host stylesheet loading and focused existing checks. Original HTML and platform behavior are unchanged.",
+  "publication_scope": {
+    "new_private_or_reference_images_added": false,
+    "all_embedded_photos_identical_to_existing_public_release": "0.10.7",
+    "existing_public_html_git_blob": "270bd517052ff13b88350423db2e0fa7e81c1a83",
+    "existing_public_zip_git_blob": "a4f2802616c7a82ab087dffeac611cef9dbe1e71",
+    "change_requested_by_user": "Match DARSHANFLOW colours to Live Desk"
+  }
+}
