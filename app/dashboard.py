@@ -45,6 +45,11 @@ class Controller:
         self.content=ContentStore(self.base);self.monitor=LiveMonitor(self);self.updates=UpdateService(self)
         from social import Social
         self.social=Social(self)
+        # The previous posting interface is replaced. Preserve records, but never
+        # resume a hidden queue when opening the supplied standalone studio.
+        if self.social.data.get('enabled'):
+            self.social.data['enabled']=False;self.social.persist()
+            self.log('Previous Social Media posting paused. DARSHANFLOW replaces that page; saved photos and drafts are retained.')
         self.operation_serial=0;self.operation_results={}
         self.takeover_state={'status':'idle'};self.takeover_preview=None
         from remote_agent import Agent
@@ -540,12 +545,12 @@ class Handler(BaseHTTPRequestHandler):
     def valid_host(self):
         host=self.headers.get('Host','')
         return host in {f'{h}:{self.server.server_port}' for h in self.server.allowed_hosts}
-    def reply(self,status,data,ctype='application/json',cookie=None):
+    def reply(self,status,data,ctype='application/json',cookie=None,csp=None):
         raw=json.dumps(data).encode() if ctype=='application/json' else data
         self.send_response(status); self.send_header('Content-Type',ctype)
         self.send_header('Content-Length',str(len(raw))); self.send_header('Cache-Control','no-store')
         self.send_header('X-Content-Type-Options','nosniff'); self.send_header('Referrer-Policy','no-referrer')
-        self.send_header('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+        self.send_header('Content-Security-Policy',csp or "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
         if cookie:self.send_header('Set-Cookie',cookie)
         self.end_headers()
         try:self.wfile.write(raw)
@@ -559,6 +564,14 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if not self.valid_host():return self.reply(403,{'error':'Invalid host.'})
         path=urlsplit(self.path).path
+        if path=='/darshanflow.html':
+            session=self.auth()
+            if not session:return self.reply(401,{'error':'Pair this device to continue.'})
+            if session.get('role')=='viewer':return self.reply(403,{'error':'DARSHANFLOW is available to operators only.'})
+            # Scoped to this document only: its inline UI and direct HTTPS API
+            # connectors work without relaxing the rest of the dashboard policy.
+            policy="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob: https:; connect-src https:; manifest-src data:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'"
+            return self.reply(200,(WEB/'darshanflow.html').read_bytes(),'text/html; charset=utf-8',csp=policy)
         if path=='/api/social/references':
             session=self.auth()
             if not session:return self.reply(401,{'error':'Pair this device to continue.'})
@@ -622,7 +635,7 @@ class Handler(BaseHTTPRequestHandler):
                     for token,item in server.sessions.items():
                         if item['expires']>time.monotonic():rows.append({k:item.get(k,'') for k in ('id','label','role','created_at')})
             return self.reply(200,{'devices':rows,'pairing_minutes_left':max(0,int((self.server.pair_expires-time.monotonic())/60))})
-        assets={'/takeover.js':('takeover.js','text/javascript; charset=utf-8'),'/':('index.html','text/html; charset=utf-8'),'/style.css':('style.css','text/css; charset=utf-8'),'/app.js':('app.js','text/javascript; charset=utf-8'),'/icon.svg':('icon.svg','image/svg+xml'),'/features.js':('features.js','text/javascript; charset=utf-8'),'/social.js':('social.js','text/javascript; charset=utf-8'),'/social-arrange.js':('social-arrange.js','text/javascript; charset=utf-8'),'/social-batch.js':('social-batch.js','text/javascript; charset=utf-8'),'/social.css':('social.css','text/css; charset=utf-8')}
+        assets={'/takeover.js':('takeover.js','text/javascript; charset=utf-8'),'/':('index.html','text/html; charset=utf-8'),'/style.css':('style.css','text/css; charset=utf-8'),'/app.js':('app.js','text/javascript; charset=utf-8'),'/icon.svg':('icon.svg','image/svg+xml'),'/features.js':('features.js','text/javascript; charset=utf-8'),'/darshanflow-host.js':('darshanflow-host.js','text/javascript; charset=utf-8'),'/darshanflow-host.css':('darshanflow-host.css','text/css; charset=utf-8')}
         if path not in assets:return self.reply(404,{'error':'Not found.'})
         name,ctype=assets[path];return self.reply(200,(WEB/name).read_bytes(),ctype)
     def social_media(self,ident):
