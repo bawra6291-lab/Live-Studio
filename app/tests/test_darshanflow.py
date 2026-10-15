@@ -18,7 +18,7 @@ class Studio(unittest.TestCase):
         self.assertIn('darshanflow-frame',shell);self.assertIn('/darshanflow-host.js',shell)
         for asset in ('/social.js','/social-batch.js','/social-arrange.js','/social.css'):
             self.assertNotIn(asset,shell);self.assertEqual(self.request(asset)[0],404)
-        for asset in ('/darshanflow-host.js','/darshanflow-host.css','/darshanflow-theme.css'):self.assertEqual(self.request(asset)[0],200)
+        for asset in ('/darshanflow-host.js','/darshanflow-host.css','/darshanflow-theme.css','/darshanflow-studio.js','/darshanflow-studio.css'):self.assertEqual(self.request(asset)[0],200)
     def test_viewer_cannot_load_studio_and_inline_policy_is_scoped(self):
         self.login()
         def policy(path):
@@ -26,7 +26,7 @@ class Studio(unittest.TestCase):
             conn.request('GET',path,headers={'Host':self.host,'Cookie':self.cookie})
             response=conn.getresponse();result=response.getheader('Content-Security-Policy');response.read();conn.close();return result
         self.assertIn("script-src 'unsafe-inline'",policy('/darshanflow.html'))
-        self.assertIn('connect-src https:',policy('/darshanflow.html'))
+        self.assertIn("connect-src 'self'",policy('/darshanflow.html'))
         self.assertIn("frame-ancestors 'self'",policy('/darshanflow.html'))
         self.assertNotIn('unsafe-inline',policy('/'))
         with self.server.auth_lock:self.server.sessions[self.cookie.split('=',1)[1]]['role']='viewer'

@@ -5,7 +5,13 @@ function themeDarshanFlow(frame){
  if(!doc||doc.getElementById('live-desk-colours'))return;
  const link=doc.createElement('link');
  link.id='live-desk-colours';link.rel='stylesheet';link.href='/darshanflow-theme.css';
- link.addEventListener('load',()=>{doc.documentElement.dataset.liveDeskTheme='ready';});
+ link.addEventListener('load',()=>{
+  const style=doc.createElement('link');style.rel='stylesheet';style.href='/darshanflow-studio.css';doc.head.appendChild(style);
+  style.addEventListener('load',()=>{
+   const script=doc.createElement('script');script.src='/darshanflow-studio.js';
+   script.addEventListener('load',()=>{doc.documentElement.dataset.liveDeskTheme='ready';});doc.head.appendChild(script);
+  });
+ });
  doc.head.appendChild(link);
 }
 function renderDarshanFlow(){

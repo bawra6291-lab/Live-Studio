@@ -45,6 +45,8 @@ class Controller:
         self.content=ContentStore(self.base);self.monitor=LiveMonitor(self);self.updates=UpdateService(self)
         from social import Social
         self.social=Social(self)
+        from studio import Studio
+        self.studio=Studio(self)
         # The previous posting interface is replaced. Preserve records, but never
         # resume a hidden queue when opening the supplied standalone studio.
         if self.social.data.get('enabled'):
@@ -413,7 +415,7 @@ class Controller:
     def diagnostics(self):
         # Redact known stored secrets even if an older app put one in an error line.
         known=[]
-        for key in SECRET_FIELDS | {'youtube_oauth'}:
+        for key in SECRET_FIELDS | {'youtube_oauth','instagram_login_token','instagram_imgbb_key'}:
             value=self.vault.get(key)
             if value:known.append(value)
             if key=='youtube_oauth' and value:
@@ -570,8 +572,13 @@ class Handler(BaseHTTPRequestHandler):
             if session.get('role')=='viewer':return self.reply(403,{'error':'DARSHANFLOW is available to operators only.'})
             # Scoped to this document only: its inline UI and direct HTTPS API
             # connectors work without relaxing the rest of the dashboard policy.
-            policy="default-src 'none'; script-src 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src data: blob: https:; connect-src https:; manifest-src data:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'"
+            policy="default-src 'none'; script-src 'unsafe-inline' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src data:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'"
             return self.reply(200,(WEB/'darshanflow.html').read_bytes(),'text/html; charset=utf-8',csp=policy)
+        if path=='/api/studio/state':
+            session=self.auth()
+            if not session:return self.reply(401,{'error':'Pair this device to continue.'})
+            if session.get('role')=='viewer':return self.reply(403,{'error':'Posting is available to operators only.'})
+            return self.reply(200,self.server.controller.studio.state(self.local()))
         if path=='/api/social/references':
             session=self.auth()
             if not session:return self.reply(401,{'error':'Pair this device to continue.'})
@@ -636,6 +643,7 @@ class Handler(BaseHTTPRequestHandler):
                         if item['expires']>time.monotonic():rows.append({k:item.get(k,'') for k in ('id','label','role','created_at')})
             return self.reply(200,{'devices':rows,'pairing_minutes_left':max(0,int((self.server.pair_expires-time.monotonic())/60))})
         assets={'/takeover.js':('takeover.js','text/javascript; charset=utf-8'),'/':('index.html','text/html; charset=utf-8'),'/style.css':('style.css','text/css; charset=utf-8'),'/app.js':('app.js','text/javascript; charset=utf-8'),'/icon.svg':('icon.svg','image/svg+xml'),'/features.js':('features.js','text/javascript; charset=utf-8'),'/darshanflow-host.js':('darshanflow-host.js','text/javascript; charset=utf-8'),'/darshanflow-host.css':('darshanflow-host.css','text/css; charset=utf-8'),'/darshanflow-theme.css':('darshanflow-theme.css','text/css; charset=utf-8')}
+        assets.update({'/darshanflow-studio.js':('darshanflow-studio.js','text/javascript; charset=utf-8'),'/darshanflow-studio.css':('darshanflow-studio.css','text/css; charset=utf-8')})
         if path not in assets:return self.reply(404,{'error':'Not found.'})
         name,ctype=assets[path];return self.reply(200,(WEB/name).read_bytes(),ctype)
     def social_media(self,ident):
@@ -686,6 +694,11 @@ class Handler(BaseHTTPRequestHandler):
                 with self.server.auth_lock:self.server.sessions.pop(self.token,None)
                 return self.reply(200,{'ok':True},cookie='iskcon_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0')
             if session.get('role')=='viewer':return self.reply(403,{'error':'This device has view-only access. Pair with an operator code to control the PC.'})
+            if path.startswith('/api/studio/'):
+                if path in ('/api/studio/instagram','/api/studio/check') and not self.local():return self.reply(403,{'error':'Set up posting accounts on this PC.'})
+                routes={'/api/studio/save':c.studio.save,'/api/studio/instagram':c.studio.save_instagram,'/api/studio/check':c.studio.check,'/api/studio/prepare':c.studio.prepare,'/api/studio/send':c.studio.send,'/api/studio/receipt':c.studio.receipt}
+                if path not in routes:return self.reply(404,{'error':'Posting action not found.'})
+                return self.reply(200,routes[path](data))
             if path.startswith('/api/social/'):
                 if path in ('/api/social/account','/api/social/check') and not self.local():return self.reply(403,{'error':'Set up posting accounts on the PC.'})
                 routes={'/api/social/upload/begin':c.social.begin_upload,'/api/social/upload/chunk':c.social.upload_chunk,'/api/social/upload/finish':c.social.finish_upload,'/api/social/asset':c.social.asset_update,'/api/social/assets/bulk':c.social.assets_bulk,'/api/social/draft':c.social.draft,'/api/social/batch':c.social.batch,'/api/social/references':c.social.references,'/api/social/action':c.social.command,'/api/social/account':c.social.save_account,'/api/social/reconcile':c.social.reconcile}

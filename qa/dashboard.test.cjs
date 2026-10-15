@@ -57,16 +57,17 @@ async function noOverflow(page){assert.ok(await page.evaluate(()=>document.docum
   assert.equal(await frame.locator('#mainGrid .deity-col').count(),7);
   await frame.locator('html[data-live-desk-theme="ready"]').waitFor();
   assert.deepEqual(await frame.locator('body').evaluate(n=>({ink:getComputedStyle(n).color,bg:getComputedStyle(n).backgroundColor})),await desktop.locator('html').evaluate(n=>({ink:getComputedStyle(n).color,bg:getComputedStyle(n).backgroundColor})));
-  assert.equal(await frame.locator('.btn-sage').first().evaluate(n=>getComputedStyle(n).backgroundColor),await desktop.locator('html').evaluate(n=>getComputedStyle(n).getPropertyValue('--orange').trim()).then(hex=>{const rgb=hex.match(/\w\w/g).map(x=>parseInt(x,16));return `rgb(${rgb.join(', ')})`;}));
+  assert.equal(await frame.locator('.sf-primary').first().evaluate(n=>getComputedStyle(n).backgroundColor),await desktop.locator('html').evaluate(n=>getComputedStyle(n).getPropertyValue('--orange').trim()).then(hex=>{const rgb=hex.match(/\w\w/g).map(x=>parseInt(x,16));return `rgb(${rgb.join(', ')})`;}));
   await frame.getByRole('button',{name:'Post 2 · Landscape (1→10)',exact:true}).click();assert.equal(await frame.locator('#mainGrid .deity-col').count(),10);
   await frame.getByRole('button',{name:'Facebook · Mixed (1→17)',exact:true}).click();assert.equal(await frame.locator('#mainGrid .deity-col').count(),17);
   await frame.getByRole('button',{name:'Post 1 · Portrait (1→7)',exact:true}).click();
-  await frame.getByRole('button',{name:'PUBLISH ALL SEQUENCES LIVE',exact:true}).click();await frame.locator('#settingsDrawer.open').waitFor();
-  await frame.locator('#captionTitle').fill('Unchanged studio test caption');await frame.getByRole('button',{name:'SAVE SETTINGS',exact:true}).click();
+  await frame.getByRole('button',{name:'Publish',exact:true}).click();await frame.locator('#sf-publish').waitFor({state:'visible'});
+  await frame.locator('#captionTitle').fill('Unchanged studio test caption');await frame.locator('#sf-save-caption').click();await frame.locator('#sf-message').filter({hasText:'Caption saved'}).waitFor();
   await view(desktop,'overview');await desktop.waitForResponse(r=>r.url().endsWith('/api/state'));await view(desktop,'social');assert.equal(await frame.locator('#captionTitle').inputValue(),'Unchanged studio test caption');
   const nonce=await frame.locator('body').evaluate(n=>{n.dataset.qaInstance='retained';return n.dataset.qaInstance;});
   await desktop.waitForResponse(r=>r.url().endsWith('/api/state'));assert.equal(await frame.locator('body').getAttribute('data-qa-instance'),nonce);
   await desktop.reload();await desktop.locator('#app').waitFor({state:'visible'});await view(desktop,'social');await frame.locator('html[data-live-desk-theme="ready"]').waitFor();assert.equal(await frame.locator('#captionTitle').inputValue(),'Unchanged studio test caption');
+  await frame.getByRole('button',{name:'Photos',exact:true}).click();
   for(const width of [1440,390,320]){await desktop.setViewportSize({width,height:1000});await noOverflow(desktop);await desktop.locator('#darshanflow-frame').screenshot({path:path.join(output,'darshanflow-'+width+'.png')});}
   await desktop.setViewportSize({width:1440,height:1000});
  });
@@ -83,6 +84,18 @@ async function noOverflow(page){assert.ok(await page.evaluate(()=>document.docum
   assert.equal(await frame.locator('body').evaluate((node,id)=>!!assignedSlots[id],next),true);
   await view(desktop,'activity');await view(desktop,'social');assert.equal(await frame.locator('body').evaluate((node,id)=>!!assignedSlots[id],next),true);
   assert.equal((await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()))).jobs.length,0);
+ });
+ await test('DARSHANFLOW separates connections, blocks reference posting and tracks nine manual shares',async()=>{
+  const frame=desktop.frameLocator('#darshanflow-frame');
+  await frame.getByRole('button',{name:'Publish',exact:true}).click();await frame.locator('[data-prepare="facebook"]').click();await frame.locator('#sf-message').filter({hasText:'Upload all 17 photos'}).waitFor();
+  await frame.getByRole('button',{name:'Connections',exact:true}).click();assert.equal(await frame.locator('#sf-ig-token').getAttribute('type'),'password');await frame.getByText('How to connect Instagram without Facebook linking',{exact:true}).click();
+  await desktop.locator('#darshanflow-frame').screenshot({path:path.join(output,'darshanflow-connections.png')});
+  await frame.getByRole('button',{name:'WhatsApp',exact:true}).click();assert.equal(await frame.locator('.sf-target').count(),9);
+  await frame.locator('#sf-programs [data-key="youtube"]').first().fill('https://www.youtube.com/live/abcdefghijk');await frame.locator('#sf-save-share').click();await frame.locator('#sf-message').filter({hasText:'Sharing setup saved'}).waitFor();
+  await frame.locator('#sf-targets [data-done]').first().click();await frame.locator('#sf-shared-count').filter({hasText:'1 / 9 confirmed'}).waitFor();assert.ok((await frame.locator('#sf-share-preview').textContent()).includes('Mangal Arati Darshan'));
+  await frame.locator('#sf-targets [data-done]').first().click();await frame.locator('#sf-shared-count').filter({hasText:'0 / 9 confirmed'}).waitFor();
+  for(const width of [1440,390,320]){await desktop.setViewportSize({width,height:1000});await noOverflow(desktop);assert.ok(await frame.locator('body').evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await desktop.locator('#darshanflow-frame').screenshot({path:path.join(output,'darshanflow-sharing-'+width+'.png')});}
+  await desktop.setViewportSize({width:1440,height:1000});
  });
  await test('Custom schedule, end time and camera action survive save/reload',async()=>{
   await view(desktop,'schedule');await desktop.locator('#add-program').click();const p=desktop.locator('.schedule-program');await p.locator('[data-field="name"]').fill('Evening Service');await programTab(desktop,'content');await p.locator('[data-field="reference"]').fill('abcdefghijk');await programTab(desktop);await p.locator('[data-field="at"]').fill('18:00');await p.locator('[data-field="end_at"]').fill('18:30');await p.locator('[data-field="enabled"]').check();await programTab(desktop,'camera');await p.locator('.add-action').click();await p.locator('[data-field="kind"]').selectOption('preset');await p.locator('[data-field="number"]').fill('3');await saveSchedule(desktop);
@@ -188,6 +201,7 @@ async function noOverflow(page){assert.ok(await page.evaluate(()=>document.docum
   assert.match(await desktop.locator('#takeover-preview').innerText(),/Skipped · before control began/);
   assert.equal((await state(desktop)).armed,false);assert.equal((await state(desktop)).runs.length,0);
   await desktop.locator('#takeover-confirm').click();await desktop.locator('#confirm-cancel').click();assert.equal((await state(desktop)).runs.length,0);
+  await frame.getByRole('button',{name:'Photos',exact:true}).click();
   for(const width of [1440,390,320]){await desktop.setViewportSize({width,height:1000});await noOverflow(desktop);await desktop.locator('#takeover-panel').screenshot({path:path.join(output,'takeover-'+width+'.png')});}
   await desktop.setViewportSize({width:1440,height:1000});await desktop.locator('#takeover-confirm').click();await confirm(desktop);
   await desktop.waitForFunction(()=>document.getElementById('arm-badge').textContent==='Automation enabled');

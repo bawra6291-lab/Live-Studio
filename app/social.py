@@ -448,7 +448,7 @@ class Social:
             if _persist:self.persist()
             return copy.deepcopy(job)
 
-    def command(self,data):
+    def command(self,data, *, studio=False):
         with self.c.lock,self.lock:
             self.ready();action=data.get('action')
             if action in ('enable','pause'):
@@ -457,13 +457,14 @@ class Social:
             job=self.job(data.get('id'))
             if data.get('revision')!=job['revision']:raise ValueError('This post changed. Reload its preview before continuing.')
             if action=='approve':
+                if job.get('studio_instagram') and not studio:raise ValueError('Review and send this direct Instagram post from DARSHANFLOW.')
                 if data.get('confirmed') is not True:raise ValueError('Approve the exact preview first.')
                 if job['status']!='draft':raise ValueError('Only drafts can be approved.')
                 if job.get('delivery')=='manual':
                     for m in job['media']:self.media_path(m)
                     job.update(status='manual_ready',approved_at=now_ist().isoformat(),targets=self.targets(job['platforms']))
                     self.persist();return {'ok':True}
-                targets=self.targets(job['platforms'])
+                targets={'instagram':job['studio_target']} if job.get('studio_instagram') else self.targets(job['platforms'])
                 if any(not re.fullmatch(r'UC[A-Za-z0-9_-]{22}' if p=='youtube' else r'[0-9]{5,30}',v or '') for p,v in targets.items()):raise ValueError('Save the selected Page/channel and linked Instagram account before approving.')
                 due=datetime.fromisoformat(job['publish_at'])
                 if due<now_ist():raise ValueError('Choose a future posting time and save the draft again.')

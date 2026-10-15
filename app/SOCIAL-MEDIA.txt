@@ -1,29 +1,26 @@
-DARSHANFLOW — LIVE DESK COLOURS (0.10.8)
+DARSHANFLOW / Live Desk 0.11.0
 
-The previous Social Media interface has been replaced with the user's supplied
-DARSHANFLOW Pure Emerald Glass Studio HTML inside the existing dashboard.
-Open DARSHANFLOW from the left navigation, or use the existing #social bookmark.
+PHOTOS -> PUBLISH -> CONNECTIONS -> WHATSAPP
 
-The original HTML is preserved byte-for-byte. Live Desk applies a separate colour
-stylesheet after loading it: warm cream background, white cards, dark green text
-and navigation, and warm orange primary buttons. Layout, photo references,
-arrangement logic, crops, API versions, buttons and connector behavior are retained.
-The original HTML SHA-256 is
-662e41b5b4b8a03922446dc4fbe731a2ea52676f9670a9d6fabd3b03885aabcb
+Photos: upload 7 portraits and 10 landscapes together, check and swap the suggested order. Reference images are guides and cannot be published. A full selection is required before preparing a post. The original supplied reference document remains byte-for-byte unchanged; the host adds the workspace.
 
-The embedded page keeps its own original API & Caption Setup and browser storage.
-It does not import Live Desk's saved Windows credentials or old posting queue.
-Navigating within Live Desk and normal status refreshes do not reload this page.
-A full page/app reload follows the original HTML's own persistence behavior.
+Publish: enter and save a caption. Review one destination at a time. The exact preview is saved on this PC before sending. Instagram uses a 4:5 portrait canvas (borders if needed), landscape 4:3; all selected images are fitted without cropping. A failed/uncertain send remains for review and is not automatically retried. Posting waits while live operations are active. No old posting queue is enabled by these buttons.
 
-Existing legacy photos, drafts and receipts are retained. The previous automatic
-posting queue is paused when the updated app starts; it is not silently resumed
-behind the new page. Live automation and existing stream-key settings are retained.
+Facebook: Connections -> Verify Facebook reuses the Page ID and Page token saved in Live Desk. Edit saved Page connection opens the main Connections page. A successful post saves its returned ID/link in Posting history.
 
-Pairing and operator access are required to load the supplied page. Viewer devices
-only see a view-only notice. The rest of the dashboard keeps its existing policy.
-The studio's original inline scripts and direct HTTPS connectors are enabled only
-for this embedded document. Its original YouTube assist/webhook behavior is retained.
+Instagram WITHOUT a Facebook Page link:
+1. Use an Instagram Business or Creator account.
+2. Meta App Dashboard -> Instagram API setup -> Instagram Login.
+3. Add/authorize your Instagram account (accept an Instagram tester invitation if needed). Use instagram_business_basic and instagram_business_content_publish permissions.
+4. Generate the Instagram Login token for that account; prefer the long-lived token described in Meta's guide. This is not a Facebook Page token.
+5. DARSHANFLOW -> Connections -> Instagram direct connection: paste token and an ImgBB API key, then Save & verify Instagram. Confirm the username before publishing. Token/key stay in Windows Credential Manager; blank fields preserve saved values.
+6. Selected photos are uploaded to ImgBB with a requested 1-hour expiry so Instagram can fetch them. This is required for the direct-token publishing path. Reconnect when the Instagram token expires or is revoked. The app does not silently refresh or replace Facebook credentials.
+7. Accounts beyond app roles/test users can require Meta review/access approval. The desktop app does not include a hosted multi-customer OAuth service.
+Official guide: https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/
+Hosting key: https://api.imgbb.com/
 
-Validation checks local behavior with isolated fixtures and blocked external
-requests. No actual platform post or message is sent during integration testing.
+YouTube: reuse Connect YouTube on PC and Verify YouTube. Photo Community posts use an assisted handoff: Review -> Prepare YouTube handoff -> Download ordered photos -> extract ZIP -> Open YouTube Posts -> Create post -> upload numbered photos in order -> paste caption -> publish. Paste the actual post link and choose I published it. This records your confirmation; it is not an API delivery claim. YouTube's official Data API has no Community-photo publishing method. It supports video uploads separately; this page does not pretend photos are videos or send them to an arbitrary webhook.
+
+WhatsApp: enter 8 community names and one channel name once. Optional invite/channel links help open them. Select date and photo. Programs & links follow your screenshot structure: ISKCON Kolkata, date, program heading, YouTube/Facebook links. Add available post/live links imports only returned published links and today's confirmed live records; paste external YouTube links manually. Copy message + Download photo or use Share photo + message on devices that support file sharing. Choose the community/channel inside WhatsApp and send; then press Sent / confirm for that destination. Open/Copy never marks a message sent. Editing date/text/targets resets confirmations. No existing-community or Channel API automation is claimed.
+
+Saved captions, destination names, links, prepared posts and manual confirmations survive app updates. Unprepared photo selections remain in the open browser session only. Live-stream settings, Official YouTube stream key, OBS and camera behavior are unchanged by this workspace.
