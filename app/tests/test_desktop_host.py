@@ -35,6 +35,17 @@ class HandoffTests(unittest.TestCase):
 @unittest.skipUnless(os.name=='nt','Windows Tk integration')
 class WindowsHostTests(unittest.TestCase):
     def test_hidden_host_and_dashboard_recovery_use_same_controller(self):
+        # A destroyed Tcl interpreter must not be collected later by an HTTP
+        # worker in another test. Exercise the real Tk host in its own process.
+        if os.environ.get('LIVE_DESK_TK_TEST_PROCESS') != '1':
+            import subprocess
+            subprocess.run(
+                [sys.executable, '-m', 'unittest',
+                 'test_desktop_host.WindowsHostTests.test_hidden_host_and_dashboard_recovery_use_same_controller'],
+                cwd=Path(__file__).resolve().parent,
+                env={**os.environ, 'LIVE_DESK_TK_TEST_PROCESS':'1'},
+                check=True, timeout=90)
+            return
         import tkinter as tk
         import launcher
         from dashboard import Controller
