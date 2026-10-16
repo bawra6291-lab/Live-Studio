@@ -1,0 +1,40 @@
+{
+  "version": "0.11.1",
+  "source_commit": "c330f42883a3148ad50756410ed3793313bb6895",
+  "source_tree": "82b6da0bc89aabaf586c3826b764effdb344f3e1",
+  "checks": {
+    "controller_tests": 290,
+    "telegram_focused_tests": 11,
+    "browser_flows": 18,
+    "browser_errors": 0,
+    "remote_tests": 24,
+    "development_run": 38843344820,
+    "android_run": 38843344851,
+    "obs_layout_run": 38843344836,
+    "windows_installer": "passed",
+    "updater_staging": "0.11.0 -> 0.11.1 passed; installed source unchanged",
+    "payload_source_match": 95,
+    "real_platform_actions": "none; all Telegram network calls mocked"
+  },
+  "publication_scope": {
+    "reference_document_sha256": "662e41b5b4b8a03922446dc4fbe731a2ea52676f9670a9d6fabd3b03885aabcb",
+    "reference_document_git_blob": "270bd517052ff13b88350423db2e0fa7e81c1a83",
+    "same_reference_bytes_as_existing_public_0.11.0_release": true,
+    "new_private_photos_or_screenshots": false,
+    "credentials_included": false
+  },
+  "capabilities": {
+    "telegram": "local bot/channel setup and explicit import of old browser settings; read-only verification; preview then publish one 7/10-photo album or 7+10 albums; retained receipts; no automatic retry",
+    "youtube_photos": "assisted handoff; user publishes and confirms actual link",
+    "whatsapp": "8 community entries + 1 channel; user sends and confirms"
+  },
+  "package": {
+    "app_id": "iskcon-live-desk",
+    "version": "0.11.1",
+    "update_format": 1,
+    "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.11.1/ISKCON-Live-Desk.zip",
+    "size": 755170,
+    "sha256": "16a6c6c3c7e748a6239359a49b649ae4e026ca759ae32f5abe8faf148157282d",
+    "notes": "Telegram is back in DARSHANFLOW Connections and Publish. Verify the bot and channel without sending a test message; import previous browser settings, review 7 portrait and 10 landscape albums, then publish with durable album receipts. Existing live connections and schedules are retained."
+  }
+}
