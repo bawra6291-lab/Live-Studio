@@ -128,7 +128,7 @@ class Studio(StudioBatch, StudioWorkflow):
                     'instagram_token_saved':bool(self.c.vault.get('instagram_login_token')),
                     'hosting_key_saved':bool(self.c.vault.get('instagram_imgbb_key')),
                     'telegram_token_saved':bool(self.c.vault.get('telegram_bot_token')),
-                    'jobs':[j for j in self.s.snapshot()['jobs'] if j['id'] in self.data.get('jobs',[])][:80],
+                    'jobs':[{**j,**{k:copy.deepcopy(self.s.job(j['id'])[k]) for k in ('studio_target','studio_service_date','studio_album_split','studio_audio','studio_youtube_browser') if k in self.s.job(j['id'])}} for j in self.s.snapshot()['jobs'] if j['id'] in self.data.get('jobs',[])][:80],
                     'batches':copy.deepcopy(self.data.get('batches',[])[-20:]),
                     'workflow':copy.deepcopy(self.data.get('workflow',{})),
                     'share_fingerprint':fingerprint(self.data['share']),

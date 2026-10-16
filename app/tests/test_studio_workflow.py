@@ -50,6 +50,13 @@ class WorkflowTests(unittest.TestCase):
         self.st.save({'workflow':{'templates':{}}})
         with self.assertRaisesRegex(ValueError,'Needs audio action'):self.st.validate_send(self.s.job(j['id']))
 
+    def test_history_snapshot_keeps_frozen_audio_and_date_without_tokens(self):
+        self.st.save({'workflow':{'templates':{},'instagram_audio':{'required':True,'reference':'Saved audio'}}})
+        j=self.ready('instagram','P1');saved=self.st.state()['jobs'][0]
+        self.assertEqual(saved['studio_audio'],{'required':True,'reference':'Saved audio'})
+        self.assertEqual(saved['studio_target'],j['studio_target'])
+        self.assertNotIn('instagram_login_token',saved)
+
     def test_service_date_frozen_and_invalid_day_creates_no_orphan(self):
         self.ready();media=self.photos(7);before=copy.deepcopy(self.s.data)
         with self.assertRaises(ValueError):self.st.prepare({'platform':'youtube','mode':'P1','media':media,'service_date':'bad'})
