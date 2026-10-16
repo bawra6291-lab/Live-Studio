@@ -198,9 +198,10 @@ class YouTubePost:
                     if state['files'] and state['files']!=expected:raise SetupError('YouTube selected photos do not match the reviewed order. Nothing was published.',retryable=False)
                     count=state['photos'] if committed else max(state['photos'],state['uploadPhotos'])
                     return state if count==len(files) and (not committed or not state['uploadOpen'] and not state['busy']) else None
-                self.wait(uploaded,self.UPLOAD_TIMEOUT,message='YouTube did not display all selected photo previews. No publish click was sent. Check the open image picker; selected files alone do not confirm an upload.')
-                done=self.read(page,'done')
-                if done:self.click(page,done)
+                previews=self.wait(uploaded,self.UPLOAD_TIMEOUT,message='YouTube did not display all selected photo previews. No publish click was sent. Check the open image picker; selected files alone do not confirm an upload.')
+                if previews['uploadOpen']:
+                    done=self.wait(lambda:self.read(page,'done'),self.UPLOAD_TIMEOUT,message='YouTube image picker is still processing the photos. No publish click was sent. Check upload progress in Chrome.')
+                    self.click(page,done)
                 self.s.checkpoint(job['id'],'youtube',status='posting',stage='Verifying '+str(len(files))+' attached photos in YouTube composer')
                 self.wait(lambda:uploaded(True),self.UPLOAD_TIMEOUT,message='YouTube photos were not attached to the post after the image picker. Posting stopped to avoid a text-only post. No publish click was sent.')
                 self.s.checkpoint(job['id'],'youtube',status='posting',stage='Rechecking Chrome channel before Publish')
