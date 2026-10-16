@@ -207,6 +207,8 @@ class VisibleTests(unittest.TestCase):
                 for session in ('unrelated','s1'):
                     messages.put(json.dumps({'sessionId':session,'method':'Runtime.bindingCalled',
                         'params':{'name':'liveDeskCapture','payload':'{"kind":"click"}'}}))
+                    messages.put(json.dumps({'sessionId':session,'method':'Page.fileChooserOpened',
+                        'params':{'backendNodeId':17,'frameId':'main','mode':'selectMultiple'}}))
             messages.put(json.dumps({'id':packet['id'],'result':result}))
         ws.send.side_effect=send
         with patch('websocket.create_connection',return_value=ws) as connect:
@@ -214,6 +216,10 @@ class VisibleTests(unittest.TestCase):
             try:
                 page=root.page('target-one');page.call('Runtime.evaluate',expression='1')
                 self.assertEqual(len(page.events),1)
+                self.assertEqual(page.take_file_chooser(),{'backendNodeId':17,'frameId':'main','mode':'selectMultiple'})
+                self.assertIsNone(page.take_file_chooser())
+                page.file_choosers.append({'backendNodeId':18});page.clear_file_choosers()
+                self.assertIsNone(page.take_file_chooser())
                 sent=json.loads(ws.send.call_args.args[0]);self.assertEqual(sent['sessionId'],'s1')
                 page.close();self.assertFalse(root.closed)
                 self.assertNotIn('s1',root.sessions)

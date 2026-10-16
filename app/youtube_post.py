@@ -67,8 +67,9 @@ DOM = r'''(arg => {
  if(arg.action==='createPost')return point(button('create post')||unique(all('ytd-compact-link-renderer').filter(n=>norm(text(n)).toLowerCase()==='create post')));
  if(arg.action==='caption')return point(field()||box()?.querySelector('#placeholder-area'));
  if(arg.action==='image')return point(button('image',box()||document)||button('image'));
+ if(arg.action==='selectFiles'){const roots=[box(),...uploaders()].filter(Boolean);return point(unique(roots.flatMap(r=>all('*',r).filter(n=>!n.children.length&&norm(text(n)).toLowerCase()==='select from your computer'))));}
  if(arg.action==='input')return input();
- if(arg.action==='state'){const f=field(),i=input();return {caption:f?(f.value??f.innerText):'',photos:attachedImages(box()).length,uploadPhotos:Math.max(0,...uploaders().map(r=>attachedImages(r).length)),uploadOpen:uploaders().length>0,busy:!!box()&&all('[aria-busy="true"],[role="progressbar"]',box()).some(visible),files:i?Array.from(i.files||[]).map(f=>({name:f.name,size:f.size})):[],publish:point(button('post',box()||document))};}
+ if(arg.action==='state'){const f=field(),i=input();return {caption:f?(f.value??f.innerText):'',photos:attachedImages(box()).length,uploadPhotos:Math.max(0,...uploaders().map(r=>attachedImages(r).length)),uploadOpen:uploaders().some(r=>!box()?.contains(r)),busy:!!box()&&all('[aria-busy="true"],[role="progressbar"]',box()).some(visible),files:i?Array.from(i.files||[]).map(f=>({name:f.name,size:f.size})):[],publish:point(button('post',box()||document))};}
  if(arg.action==='done')return point(button('done',box()||document)||button('done'));
  if(arg.action==='posts')return posts();
  if(arg.action==='focus')return !!field()&&(document.activeElement===field());
@@ -181,21 +182,41 @@ class YouTubePost:
                 if not self.read(page,'focus'):raise SetupError('YouTube caption field lost focus. No text was entered.',retryable=False)
                 page.call('Input.insertText',text=job['caption'])
                 self.s.checkpoint(job['id'],'youtube',status='posting',stage='Uploading '+str(len(files))+' photos in preview order')
-                # Activate YouTube's image-post flow before setting files. A
-                # hidden file input can exist even while the composer is text-only.
+                # Use the native chooser event from this managed tab, not a
+                # global hidden input that may belong to a stale uploader.
+                page.clear_file_choosers()
                 self.click(page,self.wait(lambda:self.read(page,'image'),message='YouTube Image button was not ready. No publish click was sent. Keep the Chrome tab open for review.'))
-                expression=DOM+'('+json.dumps({'action':'input'})+')'
-                def file_node():
-                    self.guard(page);return page.call('Runtime.evaluate',expression=expression,returnByValue=False).get('result',{})
-                result=self.wait(lambda:(r if (r:=file_node()).get('subtype')=='node' else None),message='YouTube image picker did not open. No publish click was sent. Keep the Chrome tab open for review.')
-                obj=result['objectId']
+                def picker_step():
+                    self.guard(page)
+                    chooser=page.take_file_chooser()
+                    if chooser:return {'chooser':chooser}
+                    point=self.read(page,'selectFiles')
+                    return {'point':point} if point else None
+                step=self.wait(picker_step,message='YouTube Select from your computer control did not appear. No publish click was sent. Keep the image panel open for review.')
+                if 'point' in step:
+                    self.s.checkpoint(job['id'],'youtube',status='posting',stage='Selecting reviewed photos through YouTube file picker')
+                    self.click(page,step['point'])
+                    chooser=self.wait(lambda:page.take_file_chooser(),message='YouTube file picker did not respond after Select from your computer. No publish click was sent.')
+                else:chooser=step['chooser']
+                self.guard(page)
+                main=page.call('Page.getFrameTree')['frameTree']['frame']['id']
+                node_id=chooser.get('backendNodeId')
+                if not isinstance(node_id,int) or node_id<=0 or chooser.get('mode')!='selectMultiple' or chooser.get('frameId')!=main:
+                    raise SetupError('YouTube did not open the expected multiple-image picker in this tab. No files or publish click were sent.',retryable=False)
+                node=page.call('DOM.describeNode',backendNodeId=node_id)['node']
+                raw_attrs=node.get('attributes',[]);attrs=dict(zip(raw_attrs[::2],raw_attrs[1::2]))
+                if node.get('nodeName')!='INPUT' or attrs.get('type','').lower()!='file' or 'multiple' not in attrs or not re.search(r'image|\.jpg|\.jpeg|\.png|\.gif',attrs.get('accept',''),re.I):
+                    raise SetupError('The opened YouTube picker is not a multiple-image input. No files or publish click were sent.',retryable=False)
+                obj=page.call('DOM.resolveNode',backendNodeId=node_id)['object']['objectId']
                 try:
-                    self.guard(page);page.call('DOM.setFileInputFiles',files=[str(p.resolve()) for p in files],objectId=obj)
+                    self.guard(page);page.call('DOM.setFileInputFiles',files=[str(p.resolve()) for p in files],backendNodeId=node_id)
+                    selected=page.call('Runtime.callFunctionOn',objectId=obj,functionDeclaration='function(){return Array.from(this.files||[]).map(f=>({name:f.name,size:f.size}));}',returnByValue=True)
+                    expected=[{'name':p.name,'size':p.stat().st_size} for p in files]
+                    if selected.get('exceptionDetails') or selected.get('result',{}).get('value')!=expected:
+                        raise SetupError('YouTube picker did not receive the reviewed photos in order. No publish click was sent.',retryable=False)
                 finally:page.call('Runtime.releaseObject',objectId=obj)
                 def uploaded(committed=False):
                     state=self.read(page,'state')
-                    expected=[{'name':p.name,'size':p.stat().st_size} for p in files]
-                    if state['files'] and state['files']!=expected:raise SetupError('YouTube selected photos do not match the reviewed order. Nothing was published.',retryable=False)
                     count=state['photos'] if committed else max(state['photos'],state['uploadPhotos'])
                     return state if count==len(files) and (not committed or not state['uploadOpen'] and not state['busy']) else None
                 previews=self.wait(uploaded,self.UPLOAD_TIMEOUT,message='YouTube did not display all selected photo previews. No publish click was sent. Check the open image picker; selected files alone do not confirm an upload.')

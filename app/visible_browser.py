@@ -109,6 +109,11 @@ class BrowserCDP:
                         data = reply.get('params', {})
                         if page is not None and len(page.events) < 500 and len(data.get('payload', '')) < 2000:
                             page.events.append(data)
+                    elif reply.get('method') == 'Page.fileChooserOpened':
+                        page = self.sessions.get(reply.get('sessionId'))
+                        data = reply.get('params', {})
+                        if page is not None and len(page.file_choosers) < 10:
+                            page.file_choosers.append({k: data.get(k) for k in ('backendNodeId', 'frameId', 'mode')})
         except Exception:
             pass
         finally:
@@ -163,11 +168,19 @@ class ChromePage(CDP):
     def __init__(self, browser, session):
         self.browser, self.session = browser, session
         self.events = []
+        self.file_choosers = []
         self.closed = False
 
     def call(self, method, **params):
         if self.closed: raise SetupError('This Chrome page session is closed. Inspect the tab before retrying.')
         return self.browser._call(method, params, self.session)
+
+    def clear_file_choosers(self):
+        with self.browser.lock: self.file_choosers.clear()
+
+    def take_file_chooser(self):
+        with self.browser.lock:
+            return self.file_choosers.pop(0) if self.file_choosers else None
 
     def close(self):
         if self.closed: return
