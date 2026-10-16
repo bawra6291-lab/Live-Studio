@@ -20,6 +20,10 @@ def date_prefix(day):
     return f'{n}{suffix} {month} {day.year}'
 
 def title_for(source_title, slot, day):
+    if slot.get('title_template'):
+        result=slot['title_template'].replace('{date}',date_prefix(day)).replace('{program}',slot['name'])
+        if not result.strip() or len(result)>100 or any(ord(c)<32 or c in '<>{}' for c in result):raise RuntimeError('Invalid expanded YouTube title.')
+        return result
     # Preserve the entire original program/channel suffix, replacing only its date.
     pattern = r'^\s*\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+\s+\d{4}\s*\|\s*'
     if not re.match(pattern, source_title, re.I):
@@ -75,17 +79,22 @@ class Scheduler:
                 self.run_slot(slot,day,now)
     def run_slot(self,current,day,now):
         from copy import deepcopy
-        from schedule_config import action_time,end_time,get_schedule
+        from schedule_config import action_time,end_time,get_schedule,occurs_on
         rec=self.journal.get(current,day)
-        if not current['enabled'] and not rec.get('plan'):return
+        if rec.get('phase') in ('reviewed','ended'):return
+        if not rec.get('plan') and not occurs_on(current,day):return
         plan=rec.get('plan',current);due=slot_time(day,plan)
         clocks=[action_time(day,a,rec) for a in plan['camera_actions'] if a['timing']=='clock']
-        if now<min([due-timedelta(minutes=5)]+clocks):return
+        if now<min([due-timedelta(minutes=plan.get('prepare_minutes',5))]+clocks):return
         def put(**kw):return self.journal.put(current,day,**kw)
         if not rec.get('plan'):
             # Old journals never gain newly configured ending/movement permissions.
             if rec and rec.get('phase') not in ('new','missed'):
-                plan=next(x for x in get_schedule({}) if x['id']==current['id']);due=slot_time(day,plan)
+                legacy=next((x for x in get_schedule({}) if x['id']==current['id']),None)
+                if legacy is None:
+                    put(phase='needs_review',last_error='Saved run has no original plan. Inspect platforms; no automatic action was sent.')
+                    return
+                plan=legacy;due=slot_time(day,plan)
             states={}
             if rec.get('phase')=='done':states['0']=rec.get('patrol_result','sent')
             if rec.get('phase')=='patrol_sending':states['0']='needs_review'
@@ -95,13 +104,21 @@ class Scheduler:
             rec=put(phase='needs_review',last_error='Interrupted operation. Inspect OBS and both platforms before retrying.')
             self.log(plan['name']+': interrupted operation; manual review required.');phase='needs_review'
         end=end_time(day,plan)
+        # An attached manual live never replays camera steps from before attachment.
+        if rec.get('origin')=='manual_takeover':
+            states=dict(rec.get('camera_states',{}))
+            attached=datetime.fromisoformat(rec['adopted_at'])
+            for i,a in enumerate(plan['camera_actions']):
+                moment=action_time(day,a,rec)
+                if str(i) not in states and moment is not None and moment<=attached:states[str(i)]='skipped_before_takeover'
+            if states!=rec.get('camera_states',{}):rec=put(camera_states=states)
         # Camera steps scheduled before live (explicit "Only while live" off).
         self.camera_steps(current,day,now,rec,pre_start=True)
         if phase in ('new','prepared'):
             if now>due+timedelta(seconds=self.grace):
                 rec=put(phase='missed',last_error=f'Start window passed: scheduled {due.isoformat()}, worker reached it at {now.isoformat()}.')
                 self.log(plan['name']+': skipped; start window passed. Check app launch time, pause state and PC/network availability.')
-            elif now>=due-timedelta(minutes=5):
+            elif now>=due-timedelta(minutes=plan.get('prepare_minutes',5)):
                 try:
                     if phase=='new':
                         put(phase='preparing',stage='prepare',attempt_at=now.isoformat())
@@ -161,11 +178,17 @@ class Scheduler:
             elif end and now>=end and action['kind']!='patrol_stop':states[key]='skipped_at_end'
             else:
                 try:
+                    if rec.get('origin')=='manual_takeover':
+                        if not self.service.takeover_live(rec):
+                            states[key]='skipped_not_live'
+                            self.journal.put(slot,day,camera_states=dict(states))
+                            continue
                     if action['only_if_live'] and (not rec.get('confirmed_at') and rec.get('phase') not in ('live','done') or not rec.get('yt_id') or not rec.get('fb_id')):
                         # Wait within the camera window while a scheduled start finishes.
                         continue
                     if action['only_if_live'] and not self.service.both_live(rec):states[key]='skipped_not_live'
                     else:
+                        if self.cancelled():return
                         states[key]='sending';self.journal.put(slot,day,camera_states=dict(states))
                         if hasattr(self.service,'camera_action'):self.service.camera_action(action)
                         elif action['kind']=='patrol_start' and action['number']==8:self.service.camera_start()

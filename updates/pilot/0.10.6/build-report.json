@@ -1,0 +1,24 @@
+{
+  "version": "0.10.6",
+  "source_commit": "cf5d9f7d0a1fe83fc0ddaa4e737b1e64ee87ba03",
+  "source_tree": "730caaa478ce0fca85915d48598d3526b6ab2472",
+  "sha256": "ff0a5f40150c8eb180c686f2eed37d01df9c97cad5f47aa9418f3b215b0d0127",
+  "size": 328152,
+  "source_files_verified": 84,
+  "python_tests": 265,
+  "python_skipped": 1,
+  "browser_flows": 17,
+  "validation_runs": {
+    "development": 38655435623,
+    "android": 38655435616,
+    "obs_layout": 38655435621
+  },
+  "result": "All required workflows passed",
+  "upgrade_preparation": "0.10.5 to 0.10.6 passed; old installation unchanged",
+  "limits": [
+    "Fixture tests only; no real broadcasts or OBS outputs were started/stopped and no physical camera moved.",
+    "Both platforms and configured existing Official stream/OBS outputs must be verifiable.",
+    "Only remaining camera actions and the saved optional end apply to this takeover session.",
+    "A first actual takeover requires supervision on the Windows PC."
+  ]
+}

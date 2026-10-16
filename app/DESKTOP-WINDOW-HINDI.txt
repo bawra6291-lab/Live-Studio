@@ -1,0 +1,45 @@
+LIVE DESK 0.9.2 — APNI DESKTOP WINDOW
+
+Existing app: Updates se 0.9.2 install karein, jab automation paused ho aur
+OBS streaming, recording, replay aur multiple outputs sab band hon.
+
+EK BAAR SETUP
+1. PC controls > Desktop app window > Set up desktop window.
+2. Confirm karein. Internet se desktop component download hoga (kuch minutes).
+3. Live Desk ki apni window khulegi. Isme Chrome tabs/address bar nahi honge.
+4. Agar browser hi khulta hai, isi section ke Microsoft Edge WebView2 Runtime
+   link se official runtime install karein, phir Open desktop window dabayein.
+
+DAILY USE
+OPEN-LIVE-DESK.cmd ya uske desktop shortcut se kholein. Dubara kholne par wahi
+background app use hota hai. Ek already-open desktop viewer ko hi dikhata hai.
+X button aur minimize automation ko nahi rokte. Dashboard band hone par bhi
+host, schedules aur mobile control chalte hain. PC awake aur logged-in rakhein.
+PC controls > Quit Live Desk background app band karta hai: future automatic
+starts/ends/camera aur mobile control rukenge. Existing live khud band nahi hoti.
+
+RECOVERY
+PC controls > Use browser dashboard se browser ko default kar sakte hain.
+Open desktop window se wapas desktop ko default karein. Renderer fail/hang
+hone par browser fallback khulta hai; OBS/host ko restart nahi karta.
+Recovery launcher ka X bhi sirf window hide karta hai. Quit tray menu mein bhi hai.
+
+KYA SAME REHTA HAI
+Same saved Windows credentials, schedules, Official stream key, API connections,
+HTTP session/CSRF controls, LAN/internet mobile setup aur updater use hote hain.
+YouTube/Facebook login aur visible browser workflows apne existing browser mein
+hi chalenge. Desktop dashboard unhe embedded login mein convert nahi karta.
+Yeh OBS layout helper ya camera timing ka update nahi hai.
+
+TECHNICAL NOTES
+Renderer: pywebview 6.2.1 + Microsoft Edge WebView2, separate hidden-console process.
+Optional packages data folder/desktop-runtime mein, host requirements unchanged.
+Pairing URL inherited pipe se, process command line/logs mein nahi.
+12-hour session expiry par icon se reopen karne se pairing dobara hoti hai.
+Close/reopen, minimize, rotated pairing aur host lifetime Windows CI fixture
+mein check hote hain. Apne actual PC par supervised live test ab bhi zaroori hai.
+
+Official references:
+https://pywebview.flowrl.com/api/
+https://pywebview.flowrl.com/guide/web_engine
+https://developer.microsoft.com/microsoft-edge/webview2/

@@ -1,0 +1,43 @@
+{
+  "version": "0.8.4",
+  "channel": "pilot",
+  "source_commit": "652d0afb3835d6d50d15f42febfc628bd9f4f0a1",
+  "source_tree": "a5bcf1f525446aad1c5e709dd6f6fc6ad17b7787",
+  "archive_sha256": "40a15b801d2919b27acfd6987ff7aa4c087963387875ed93e07a0771444df446",
+  "archive_size": 148856,
+  "files": 45,
+  "ci_run": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/37680302859",
+  "checks": {
+    "archive_matches_committed_source": true,
+    "archive_hashes": true,
+    "no_operator_data_packaged": true,
+    "updater_0_8_3_stages_and_swaps": true,
+    "previous_app_backup": true,
+    "sibling_runtime_and_operator_settings_preserved": true,
+    "persistent_browser_profile_preserved": true,
+    "published_blob_matches_local_git_sha": true
+  },
+  "validation": {
+    "app_tests_windows_and_linux": 178,
+    "relay_tests_windows_and_linux": 12,
+    "desktop_mobile_browser_flows": 9,
+    "opaque_frame_health_regressions": "passed: exact old HTTP(S) exception reproduced before fix, valid steps retained, health-only session rejected, opaque action rejected and foreign-origin action excluded",
+    "visible_chromium_fixture": "passed: opaque health messages through real existing-browser binding mixed with trusted input; recording/replay, managed tabs, persistent socket, retained dummy sign-in and no replacement launch; dedicated reattachment retained",
+    "windows_native_smoke": "passed",
+    "windows_installer_build_install_uninstall": "passed"
+  },
+  "installer_artifact": {
+    "url": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/37680302859/artifacts/11507753920",
+    "github_artifact_digest": "sha256:5ad3cf6fcb861878ab4d8d8028a0c62ca88cd5027d7788937b95599a6caa864b",
+    "expires": "2026-10-21T20:14:26Z",
+    "signed": false
+  },
+  "limitations": [
+    "A failed finish in the older build discarded the draft; it cannot be recovered from the screenshot.",
+    "Operator confirmed normal Chrome connection and signed-in Facebook navigation; CI never used real operator platforms or camera.",
+    "Full preparation/Go-live/end/camera recipes remain uncalibrated. Facebook preparation requires an unpublished manual-Go-live draft; no automatic-publish fallback.",
+    "Chrome reconnect after app/browser restart still requires explicit local consent.",
+    "Keep the existing YouTube Official stream key. OBS remains controlled through WebSocket.",
+    "Pilot is unsigned; hosting, production OAuth onboarding and publisher signing remain external gates."
+  ]
+}

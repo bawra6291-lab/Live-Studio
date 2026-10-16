@@ -1,0 +1,9 @@
+{
+  "app_id": "iskcon-live-desk",
+  "version": "0.10.5",
+  "update_format": 1,
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.10.5/ISKCON-Live-Desk.zip",
+  "size": 317189,
+  "sha256": "82ab6c4c22928afe332061d9776e42865221406a5741187ca5d5b8ffff148661",
+  "notes": "Three independent upload columns: 7 photos for Instagram/YouTube, 10 for Instagram/YouTube and 17 for Facebook. Your order is preserved; automatic matching removed from the screen. Existing manual publishing destinations remain manual."
+}

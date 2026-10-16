@@ -12,13 +12,30 @@ TASK_PREFIX = 'ISKCON-OBS-Admin-'
 class OBSLaunchError(RuntimeError):
     pass
 
+def _same_user(account, sid):
+    """Task Scheduler may return an account name even when registered with a SID."""
+    if account == sid:
+        return True
+    if not account or str(account).upper().startswith('S-1-'):
+        return False
+    try:
+        import win32security
+        resolved, _, kind = win32security.LookupAccountName(None, str(account))
+        return (kind == win32security.SidTypeUser
+                and win32security.ConvertSidToStringSid(resolved) == sid)
+    except Exception:
+        # Unresolvable identities must never authorize an elevated launch.
+        return False
+
 def validate_task(task, exe, sid):
     """Reject background/different-user tasks or actions with streaming arguments."""
     d = task.Definition
     p = d.Principal
-    if (p.UserId != sid or p.LogonType != 3 or p.RunLevel != 1
+    if not _same_user(p.UserId, sid):
+        raise OBSLaunchError('OBS administrator task user does not resolve to this Windows login. Run SETUP-OBS-ADMIN.cmd from this account.')
+    if (p.LogonType != 3 or p.RunLevel != 1
             or d.Actions.Count != 1 or not task.Enabled):
-        raise OBSLaunchError('OBS administrator task is not configured for this Windows login. Run SETUP-OBS-ADMIN.cmd again.')
+        raise OBSLaunchError('OBS administrator task requires an enabled, interactive, highest-privilege task with one OBS action. Run SETUP-OBS-ADMIN.cmd again.')
     a = d.Actions.Item(1)
     norm = lambda s: ntpath.normcase(ntpath.normpath(str(s)))
     if (a.Type != 0 or norm(a.Path) != norm(exe) or (a.Arguments or '').strip()
@@ -69,8 +86,12 @@ def _show(pids):
         return False
     for hwnd in windows:
         try:
-            win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
-            win32gui.ShowWindow(hwnd, win32con.SW_MAXIMIZE)
+            # Raising an already-visible window must not resize it. SW_RESTORE
+            # also unmaximizes a maximized window, briefly reflowing every dock.
+            if win32gui.IsIconic(hwnd):
+                win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+            elif not win32gui.IsWindowVisible(hwnd):
+                win32gui.ShowWindow(hwnd, win32con.SW_SHOW)
             if not win32gui.IsWindowVisible(hwnd) or win32gui.IsIconic(hwnd):
                 win32gui.PostMessage(hwnd, win32con.WM_SYSCOMMAND, win32con.SC_RESTORE, 0)
         except Exception:

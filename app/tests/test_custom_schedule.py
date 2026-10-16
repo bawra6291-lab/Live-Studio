@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import Mock,patch
 import sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from core import SLOTS,IST,Journal,Scheduler
+from core import atomic_json, SLOTS,IST,Journal,Scheduler
 from schedule_config import get_schedule,validate_schedule
 from connections import Services,SetupError,Camera
 from dashboard import Controller
@@ -102,7 +102,7 @@ class Validation(unittest.TestCase):
             failed=threading.Event()
             def check(self):self.failed.set();raise SetupError('Network unavailable')
         with tempfile.TemporaryDirectory() as d:
-            c=Controller(d,Broken,Vault());c.run('arm');self.assertTrue(Broken.failed.wait(2))
+            atomic_json(Path(d)/'settings.json',{});c=Controller(d,Broken,Vault());c.run('arm');self.assertTrue(Broken.failed.wait(2))
             with c.lock:self.assertTrue(c.cfg['armed'])
             c.pause();c.worker.join(3);self.assertFalse(c.cfg['armed']);self.assertFalse(c.armed)
     def test_diagnostics_retains_date_and_does_not_export_secrets(self):

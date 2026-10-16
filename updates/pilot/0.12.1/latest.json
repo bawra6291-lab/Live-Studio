@@ -1,0 +1,9 @@
+{
+  "app_id": "iskcon-live-desk",
+  "version": "0.12.1",
+  "update_format": 1,
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.12.1/ISKCON-Live-Desk.zip",
+  "size": 769208,
+  "sha256": "a61979b4e4c20adb5ad55e7639fe0a17c25aaba6c613a381570ebfde64aa5a3d",
+  "notes": "Photo and ZIP download controls removed from DARSHANFLOW. Send individually or review Send to all. WhatsApp reviewed photos persist with the batch; YouTube and WhatsApp final sending remains manual. Saved live connections and schedules are retained."
+}

@@ -1,0 +1,77 @@
+DARSHANFLOW / Live Desk 0.13.0
+
+PHOTOS -> PUBLISH -> CONNECTIONS -> WHATSAPP
+
+SEND CONTROLS (0.12.1)
+- In Publish, choose 7 portrait, 10 landscape, 17 mixed, or both posts (7 + 10). This updates the destination cards. Facebook now also supports a selected 7/10-photo post or two separate posts.
+- For 17 mixed, Instagram and YouTube prepare TWO full posts (7 + 10), and Telegram prepares two albums. Nothing is silently reduced to the first seven images. WhatsApp retains the selected mixed order.
+- Send to all · review prepares verified Facebook/Instagram/Telegram drafts plus automatic YouTube photo drafts. Check every destination, photo and caption in the batch preview. Send to all reviewed destinations sends the API posts sequentially; YouTube uploads and publishes automatically in the connected Chrome. Include WhatsApp manual sharing saves the same selected photos and caption in the batch so its send preview can be reopened after restarting.
+- An API failure stops the batch. Successful receipts remain; uncertain items require review. Not-yet-attempted items return to draft. A started batch is not automatically retried, including after app restart. Saved reviews are available above the destination cards.
+- Photo/ZIP download buttons have been removed from every DARSHANFLOW tab. Each destination has its own Send · review control, plus Send to all · review. The final preview confirmation performs the API sends. App update installation and settings backups remain available separately.
+- Send to WhatsApp · review prepares the selected full set in memory. Send to WhatsApp · share sheet opens the device share sheet when supported. Otherwise open WhatsApp destinations, attach your originals in preview order and paste the copied caption. Check delivery in WhatsApp; opening a share sheet is never a confirmed delivery.
+- Caption date is explicitly in IST. Add / update date in title retains your text, description and hashtags and replaces only a date added by that button.
+- In Photos, click a slot to replace its uploaded image. Reference and Today previews remain separate. The original reference is never overwritten. Swap can select any of the 17 positions. All sent images are fitted without cropping; real uploaded photos are required.
+
+Photos: upload 7 portraits and 10 landscapes together, check and swap the suggested order. Reference images are guides and cannot be published. A full selection is required before preparing a post. The original supplied reference document remains byte-for-byte unchanged; the host adds the workspace.
+
+Publish: enter and save a caption. Review one destination at a time. The exact preview is saved on this PC before sending. Instagram uses a 4:5 portrait canvas (borders if needed), landscape 4:3; all selected images are fitted without cropping. A failed/uncertain send remains for review and is not automatically retried. Posting waits while live operations are active. No old posting queue is enabled by these buttons.
+
+Facebook: Connections -> Verify Facebook reuses the Page ID and Page token saved in Live Desk. Edit saved Page connection opens the main Connections page. A successful post saves its returned ID/link in Posting history.
+
+Instagram WITHOUT a Facebook Page link:
+1. Use an Instagram Business or Creator account.
+2. Meta App Dashboard -> Instagram API setup -> Instagram Login.
+3. Add/authorize your Instagram account (accept an Instagram tester invitation if needed). Use instagram_business_basic and instagram_business_content_publish permissions.
+4. Generate the Instagram Login token for that account; prefer the long-lived token described in Meta's guide. This is not a Facebook Page token.
+5. DARSHANFLOW -> Connections -> Instagram direct connection: paste token and an ImgBB API key, then Save & verify Instagram. Confirm the username before publishing. Token/key stay in Windows Credential Manager; blank fields preserve saved values.
+6. Selected photos are uploaded to ImgBB with a requested 1-hour expiry so Instagram can fetch them. This is required for the direct-token publishing path. Reconnect when the Instagram token expires or is revoked. The app does not silently refresh or replace Facebook credentials.
+
+TELEGRAM CHANNEL (0.11.1)
+1. DARSHANFLOW -> Connections -> Telegram channel connection.
+2. In Telegram, use @BotFather to create/select a bot and copy its bot token.
+3. Add that bot to your channel as an administrator with Post messages permission.
+4. Enter the bot token and @channelusername or numeric -100... channel ID. Use Save & verify Telegram. Verification reads bot/channel permissions only; it does not send a test message.
+5. If the old studio saved Telegram settings in this browser, use Import previous Telegram settings. The bot token moves to Windows Credential Manager; it is not returned to the page. Otherwise enter it once. Blank tokens keep the saved value.
+6. Publish -> Telegram: choose both albums (7 portrait followed by 10 landscape), or one 7/10-photo album. Upload every required real photo, shorten the caption to 1024 characters (emoji may count as two), and review the channel, exact order and caption.
+7. Send to telegram sends only that reviewed draft. Each album has the same full caption on its first photo; no automatic cropping is performed. There is no Telegram dependency on Facebook or Instagram tokens or ImgBB.
+8. Posting history retains album links and receipts. A timeout, interruption, partial album delivery or app restart requires manual review; the draft is never automatically repeated. Verify channel history before creating another draft.
+7. Accounts beyond app roles/test users can require Meta review/access approval. The desktop app does not include a hosted multi-customer OAuth service.
+Official guide: https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/
+Hosting key: https://api.imgbb.com/
+
+YouTube automatic photo posting (0.13.0): Verify YouTube to select its channel. On this PC use Chrome posting setup -> My running Chrome -> Save browser only -> Connect my Chrome and allow Chrome's browser-control prompt. Keep the intended YouTube channel logged into that Chrome and keep Windows unlocked. Send uploads the exact reviewed JPG files in order, fills the caption, clicks Post once and saves a newly observed matching public post link automatically. No link-paste box or manual photo-upload step is used. Both posts sends 7 portrait then 10 landscape as separate public posts. Existing manual reviews can create a fresh automatic draft; inspect YouTube for a previous manual publication first. A wrong Chrome identity, altered caption/photos, unsupported page layout or uncertain publish stops for review and never automatically repeats. The current adapter verifies the Chrome channel through Advanced account settings; primary-owner access is required by YouTube for that page. A real-account supervised acceptance check is still required; fixture tests are not proof that every YouTube UI variant is supported.
+
+WhatsApp: enter 8 community names and one channel name once. Optional invite/channel links help open them. Select date and photo. Programs & links follow your screenshot structure: ISKCON Kolkata, date, program heading, YouTube/Facebook links. Add available post/live links imports only returned published links and today's confirmed live records; paste external YouTube links manually. Use Send to WhatsApp · share sheet on devices that support file sharing. Otherwise copy the message, open the destination and attach the photo from your original folder. Choose the community/channel inside WhatsApp and send; then press Sent / confirm for that destination. Open/Copy never marks a message sent. Editing date/text/targets resets confirmations. No existing-community or Channel API automation is claimed.
+
+Saved captions, destination names, links, prepared posts and manual confirmations survive app updates. Unprepared photo selections remain in the open browser session only. Live-stream settings, Official YouTube stream key, OBS and camera behavior are unchanged by this workspace.
+
+YOUTUBE CHANNEL CHECK (0.12.2)
+Preview and Send resolve the same configured or verified YouTube channel ID. A channel discovered through Verify YouTube is remembered without changing the live settings or stream key. If an existing preview reports a changed destination, verify the intended YouTube channel, reopen its saved preview and try again. A genuinely different channel still requires a new draft. Automatic YouTube drafts keep the channel saved with the preview.
+
+0.14.0 — daily workflow additions from the supplied design
+Publish → Daily workflow:
+- Save a caption template for Facebook, each Instagram and YouTube set, or Telegram.
+  Blank templates use the master caption. Variables: {{event_title}}, {{body}},
+  {{tags}}, {{date_short}}, {{date_long_ordinal}}. Preview the actual expanded text.
+- Service date is frozen into new drafts. Sending a draft for another IST day is
+  blocked. Legacy drafts retain their original behavior.
+- Telegram can use portrait 7 + landscape 10, or the Facebook mixed sequence split
+  into albums of 10 then 7. The exact split is frozen in the preview; old drafts
+  keep 7 + 10. No existing draft or published post is reordered.
+- Run pre-test checks the selected saved draft media hashes, target, draft state,
+  required audio, date and local PC readiness without external calls or publishing.
+  Connection statuses are the last checks, not freshly tested authorizations.
+  A fingerprint identifies the saved evidence; re-run after changing a draft.
+- Required Instagram saved audio stores only a reference, never an invented track.
+  API sending is blocked for that draft. Finish it in Instagram; this app does
+  not claim to attach Saved Audio or to verify a native audio completion.
+WhatsApp → RGM → JBS: enable two-message flow, upload L1 and L5, save setup.
+Message 1 shares L1 with the full date/links text; message 2 shares L5 only.
+Confirm each actual message at each destination. JBS cannot be confirmed before
+RGM. Undoing RGM clears JBS. Photo/date/link/destination changes clear confirmations.
+The 8 communities and channel remain assisted sharing; confirmations are operator
+reports, never WhatsApp API delivery receipts. No sample IDs or fake successes.
+The uploaded design's schedule, automatic-daily, crop, audio sync, sandbox sending
+and simulated retry buttons are not wired to production as real capabilities.
+The existing YouTube Chrome channel-check error still needs its actual Chrome
+page inspected. This update does not assert that error has been repaired.

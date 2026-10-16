@@ -1,0 +1,31 @@
+services:
+  relay:
+    build: .
+    environment:
+      PUBLIC_ORIGIN: https://${LIVE_DESK_DOMAIN:?Set LIVE_DESK_DOMAIN}
+    volumes:
+      - relay-data:/data
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+  proxy:
+    image: caddy:2
+    environment:
+      LIVE_DESK_DOMAIN: ${LIVE_DESK_DOMAIN}
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - relay
+    restart: unless-stopped
+volumes:
+  relay-data:
+  caddy-data:
+  caddy-config:

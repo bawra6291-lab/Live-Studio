@@ -1,0 +1,59 @@
+{
+  "version": "0.10.0",
+  "source_commit": "55fae08e408e18926823162de3de845114b1b2b6",
+  "validation": {
+    "development": 38398104017,
+    "android": 38398104074,
+    "obs_layout": 38398104102,
+    "status": "passed",
+    "app_tests": 234
+  },
+  "social": {
+    "tests": 19,
+    "approval_revisions": "passed",
+    "unknown_write_no_retry": "passed",
+    "restart_recovery": "passed",
+    "partial_receipts": "passed",
+    "immutable_media": "passed",
+    "target_binding": "passed",
+    "upload_session_host_validation": "passed",
+    "forced_youtube_visibility_review": "passed",
+    "viewer_media_and_caption_redaction": "passed"
+  },
+  "browser": {
+    "imports": "passed",
+    "editing_and_watermark": "passed",
+    "approval_cancel_and_revision": "passed",
+    "viewports": [
+      1440,
+      980,
+      390,
+      320
+    ],
+    "horizontal_overflow": false
+  },
+  "package": {
+    "app_id": "iskcon-live-desk",
+    "version": "0.10.0",
+    "update_format": 1,
+    "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.10.0/ISKCON-Live-Desk.zip",
+    "size": 291952,
+    "sha256": "24028ec7cfaf5ab60fedb4e7e51b52804aff24d705c0a5805742ea1304d80b54",
+    "notes": "Social Media pilot: media library, crop/colour/watermark editor, reviewed Facebook/Instagram/YouTube drafts, approved posting queue, recovery and Share link. Account permissions and Instagram media delivery need a supervised PC test. Posting uses APIs; RAW export and hosted Reels video are separate steps."
+  },
+  "source_verification": {
+    "files": 74,
+    "errors": [],
+    "updaterFrom": "0.9.4",
+    "updaterCompatibility": "passed"
+  },
+  "real_social_posts_sent": false,
+  "user_accounts_verified": false,
+  "limits": [
+    "RAW requires JPG export",
+    "Instagram Reel video needs a public source URL",
+    "WhatsApp uses user-initiated Share link",
+    "Internet relay social composer is not included",
+    "Social posting uses API adapters"
+  ]
+}

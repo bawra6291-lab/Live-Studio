@@ -1,0 +1,9 @@
+{
+  "app_id": "iskcon-live-desk",
+  "version": "0.8.3",
+  "update_format": 1,
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.8.3/ISKCON-Live-Desk.zip",
+  "size": 148353,
+  "sha256": "0ed3266af17b0303fc50a756a40a1edc9714df8004364dbc02f58ae0e221d2a4",
+  "notes": "PILOT 0.8.3: Save browser only fixes the recent-run review block when choosing My running Chrome. Pause automation, finish active live/recording, then update. Saving only the browser preserves execution mode, recipes, destinations and unresolved runs. Existing Chrome connection still needs local consent; no Official key changes."
+}

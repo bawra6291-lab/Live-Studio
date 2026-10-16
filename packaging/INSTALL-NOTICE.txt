@@ -1,0 +1,9 @@
+LIVE DESK PILOT
+
+Pause automation and finish or manually take over any live/recording before installing. Close the old Live Desk window. Do not run two versions at once.
+
+This installer bundles Python, Tk and the required dependencies. It installs for the current Windows user without requesting administrator access. OBS administrator setup remains a separate, explicit action.
+
+Existing Windows credentials, settings and journal are retained. Uninstall removes this app installation, not your saved settings or account credentials. Keep your current data backup.
+
+This pilot installer is not code-signed. It is for supervised validation, not a claim of production readiness. Do not promote it to a public stable release until signing, Google/Meta approvals and the real-PC acceptance tests are complete.

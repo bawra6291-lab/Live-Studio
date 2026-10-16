@@ -49,7 +49,7 @@ class Session:
 
 class MetadataTests(unittest.TestCase):
     def setUp(self):
-        self.yt=YouTube({},None);self.wire=Session();self.yt.session=self.wire
+        self.yt=YouTube({'youtube_stream_title':'YouTube Official Livestream'},None);self.wire=Session();self.yt.session=self.wire
         self.yt.owned_channel=Mock(return_value={'id':'channel'})
         self.yt.no_other_live=Mock()
         self.yt.stream_for_obs=Mock(return_value={'id':'stream'})
@@ -153,7 +153,7 @@ class StreamSelectionTests(unittest.TestCase):
                 ('Default stream key','same-secret',False),
                 ('YouTube Official Livestream','different-secret',False)]:
             with self.subTest(title=title,key=key):
-                yt=YouTube({},None)
+                yt=YouTube({'youtube_stream_title':'YouTube Official Livestream'},None)
                 yt.list=Mock(return_value=[{'id':'existing-stream','snippet':{'title':title},
                     'cdn':{'ingestionInfo':{'streamName':key}}}])
                 if accepted:self.assertEqual(yt.stream_for_obs('same-secret')['id'],'existing-stream')

@@ -1,0 +1,60 @@
+{
+  "version": "0.12.2",
+  "source_commit": "cc5b81afee730223da05da4043774a533aa8c79b",
+  "source_tree": "8c3f508550aefacd17a02e350d24a050efbdb8c1",
+  "package": {
+    "app_id": "iskcon-live-desk",
+    "version": "0.12.2",
+    "update_format": 1,
+    "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.12.2/ISKCON-Live-Desk.zip",
+    "size": 770097,
+    "sha256": "ea063001d29ece632e9521a73dd1c264181a04ebac41d80f23b283e699a63c3e",
+    "notes": "Fixes YouTube destination changed after preview when the channel was verified without a configured ID. Preview, Send and Send to all use the same channel identity; real channel changes still require a new preview. Verify YouTube, then reopen an existing saved draft. Live settings and Official stream key stay unchanged."
+  },
+  "validation": {
+    "development_run": 38857985321,
+    "controller_windows_job": 116833646925,
+    "controller_linux_job": 116833646919,
+    "dashboard_job": 116833646547,
+    "installer_job": 116833646841,
+    "android_run": 38857985330,
+    "obs_layout_run": 38857985350,
+    "all_workflows": "success",
+    "unit_tests": 305,
+    "remote_python_tests": 24,
+    "browser_flows": 20,
+    "browser_errors": [],
+    "native_windows_lifecycle": "passed including rotated pairing",
+    "windows_installer": "installed, runtime checked, uninstalled",
+    "viewports": [
+      320,
+      390,
+      1440
+    ],
+    "screenshots_artifact": 12027464964,
+    "payload_matches_source_files": 98,
+    "updater_stage": "0.12.1 -> 0.12.2, current install unchanged"
+  },
+  "root_cause": "Studio preview froze the verified YouTube identity but send validation compared only the configured channel ID. In legacy setups that configured ID could be blank. The initial prepare response also omitted the frozen destination fields.",
+  "fixes": [
+    "Use one configured / verified / cached YouTube target resolver for preview, validation and workspace state",
+    "Remember a verified YouTube channel without changing the live configuration",
+    "Return the complete frozen preview and use its channel for the YouTube handoff link",
+    "Approve a Studio manual handoff against its exact preview destination",
+    "Continue rejecting genuine target changes, including in Send to all"
+  ],
+  "regression_coverage": [
+    "Blank configured ID plus verified channel sends unchanged preview",
+    "Verified identity survives Studio restart and keeps saved draft",
+    "Changed identity blocks both individual and batch send before any platform write",
+    "Conflicting configured and verified identities cannot create a draft",
+    "Browser single and batch paths run with blank configured YouTube ID"
+  ],
+  "preserved": {
+    "reference_document_sha256": "662e41b5b4b8a03922446dc4fbe731a2ea52676f9670a9d6fabd3b03885aabcb",
+    "live_settings_and_official_stream_key": "unchanged",
+    "send_only_posting_controls": "retained"
+  },
+  "real_social_posts_sent": false,
+  "real_live_obs_camera_actions_performed": false
+}

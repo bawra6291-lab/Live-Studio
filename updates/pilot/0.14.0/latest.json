@@ -1,0 +1,9 @@
+{
+  "app_id": "iskcon-live-desk",
+  "version": "0.14.0",
+  "update_format": 1,
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.14.0/ISKCON-Live-Desk.zip",
+  "size": 787615,
+  "sha256": "860aeed7090d5ae647606bf7243416ab71e020279f87266869c773c8820c73ef",
+  "notes": "Daily workflow: saved platform captions, local pre-test with draft fingerprint, optional Telegram mixed order albums 10+7, required Instagram saved-audio hold, and two-message WhatsApp confirmations. Existing YouTube Chrome channel-check issue still requires inspection."
+}

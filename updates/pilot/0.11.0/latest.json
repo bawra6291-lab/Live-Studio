@@ -1,0 +1,9 @@
+{
+  "app_id": "iskcon-live-desk",
+  "version": "0.11.0",
+  "update_format": 1,
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.11.0/ISKCON-Live-Desk.zip",
+  "size": 747162,
+  "sha256": "7c67078779afe80676be53d91bfc797a93c5c9ecc32e82d1f27744b6aff2a766",
+  "notes": "New DARSHANFLOW tabs for Photos, Publish, Connections and WhatsApp. Reuse saved Facebook/YouTube accounts; separate Instagram Login token connection. Ordered YouTube photo handoff and screenshot-style sharing to 8 community entries plus a channel. YouTube and WhatsApp final posting is assisted. Saved live settings retained."
+}

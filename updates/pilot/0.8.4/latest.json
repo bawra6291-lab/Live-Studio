@@ -1,0 +1,9 @@
+{
+  "app_id": "iskcon-live-desk",
+  "version": "0.8.4",
+  "update_format": 1,
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.8.4/ISKCON-Live-Desk.zip",
+  "size": 148856,
+  "sha256": "40a15b801d2919b27acfd6987ff7aa4c087963387875ed93e07a0771444df446",
+  "notes": "PILOT 0.8.4: recording finish ignores blank-frame health events while retaining allowed-site clicks. Same Chrome and saved setup retained. Pause automation and finish active live before installing. After restart reconnect Chrome and verify one harmless click; no new live is needed for this check."
+}

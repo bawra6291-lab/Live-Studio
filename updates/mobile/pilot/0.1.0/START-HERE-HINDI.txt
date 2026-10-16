@@ -1,0 +1,34 @@
+LIVE DESK MOBILE — ANDROID PILOT 0.1.0
+
+1. Android phone par Live-Desk-Mobile-0.1.0.apk download aur install karo.
+   Agar Android puche, browser/file manager ko is APK ke liye installation allow karo.
+
+2. PC par Live Desk launcher khula rakho. Enable mobile access click karo.
+   Launcher jo phone address dikhaye, wahi use karo.
+   Example: http://192.168.29.247:8866 — tumhare PC ka address alag ho sakta hai.
+
+3. Phone aur PC same trusted Wi-Fi/private network par hone chahiye.
+   Phone app kholo, PC mobile address daalo, Connect to PC tap karo.
+
+4. PC par Show code se pairing code dekho aur phone par daalo.
+   Pairing code expire ho to PC se naya code banao.
+
+5. Schedule check karo, phir Enable automation tap karke Confirm karo.
+   Automation PC par saved timings ke hisab se chalega.
+   Pause automation future starts, scheduled endings aur camera steps pause karta hai.
+   Pause se pehle se chal rahi live end nahi hoti.
+
+Phone app band karne se PC ka schedule band nahi hota.
+PC aur Live Desk chalu rehna zaroori hai. Visible browser mode ke liye PC unlocked,
+Chrome connected aur reviewed workflows ready hone chahiye.
+YT, FB, OBS ya camera ka setup phone par dobara nahi karna hai.
+
+Refresh: PC connection retry karo.
+PC > Change PC: phone ki pairing bhool kar address badlo; old PC ka schedule nahi badalta.
+YouTube login/credentials aur OBS administrator setup PC par hi manage karo.
+
+Ye Android LAN pilot hai. Internet se door baithkar control, PC ko remotely chalu
+karna aur iPhone installation is build mein nahi hai.
+APK temporary development certificate se signed hai. Future mein different signing
+key wala APK aaye to phone app uninstall/reinstall aur pairing karni pad sakti hai.
+Isse PC ka saved setup nahi badalta. Production mobile signing/update channel pending hai.

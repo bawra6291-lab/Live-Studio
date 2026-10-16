@@ -19,6 +19,38 @@ def task():
                     StopIfGoingOnBatteries=False, AllowDemandStart=True)))
 
 class AdminTaskTests(unittest.TestCase):
+    def test_account_name_resolves_to_same_sid(self):
+        security=Mock(SidTypeUser=1)
+        security.LookupAccountName.return_value=('native-sid', 'PC', 1)
+        security.ConvertSidToStringSid.return_value=SID
+        for name in ('kolka', r'PC\kolka'):
+            with self.subTest(name=name), patch.dict(sys.modules, {'win32security':security}):
+                t=task();t.Definition.Principal.UserId=name
+                ow.validate_task(t, EXE, SID)
+                security.LookupAccountName.assert_called_with(None, name)
+    def test_account_name_for_other_user_is_rejected(self):
+        security=Mock(SidTypeUser=1)
+        security.LookupAccountName.return_value=('native-sid', 'PC', 1)
+        security.ConvertSidToStringSid.return_value='S-1-5-21-456'
+        with patch.dict(sys.modules, {'win32security':security}):
+            t=task();t.Definition.Principal.UserId='other'
+            with self.assertRaises(ow.OBSLaunchError):ow.validate_task(t, EXE, SID)
+    def test_unresolved_account_and_group_are_rejected(self):
+        security=Mock(SidTypeUser=1)
+        with patch.dict(sys.modules, {'win32security':security}):
+            t=task();t.Definition.Principal.UserId='unknown'
+            security.LookupAccountName.side_effect=OSError('Unknown account')
+            with self.assertRaises(ow.OBSLaunchError):ow.validate_task(t, EXE, SID)
+            security.LookupAccountName.side_effect=None
+            security.LookupAccountName.return_value=('native-sid', 'PC', 2)
+            security.ConvertSidToStringSid.return_value=SID
+            with self.assertRaises(ow.OBSLaunchError):ow.validate_task(t, EXE, SID)
+    def test_direct_sid_match_needs_no_name_lookup(self):
+        with patch.dict(sys.modules, {'win32security':Mock()}) as modules:
+            self.assertTrue(ow._same_user(SID, SID))
+            self.assertFalse(ow._same_user('S-1-5-21-456', SID))
+            self.assertFalse(ow._same_user('', SID))
+            modules['win32security'].LookupAccountName.assert_not_called()
     def test_accepts_same_user_interactive_obs_only(self):
         ow.validate_task(task(), EXE, SID)
     def test_rejects_other_account_background_and_limited_task(self):
@@ -61,6 +93,25 @@ class AdminTaskTests(unittest.TestCase):
         self.assertEqual(popen.call_count,1)
 
 class VisibleLaunchTests(unittest.TestCase):
+    def test_show_preserves_normal_and_maximized_windows_without_resizing(self):
+        gui=Mock();gui.GetWindowText.return_value='OBS Studio - Profile: Untitled'
+        gui.IsWindowVisible.return_value=True;gui.IsIconic.return_value=False
+        gui.EnumWindows.side_effect=lambda cb,arg:cb(100,arg)
+        process=Mock();process.GetWindowThreadProcessId.return_value=(1,123)
+        con=NS(SW_RESTORE=9,SW_SHOW=5,WM_SYSCOMMAND=274,SC_RESTORE=61728)
+        with patch.dict(sys.modules,{'win32gui':gui,'win32process':process,'win32con':con}):
+            self.assertTrue(ow._show({123}))
+        gui.ShowWindow.assert_not_called();gui.PostMessage.assert_not_called()
+        gui.SetForegroundWindow.assert_called_once_with(100)
+    def test_show_minimized_window_restores_once_without_maximizing(self):
+        gui=Mock();gui.GetWindowText.return_value='OBS Studio - Profile: Untitled'
+        gui.IsWindowVisible.return_value=True;gui.IsIconic.side_effect=[True,False,False]
+        gui.EnumWindows.side_effect=lambda cb,arg:cb(100,arg)
+        process=Mock();process.GetWindowThreadProcessId.return_value=(1,123)
+        con=NS(SW_RESTORE=9,SW_SHOW=5,WM_SYSCOMMAND=274,SC_RESTORE=61728)
+        with patch.dict(sys.modules,{'win32gui':gui,'win32process':process,'win32con':con}):
+            self.assertTrue(ow._show({123}))
+        gui.ShowWindow.assert_called_once_with(100,9)
     def test_existing_obs_only_shown_without_new_launch(self):
         with tempfile.TemporaryDirectory() as tmp:
             exe=Path(tmp)/'obs64.exe';exe.touch()

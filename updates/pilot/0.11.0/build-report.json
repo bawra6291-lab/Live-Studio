@@ -1,0 +1,39 @@
+{
+  "version": "0.11.0",
+  "source_commit": "c865f71d4ec7245dd9e68a6156ba349be60ebd54",
+  "source_tree": "273573eb0de19c0a99d4f37f2554cc154a90c91d",
+  "checks": {
+    "controller_tests": 279,
+    "browser_flows": 17,
+    "browser_errors": 0,
+    "development_run": 38775249444,
+    "android_run": 38775249471,
+    "obs_layout_run": 38775249537,
+    "windows_installer": "passed",
+    "updater_staging": "0.10.8 -> 0.11.0 passed; installed source unchanged",
+    "payload_source_match": 93,
+    "real_platform_actions": "none"
+  },
+  "publication_scope": {
+    "reference_document_sha256": "662e41b5b4b8a03922446dc4fbe731a2ea52676f9670a9d6fabd3b03885aabcb",
+    "reference_document_git_blob": "270bd517052ff13b88350423db2e0fa7e81c1a83",
+    "same_reference_bytes_as_existing_public_0.10.8_release": true,
+    "new_private_photos_or_screenshots": false,
+    "credentials_included": false
+  },
+  "capabilities": {
+    "facebook": "explicit photo publishing using saved Page credentials",
+    "instagram": "separate Instagram Login token and temporary ImgBB hosting",
+    "youtube_photos": "assisted handoff; manually confirmed published link",
+    "whatsapp": "8 community entries + 1 channel; user sends and confirms; no automatic API delivery claim"
+  },
+  "package": {
+    "app_id": "iskcon-live-desk",
+    "version": "0.11.0",
+    "update_format": 1,
+    "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.11.0/ISKCON-Live-Desk.zip",
+    "size": 747162,
+    "sha256": "7c67078779afe80676be53d91bfc797a93c5c9ecc32e82d1f27744b6aff2a766",
+    "notes": "New DARSHANFLOW tabs for Photos, Publish, Connections and WhatsApp. Reuse saved Facebook/YouTube accounts; separate Instagram Login token connection. Ordered YouTube photo handoff and screenshot-style sharing to 8 community entries plus a channel. YouTube and WhatsApp final posting is assisted. Saved live settings retained."
+  }
+}

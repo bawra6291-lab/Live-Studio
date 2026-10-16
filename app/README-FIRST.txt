@@ -1,7 +1,15 @@
-ISKCON Kolkata — Live Desk v0.5.1
+Live Desk Pilot — v0.8.6
 
 Extract the whole ZIP. Close the previous app. Open OPEN-LIVE-DESK.cmd.
-Alternative in this folder: py launcher.py
+Normal launch opens the dashboard only; the host runs in the background.
+PC controls: OBS, Windows startup, logs, recovery launcher and Quit Live Desk.
+Mobile access: enable local Wi-Fi access and generate a pairing code here.
+Closing the browser does not stop automation. Open OPEN-LIVE-DESK.cmd again
+to return to the same running controller. Use PC controls -> Quit Live Desk
+to stop the background app. The recovery launcher opens only when requested
+or when the default browser cannot open.
+Troubleshooting: OPEN-LIVE-DESK-DIAGNOSTICS.cmd intentionally shows a console.
+OBS, UAC and explicitly requested update controls still use their own windows.
 If dependencies are missing: py -m pip install -r requirements.txt
 
 NEW v0.5: In-app Updates panel, HTTPS feed check/download/install, offline ZIP

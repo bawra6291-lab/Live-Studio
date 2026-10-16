@@ -1,0 +1,42 @@
+{
+  "version": "0.8.2",
+  "channel": "pilot",
+  "source_commit": "b8e1e7073df61cbae71ec5c2f09dcd95221af7ab",
+  "source_tree": "028f8096229b072159e9cf04474dd9a1f0b3aaa9",
+  "archive_sha256": "10548a5ca05914df54d7cdc05619e4e9cc942541797fb8683591ca910b4ac396",
+  "archive_size": 147380,
+  "files": 45,
+  "ci_run": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/37671817947",
+  "checks": {
+    "archive_matches_committed_source": true,
+    "archive_hashes": true,
+    "no_operator_data_packaged": true,
+    "updater_0_8_1_stages_and_swaps": true,
+    "previous_app_backup": true,
+    "sibling_runtime_and_operator_settings_preserved": true,
+    "persistent_browser_profile_preserved": true,
+    "published_blob_matches_local_git_sha": true
+  },
+  "validation": {
+    "app_tests_windows_and_linux": 173,
+    "relay_tests_windows_and_linux": 12,
+    "desktop_mobile_browser_flows": 9,
+    "visible_chromium_fixture": "passed: existing browser WebSocket-only managed tabs, retained dummy sign-in, actual input recording/replay, persistent socket and disconnect without closing tabs or launching Chrome; dedicated reattachment checks retained",
+    "windows_native_smoke": "passed",
+    "windows_installer_build_install_uninstall": "passed"
+  },
+  "installer_artifact": {
+    "url": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/37671817947/artifacts/11505637020",
+    "github_artifact_digest": "sha256:6305a30ffe611be857255fceb6cf3a58cb3f0ce6cb51a7b9f0b27876c72fc1bf",
+    "expires": "2026-10-21T19:06:54Z",
+    "signed": false
+  },
+  "limitations": [
+    "Actual Windows chrome://inspect permission dialog and operator's signed-in YouTube/Facebook/camera acceptance were not performed by CI.",
+    "Normal Chrome connection supports the standard Windows stable Chrome User Data debug marker; other channels/custom roots are not discovered.",
+    "Connect my Chrome is required locally after browser/app restart; Chrome permission is never bypassed.",
+    "Website sessions may expire; website login and API verification credentials are separate.",
+    "Visible workflows require reviewed account-specific recipes; native OBS mouse clicks, file uploads and legacy camera plugins remain unsupported.",
+    "Pilot is unsigned; relay hosting and production onboarding/signing gates remain external."
+  ]
+}

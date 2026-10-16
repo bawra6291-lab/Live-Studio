@@ -1,0 +1,9 @@
+{
+  "app_id": "iskcon-live-desk",
+  "version": "0.8.0",
+  "update_format": 1,
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.8.0/ISKCON-Live-Desk.zip",
+  "size": 141205,
+  "sha256": "9b5ca10c18a47cc66efb203abb8730424bba07603719ed51746ad1e7f4b14dae",
+  "notes": "PILOT 0.8.0: Adds weekly/one-date schedules, skipped dates, preparation preview, recorded-run inspection and targeted ending, settings backup/restore, paired-device roles/revocation, and optional outbound HTTPS remote control. Saved credentials and the existing Official stream key selection remain. Remote internet access needs a separately deployed relay; it is off by default. Pause automation and finish any active live, recording or replay before installing. This pilot still requires real-PC/site validation and is not a signed production release."
+}

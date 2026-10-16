@@ -8,6 +8,13 @@ class FakeOBS(OBS):
     def __init__(self,cfg):
         super().__init__(cfg,None);self.current=cfg['obs_profile'];self.active=False;self.calls=[]
         self.profiles=[self.current];self.pending=None;self.lag=0;self.fail_return=False
+        self.layout_calls=[];self.layout_error=None
+    def layout_request(self,action,token=''):
+        self.layout_calls.append((action,token,self.current,len(self.calls)))
+        if self.layout_error and action==self.layout_error:
+            self.layout_error=None
+            raise SetupError('Layout could not be confirmed.')
+        return {'token':'captured-layout'}
     def idle(self):
         if self.active:raise SetupError('Active')
     def check_profile(self):
@@ -52,10 +59,14 @@ class Tests(unittest.TestCase):
         self.assertEqual(self.obs.current,'Untitled')
         backups=list(self.folder.glob('obs-multi-rtmp.before-iskcon-*.json'))
         self.assertEqual(len(backups),1);self.assertEqual(backups[0].read_bytes(),raw)
+        self.assertEqual(self.obs.layout_calls[0],('capture','','Untitled',0))
+        self.assertEqual(self.obs.layout_calls[-1][:3],('restore','captured-layout','Untitled'))
+        self.assertEqual(self.obs.layout_calls[-1][3],len(self.obs.calls))
     def test_active_output_prevents_mutation(self):
         raw=self.path.read_bytes();self.obs.active=True
         with self.assertRaises(SetupError):self.obs.prepare_fb_output('rtmps://live-api-s.facebook.com/rtmp/key')
         self.assertEqual(self.path.read_bytes(),raw);self.assertFalse(self.obs.calls)
+        self.assertFalse(self.obs.layout_calls)
     def test_async_create_is_polled_before_mutating_or_switching(self):
         self.obs.lag=3
         with patch('connections.time.sleep') as sleep:
@@ -72,6 +83,19 @@ class Tests(unittest.TestCase):
         self.assertEqual(self.path.read_bytes(),raw)
         self.assertEqual(self.obs.current,'Untitled')
         self.assertNotIn('private-key',str(err.exception))
+    def test_missing_helper_blocks_before_switch_and_keeps_fb_key(self):
+        raw=self.path.read_bytes();self.obs.layout_error='capture'
+        with self.assertRaisesRegex(SetupError,'capture OBS layout.*Layout could not'):
+            self.obs.prepare_fb_output('rtmps://live-api-s.facebook.com/rtmp/private-key')
+        self.assertEqual(self.path.read_bytes(),raw)
+        self.assertFalse(any(kind=='CreateProfile' for kind,_ in self.obs.calls))
+    def test_failed_final_layout_restore_recovers_fb_backup_and_retries_layout(self):
+        raw=self.path.read_bytes();self.obs.layout_error='restore'
+        with self.assertRaisesRegex(SetupError,'restore OBS layout.*Original profile restored'):
+            self.obs.prepare_fb_output('rtmps://live-api-s.facebook.com/rtmp/private-key')
+        self.assertEqual(self.path.read_bytes(),raw)
+        self.assertEqual(self.obs.current,'Untitled')
+        self.assertEqual([a for a,_,_,_ in self.obs.layout_calls],['capture','restore','restore'])
     def test_switch_failure_restores_backup_and_preserves_actual_error(self):
         raw=self.path.read_bytes();self.obs.fail_return=True
         with patch('connections.time.sleep'),self.assertRaisesRegex(SetupError,'restore original profile.*code 500') as err:

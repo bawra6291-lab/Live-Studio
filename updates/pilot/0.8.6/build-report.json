@@ -1,0 +1,40 @@
+{
+  "version": "0.8.6",
+  "channel": "pilot",
+  "source_commit": "50283b8d104d123340169812675e5c83fbb864e4",
+  "source_tree": "8f437079f7e10b6a16358af65a7b3bc25c280f2a",
+  "archive_sha256": "8c4ba953fd2d558624e806537eb01d3ff3c6b9b2ee84c0208273852ea8d323e5",
+  "archive_size": 155970,
+  "files": 49,
+  "ci_run": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/37824366588",
+  "checks": {
+    "archive_matches_committed_source": true,
+    "archive_hashes": true,
+    "updater_0_8_5_stages_and_swaps": true,
+    "previous_app_backup": true,
+    "operator_settings_browser_and_runtime_preserved": true
+  },
+  "validation": {
+    "app_tests_windows_and_linux": 182,
+    "windows_hidden_Tk_host_and_same_controller_recovery": "passed",
+    "desktop_mobile_browser_flows": 10,
+    "local_headless_shell_browser_flows": 10,
+    "local_only_auth_csrf_viewer_and_queue_boundaries": "passed",
+    "Windows_native_smoke": "passed",
+    "Windows_installer_build_install_uninstall": "passed",
+    "visible_browser_and_remote_browser_regressions": "passed",
+    "desktop_and_650px_control_layout": "screenshots reviewed"
+  },
+  "installer_artifact": {
+    "url": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/37824366588/artifacts/11570053618",
+    "digest": "sha256:2c9d5b81981b77ed5c0a13b1ac4ba254df6c102a20183764611f41c7e9a6c020",
+    "expires": "2026-10-22T18:28:33Z",
+    "signed": false
+  },
+  "limitations": [
+    "Actual operator PC launch/reopen remains to be confirmed after installing.",
+    "OBS, Windows UAC and explicitly requested updates remain native windows.",
+    "An old console may remain during the first update restart from a console-based version; quit the app and reopen OPEN-LIVE-DESK.cmd once.",
+    "No real platform live, camera, Windows task or saved operator credentials were used by validation."
+  ]
+}

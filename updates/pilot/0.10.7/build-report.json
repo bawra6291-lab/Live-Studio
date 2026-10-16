@@ -1,0 +1,83 @@
+{
+  "version": "0.10.7",
+  "source_commit": "0ac6c8e871d8be719d60216753994f05421c4d7f",
+  "source_tree": "f66501a4fc9af5e338f060983e97dfe9c4dfe173",
+  "package": {
+    "size": 723252,
+    "sha256": "7adebb5eba0cb508065cc5245e83614d63fe4ff5e2d9a608529191681091d652",
+    "files_matched_to_source": 88
+  },
+  "original_html": {
+    "sha256": "662e41b5b4b8a03922446dc4fbe731a2ea52676f9670a9d6fabd3b03885aabcb",
+    "bytes": 568723,
+    "preserved_byte_for_byte": true
+  },
+  "upgrade": {
+    "from": "0.10.6",
+    "to": "0.10.7",
+    "prepare_update": "passed",
+    "existing_app_untouched": true
+  },
+  "validation": {
+    "local_python": {
+      "tests_run": 268,
+      "skipped": 1,
+      "status": "passed"
+    },
+    "hosted_runs": {
+      "development": 38682485373,
+      "android": 38682485314,
+      "obs_layout": 38682485301
+    },
+    "real_platform_posts_sent": false,
+    "real_live_stream_started": false,
+    "camera_movement_requested": false,
+    "telegram_messages_sent": false,
+    "dashboard_browser": {
+      "status": "passed",
+      "flows": 15,
+      "uncaught_browser_errors": 0,
+      "artifact_id": 11948234099,
+      "viewports": [
+        1440,
+        390,
+        320
+      ],
+      "checks": [
+        "Original served HTML SHA-256",
+        "Old interface absent",
+        "Operator-only document access",
+        "Inline CSP isolated to studio",
+        "7/10/17 sequence navigation",
+        "Caption persistence",
+        "Upload byte preservation",
+        "Photo swap and navigation retention",
+        "No legacy jobs enqueued"
+      ]
+    },
+    "screenshots_reviewed": true,
+    "windows_tk_fixture": "Real Tk host runs in a dedicated child process, avoiding Tcl cleanup by unrelated HTTP threads.",
+    "html_checkout_policy": "Git text conversion disabled for the exact supplied HTML, including Windows.",
+    "windows_python": {
+      "status": "passed",
+      "tests_run": 268,
+      "skipped": 0
+    },
+    "windows_native_smoke": "passed",
+    "desktop_window_lifecycle": "passed",
+    "hosted_controller_jobs": "passed on Linux and Windows",
+    "windows_installer": "built, installed, relocated runtime validated, and uninstalled successfully",
+    "hosted_run_results": {
+      "development": "success",
+      "android": "success",
+      "obs_layout": "success"
+    },
+    "android_pairing_control": "passed",
+    "release_status": "validated"
+  },
+  "notes": [
+    "Previous Social Media interface is no longer loaded or served. Existing records are retained and the legacy queue is paused at startup.",
+    "The supplied studio uses its own unchanged connection setup and browser storage; it does not import saved Windows credentials.",
+    "The supplied YouTube assist/webhook behavior, photo persistence and mobile layout are unchanged."
+  ]
+}

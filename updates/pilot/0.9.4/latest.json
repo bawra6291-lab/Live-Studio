@@ -1,0 +1,9 @@
+{
+  "app_id": "iskcon-live-desk",
+  "version": "0.9.4",
+  "update_format": 1,
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.9.4/ISKCON-Live-Desk.zip",
+  "size": 259979,
+  "sha256": "1f30e30febc87f328a9ed1e961d8e3d09422adee5ef581709ca513353c26efe9",
+  "notes": "Compact Schedule: program summaries, timing/camera/title tabs, expandable camera steps, sticky Save bar, and new local SVG icons. Saved plans and connections are preserved."
+}

@@ -1,0 +1,54 @@
+{
+  "version": "0.12.0",
+  "source_commit": "406d6f1e35ceb50b9256d4b711630f6349a4440a",
+  "source_tree": "76f95c2c612bae867b53d4d5eb15de09353c2334",
+  "checks": {
+    "controller_tests": 299,
+    "browser_flows": 20,
+    "browser_errors": 0,
+    "remote_tests": 24,
+    "development_run": 38847637393,
+    "development_attempt": 2,
+    "windows_native_reopen": "passed on retry after an initial rotated-session timeout on the CI runner; no source changes or test relaxation",
+    "android_run": 38847637468,
+    "obs_layout_run": 38847637495,
+    "windows_installer": "passed",
+    "updater_staging": "0.11.1 -> 0.12.0 passed; installed source unchanged",
+    "payload_source_match": 98,
+    "real_platform_actions": "none; mocked platform adapters only"
+  },
+  "publication_scope": {
+    "reference_document_sha256": "662e41b5b4b8a03922446dc4fbe731a2ea52676f9670a9d6fabd3b03885aabcb",
+    "reference_document_git_blob": "270bd517052ff13b88350423db2e0fa7e81c1a83",
+    "same_reference_bytes_as_existing_public_0.11.1_release": true,
+    "new_private_photos_or_screenshots": false,
+    "credentials_included": false,
+    "uploaded_html": "Read for feature comparison; raw uploaded file was not added to the public repository"
+  },
+  "features": [
+    "Selected 7/10/mixed17/both section controls",
+    "Facebook selected 7/10-photo or two-post publishing",
+    "Reviewed connected-account batch drafts, durable receipts and no automatic replay",
+    "Ordered ZIP download with separate 7+10 folders",
+    "Selected photo-set WhatsApp assisted sharing",
+    "Explicit IST date in existing caption title",
+    "Reference/Today separation, direct replacement and all-slot swaps",
+    "Observed dispatch progress and saved batch reviews",
+    "Readable mobile preview thumbnails"
+  ],
+  "limits": {
+    "youtube_photos": "assisted handoff; user publishes and confirms link",
+    "whatsapp": "assisted sharing; final send and delivery check in WhatsApp",
+    "instagram": "existing separate Instagram Login token and temporary ImgBB hosting; real first-post validation still required",
+    "telegram": "existing bot/channel verification and explicit reviewed album posting"
+  },
+  "package": {
+    "app_id": "iskcon-live-desk",
+    "version": "0.12.0",
+    "update_format": 1,
+    "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.12.0/ISKCON-Live-Desk.zip",
+    "size": 768178,
+    "sha256": "a4981d51f79dc89b97ea562b02843860e47bb99bd86d531a1f78da41d2076592",
+    "notes": "Adds photo-section controls (7, 10, mixed 17, or both), reviewed connected-account batches, ordered ZIP downloads, selected-photo WhatsApp sharing, IST caption dates, reference/today comparison and direct slot replacement. Facebook can use selected 7/10-photo sets or two posts. YouTube and WhatsApp final publishing remains assisted. Saved live connections and schedules are retained."
+  }
+}

@@ -1,0 +1,62 @@
+name: OBS layout helper validation
+on:
+  pull_request:
+    branches: [main]
+    paths: ['native/obs-layout/**', '.github/workflows/obs-layout.yml']
+permissions:
+  contents: read
+jobs:
+  windows-layout:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'codex/product-foundation'
+    runs-on: windows-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Download and verify official OBS Qt SDK
+        shell: pwsh
+        run: |
+          Invoke-WebRequest 'https://github.com/obsproject/obs-deps/releases/download/2025-07-11/windows-deps-qt6-2025-07-11-x64.zip' -OutFile qt.zip
+          if ((Get-FileHash qt.zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne '0e76bf0555dd5382838850b748d3dcfab44a1e1058441309ab54e1a65b156d0a') { throw 'Qt SDK checksum mismatch' }
+          Expand-Archive qt.zip qt-sdk
+          $config = Get-ChildItem qt-sdk -Recurse -Filter Qt6Config.cmake | Select-Object -First 1
+          if (-not $config) { throw 'Qt6 SDK configuration missing' }
+          $prefix = $config.Directory.Parent.Parent.Parent.FullName
+          "QT_PREFIX=$prefix" | Out-File $env:GITHUB_ENV -Append
+          (Join-Path $prefix 'bin') | Out-File $env:GITHUB_PATH -Append
+          "QT_PLUGIN_PATH=$(Join-Path $prefix 'plugins')" | Out-File $env:GITHUB_ENV -Append
+      - name: Build release helper and run actual Qt window regression
+        shell: pwsh
+        run: |
+          cmake -S native/obs-layout -B native-build -A x64 "-DCMAKE_PREFIX_PATH=$env:QT_PREFIX"
+          if ($LASTEXITCODE -ne 0) { throw 'CMake configuration failed' }
+          cmake --build native-build --config Release
+          if ($LASTEXITCODE -ne 0) { throw 'Native build failed' }
+          & native-build/Release/layout-fixture.exe (Resolve-Path native-build/Release/live-desk-layout.dll)
+          if ($LASTEXITCODE -ne 0) { throw 'Qt layout fixture failed' }
+      - name: Save validated payload on an isolated artifact branch
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs=require('fs'), crypto=require('crypto');
+            const source=context.payload.pull_request.head.sha;
+            const dll=fs.readFileSync('native-build/Release/live-desk-layout.dll');
+            const sha=crypto.createHash('sha256').update(dll).digest('hex');
+            const payload='sha256:'+sha+'\n'+dll.toString('base64')+'\n';
+            const report={source_commit:source,dll_sha256:sha,size:dll.length,platform:'windows-x64',qt_fixture:'passed',run_id:context.runId,note:'No live streams, camera, user OBS or UAC operations tested.'};
+            const {owner,repo}=context.repo;
+            const base=await github.rest.git.getCommit({owner,repo,commit_sha:source});
+            const tree=await github.rest.git.createTree({owner,repo,base_tree:base.data.tree.sha,tree:[
+              {path:'app/OBS-LAYOUT-PAYLOAD.txt',mode:'100644',type:'blob',content:payload},
+              {path:'native/obs-layout/build-report.json',mode:'100644',type:'blob',content:JSON.stringify(report,null,2)+'\n'}]});
+            const commit=await github.rest.git.createCommit({owner,repo,message:'Validated OBS layout helper artifact for '+source,tree:tree.data.sha,parents:[source]});
+            await github.rest.git.createRef({owner,repo,ref:'refs/heads/artifacts/obs-layout-'+source,sha:commit.data.sha});
+            core.info('Validated artifact commit: '+commit.data.sha);
+      - uses: actions/upload-artifact@v5
+        with:
+          name: validated-obs-layout-helper
+          path: native-build/Release/live-desk-layout.dll
+          retention-days: 14

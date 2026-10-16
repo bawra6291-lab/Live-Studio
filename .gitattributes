@@ -1,0 +1,2 @@
+# Preserve the user-supplied document exactly, including on Windows checkouts.
+app/web/darshanflow.html -text

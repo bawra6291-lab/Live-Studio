@@ -1,0 +1,58 @@
+{
+  "version": "0.10.2",
+  "source_commit": "e6dccb9fe7b40a3e25a88b5f6276c139c9093466",
+  "source_tree": "7f4eba8123cee18f676e7693746f5bd8de402e77",
+  "package_sha256": "b01c62670fea0ca71b30ce533fabb920e8c9449f132174902ecb87a339bee46f",
+  "package_size": 309179,
+  "source_payload_files": 78,
+  "source_payload_matches_git_tree": true,
+  "upgrade_validation": {
+    "from": "0.10.1",
+    "to": "0.10.2",
+    "dependencies_unchanged": true
+  },
+  "python_tests": 246,
+  "browser_flows": 15,
+  "browser_javascript_errors": 0,
+  "visual_qa": [
+    "1440px desktop",
+    "390px mobile",
+    "320px mobile"
+  ],
+  "validation": [
+    {
+      "name": "Development validation",
+      "id": 38433108960,
+      "conclusion": "success",
+      "url": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/38433108960"
+    },
+    {
+      "name": "OBS layout helper validation",
+      "id": 38433109112,
+      "conclusion": "success",
+      "url": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/38433109112"
+    },
+    {
+      "name": "Android companion validation",
+      "id": 38433108958,
+      "conclusion": "success",
+      "url": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/38433108958"
+    }
+  ],
+  "new_checks": [
+    "Bulk preview does not remove files; unconfirmed and stale approvals rejected",
+    "Select all photos, cancel and confirmed bulk removal in actual browser",
+    "Optional exact unused-draft removal and batch slot clearing",
+    "Approved/posting/posted/review/manual-ready media retained",
+    "Metadata failure restores staged files; restart recovery handles both commit states",
+    "Busy local files retained without blocking other unused files",
+    "Operator authentication, Origin/CSRF and viewer restrictions preserved",
+    "No original imported PC file, credential, live schedule or external platform post modified"
+  ],
+  "limitations": [
+    "Actual operator-PC installation and account posting require operator verification.",
+    "Photos referenced by approved, posted or review records remain protected.",
+    "Maximum 500 selected files per operation.",
+    "YouTube Community and Instagram 3:4 portrait remain manual handoffs in this release."
+  ]
+}

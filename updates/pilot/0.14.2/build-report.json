@@ -1,0 +1,39 @@
+{
+  "version": "0.14.2",
+  "source_commit": "ce682b08eef71f9860ee8233c067fab5c7ec1a2f",
+  "source_tree": "1499201cd8e85ffd100c2221ff67b0b1e9422dae",
+  "payload_files": 102,
+  "package_size": 789184,
+  "sha256": "2c6ced6f3999df94aa5f7ce9501b28f5fe75a2aae741e867f13d327eac97aa32",
+  "validation": {
+    "development_run": 38932393046,
+    "controller_tests": 317,
+    "remote_controller_tests": 24,
+    "dashboard_flows": 21,
+    "youtube_local_cdp_cases": 27,
+    "windows_native_lifecycle": "passed",
+    "windows_install_runtime_uninstall": "passed",
+    "obs_helper_run": 38932393066,
+    "development": "passed",
+    "obs_helper": "passed",
+    "android_run": 38932393014,
+    "android_build": "passed",
+    "android_emulator": "blocked before launch: SDK system-image download failed with Error on ZipFile unknown archive; no Android code changed"
+  },
+  "updater_staging": {
+    "from": "0.14.1",
+    "to": "0.14.2",
+    "old_install_unchanged": true,
+    "payload_matches_tested_source": true,
+    "requirements_changed": false
+  },
+  "preserved_reference_sha256": "662e41b5b4b8a03922446dc4fbe731a2ea52676f9670a9d6fabd3b03885aabcb",
+  "real_platforms_contacted": false,
+  "real_account_acceptance": "not performed",
+  "known_limitations": [
+    "Screenshots show a text-only post and an app job still uploading. They do not establish who dispatched that post.",
+    "Live YouTube DOM acceptance still requires the operator test. Unsupported upload or attachment renderers stop without claiming success.",
+    "Published receipt checks count and caption; it does not compare the downloaded published images pixel-for-pixel.",
+    "No automatic replay or deletion of the existing text-only post."
+  ]
+}

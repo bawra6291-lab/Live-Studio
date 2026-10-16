@@ -1,0 +1,9 @@
+{
+  "app_id": "iskcon-live-desk",
+  "version": "0.13.0",
+  "update_format": 1,
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.13.0/ISKCON-Live-Desk.zip",
+  "size": 776213,
+  "sha256": "1605a460d1384233174f4555ac7ea2cd103c91cd7b1788fe75b196e628c19603",
+  "notes": "YouTube Community photos now upload and publish automatically in your connected running Chrome. Individual Send and Send to all support 7- and 10-photo posts, caption entry, one Publish click and verified new post links. No manual link-paste or photo-upload step. Connect Chrome locally and keep Windows unlocked. Real-account acceptance still needs a supervised first post; no real account was used by automated tests."
+}

@@ -1,0 +1,13 @@
+Live Desk 0.9.0 — operator guide
+
+1. Overview: Live progress mein recorded run ke exact steps aur camera due time dikhte hain. Verified connection aur current live alag hain.
+2. Observed live status: OBS program image about every 15 seconds; YouTube/Facebook status about every minute. Yeh sample preview hai, real-time video nahi. Unknown/unavailable ko live/offline proof na samjhein.
+3. Readiness: missing Google JSON, unchecked connections, missing thumbnail, unreviewed workflow ko repair links se fix karein. Enable fresh check karta hai.
+4. Run history: Pause, exact event open, Inspect recorded run, then repair. Reset ko fresh inactive inspection chahiye. No automatic duplicate/replay. Mark reviewed pending actions cancel karta hai; live end nahi karta.
+5. Program content: har program ka title template {date} | {program}, same saved description, aur day 1–31 JPEG/PNG thumbnails. Upload <=2 MB, then Save program content. Unmapped days reference thumbnail. Existing Official key remains unchanged. Unfinished runs original frozen plan rakhte hain. Portable settings backup stores mappings; image files remain on the original PC, so reupload on a new PC.
+6. Visible mode: calendar thumbnail ke liye YouTube — upload daily thumbnail workflow record/review karein. Unique CSS file-input upload step aur final result assertion required. Ordinary browser clicks remain visible; managed upload selects the saved image without an OS file dialog. API mode platform writes remain API calls; progress screen shows the results.
+7. Updates: dashboard mein Check, Download & install, progress/result, Restore previous app version. Pause and finish OBS streaming/recording/replay first. Checksum/backup retained. Recovery update window still available for local ZIP recovery. No YouTube/Facebook setup reset. After restart, check connections and explicitly enable.
+8. Tray: Windows notification area mein Live Desk icon. Double click opens dashboard; right click Open / Pause / Quit. Closing dashboard tab keeps PC app running. Explicit Quit stops future actions and phone controls; existing live continues.
+9. Phone internet app: existing paired app remains installed. New web controls load from existing relay. Command receipt: queued -> sent -> received/running -> completed/failed. Enable completed means schedule armed, not live started. 45 seconds is acceptance deadline, not stream duration. No replay after restart. Phone can pause then End recorded live; ownership is checked on the PC.
+
+Validation uses isolated fixtures and Windows CI. Real YouTube/Facebook publishing, camera movement, UAC/admin OBS, and actual visible-page workflows still need a supervised test on the livestream PC. Keep PC awake, logged in and unlocked for visible execution.

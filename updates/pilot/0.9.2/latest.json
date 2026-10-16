@@ -1,0 +1,9 @@
+{
+  "app_id": "iskcon-live-desk",
+  "version": "0.9.2",
+  "update_format": 1,
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.9.2/ISKCON-Live-Desk.zip",
+  "size": 214645,
+  "sha256": "d719cf8a39c5534c8d1aaece98863e856a35f2c69a0a23014a40bb6195051349",
+  "notes": "Desktop dashboard window with browser fallback. After updating, pause automation and finish OBS outputs; use PC controls > Set up desktop window once. Window close keeps automation and phone control running. Microsoft Edge WebView2 Runtime required. Saved credentials, schedules and Official stream key are reused."
+}

@@ -148,3 +148,38 @@ Start with Windows sirf Windows login ke baad app kholta hai.
 Default settings: %LOCALAPPDATA%\ISKCON-Live-Start
 Secrets: Windows Credential Manager, same ISKCON-Live-Start service.
 Python-based Windows app; standalone EXE/installer ya Android APK nahi.
+OBS LAYOUT PROTECTION (0.9.1, one-time setup)
+1. Automation Pause karo aur current live/recording ko normally finish karo.
+2. OBS ko normally close karo. Setup OBS ko force-close nahi karta.
+3. Live Desk -> This PC -> Set up OBS layout protection.
+4. Windows UAC approve karo; READY ke baad Enter dabao.
+5. Open / Show OBS, phir Check connections.
+6. OBS panels apni pasand se arrange karo. FB profile reload se pehle current
+   layout capture hota hai aur original profile par lautne ke baad restore hota hai.
+   Open / Show OBS visible window ko resize/maximize nahi karega.
+7. Hidden YouTube Live Control Panel hidden rahega. Chrome login aur Official
+   stream key unchanged hain. Helper missing/restore unconfirmed ho to new live
+   start nahi bheja jayega; Activity ki instruction follow karo.
+Helper Windows x64 / standard OBS 32 ke liye hai; pehla real PC test supervised rakho.
+
+
+RUNNING LIVE KO CONTROL KARNA (0.10.6)
+Agar aapne YouTube aur Facebook live manually shuru ki hai:
+1. Live Desk mein Pause automation karein; live ko band na karein.
+2. Schedule mein program ke camera steps aur end time pehle se saved hone chahiye.
+3. Overview > Control running live kholein. Program aur uski IST start date chunein.
+4. Inspect running live dabayein. Ye sirf read-only check hai.
+5. Dono live titles, remaining camera steps aur end time review karein.
+6. Take control & enable > Confirm karein. Confirmation par live dobara verify hoti hai.
+Ye session sirf isi existing live ko control karta hai. Nayi live create, OBS restart
+ya doosre programs start nahi hote. Saved end time blank ho to end manual rahega.
+After BOTH live camera delays actual platform start time se calculate hote hain;
+jo camera step takeover se pehle beet chuka hai wo skip hota hai. Future steps chalte hain.
+Dono platforms, same existing Official stream, configured FB target aur stable OBS
+outputs verify hone chahiye. Unknown/restarted/wrong outputs par control refuse hota hai.
+Preview 90 seconds mein expire hota hai. Credentials/stream keys preview mein nahi aate.
+Pause automation se camera aur scheduled end pause honge; live apne aap end nahi hogi.
+App restart ke baad saved recorded plan resume karne ke liye Enable automation karein.
+Run history se paused state mein End this recorded live bhi available hai.
+App se pehle verified-started run ko normal Enable automation se resume karein.
+Partial preparation tabhi attach hoti hai jab saved broadcast IDs running live se exact match hon.

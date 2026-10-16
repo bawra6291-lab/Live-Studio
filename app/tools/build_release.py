@@ -8,7 +8,7 @@ from updater import APP_ID, https_url, version_key
 def build(source,output,base_url=None,notes=''):
     source=Path(source).resolve();output=Path(output).resolve();output.mkdir(parents=True,exist_ok=True)
     version=json.loads((source/'version.json').read_text('utf-8'))['version'];version_key(version)
-    allowed={'.py','.txt','.cmd','.ps1','.json','.css','.js','.svg','.html'}
+    allowed={'.py','.txt','.cmd','.ps1','.json','.css','.js','.svg','.html','.ico'}
     files={}
     for p in sorted(source.rglob('*')):
         rel=p.relative_to(source)

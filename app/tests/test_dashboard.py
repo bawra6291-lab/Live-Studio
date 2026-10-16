@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from dashboard import Controller, DashboardServer, Handler
-from core import atomic_json
+from core import atomic_json, now_ist
 
 class Vault:
     def __init__(self):self.values={'facebook_page_token':'sensitive-page-token','camera_password':'private-camera-password'}
@@ -24,6 +24,7 @@ class Service:
 class Tests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();Service.calls=0;Service.gate=None
+        atomic_json(Path(self.tmp.name)/'settings.json',{})  # Existing-install migration fixture.
         self.vault=Vault();self.c=Controller(self.tmp.name,Service,self.vault)
         self.server=DashboardServer(('127.0.0.1',0),self.c,'test-pairing-code')
         self.thread=threading.Thread(target=self.server.serve_forever,daemon=True);self.thread.start()
@@ -58,6 +59,33 @@ class Tests(unittest.TestCase):
         self.assertEqual(self.request('/api/updates/open',{},**{'X-CSRF-Token':'wrong'})[0],403)
         self.assertEqual(self.request('/api/updates/open',{})[0],200)
         self.c.open_updates.assert_called_once()
+    def test_desktop_controls_require_local_owner_csrf_and_confirmation(self):
+        from desktop_host import DesktopHost
+        self.c.desktop_host=DesktopHost()
+        payload={'action':'obs'}
+        self.assertEqual(self.request('/api/desktop/action',payload)[0],401)
+        local=self.login();self.assertTrue(local['desktop_host']['available'])
+        self.assertEqual(self.request('/api/desktop/action',payload,**{'X-CSRF-Token':'wrong'})[0],403)
+        with patch.object(Handler,'local',return_value=False):
+            self.assertIsNone(self.request('/api/state')[1]['desktop_host'])
+            self.assertEqual(self.request('/api/desktop/action',payload)[0],403)
+        with self.server.auth_lock:
+            token=self.cookie.split('=',1)[1];self.server.sessions[token]['role']='viewer'
+        self.assertEqual(self.request('/api/desktop/action',payload)[0],403)
+        with self.server.auth_lock:self.server.sessions[token]['role']='owner'
+        self.assertEqual(self.request('/api/desktop/action',{'action':'quit'})[0],409)
+        self.assertEqual(self.request('/api/desktop/action',{'action':'arbitrary-shell'})[0],409)
+        self.assertFalse(self.c.desktop_host.snapshot()['busy'])
+        self.assertEqual(self.request('/api/desktop/action',payload)[0],202)
+        self.assertTrue(self.c.desktop_host.snapshot()['busy'])
+        self.assertEqual(self.request('/api/desktop/action',payload)[0],409)
+        dispatched=[]
+        self.c.desktop_host.drain(lambda action,ip:dispatched.append(action) or 'OBS shown in QA')
+        self.assertEqual(dispatched,['obs'])
+        self.assertEqual(self.request('/api/state')[1]['desktop_host']['message'],'OBS shown in QA')
+        self.c.maintenance=True
+        self.assertEqual(self.request('/api/desktop/action',payload)[0],409)
+
     def test_wrong_code_and_rate_limit(self):
         for _ in range(8):self.assertEqual(self.request('/api/login',{'code':'bad'})[0],401)
         self.assertEqual(self.request('/api/login',{'code':'test-pairing-code'})[0],429)
@@ -80,6 +108,43 @@ class Tests(unittest.TestCase):
             self.assertEqual(self.request('/api/settings',{'camera_password':'new'})[0],403)
             self.assertEqual(self.request('/api/action',{'action':'youtube'})[0],403)
         self.assertEqual(self.vault.get('camera_password'),'private-camera-password')
+
+    def test_browser_only_save_with_unresolved_run_preserves_run_mode_and_destinations(self):
+        self.login()
+        journal=self.c.base/'journal.json'
+        atomic_json(journal,{now_ist().date().isoformat()+':test-program':{
+            'phase':'needs_review','yt_id':'abcdefghijk','fb_id':'12345678',
+            'plan':{'name':'Retained test program','at':'04:30'},'last_error':'needs inspection'}})
+        before=journal.read_bytes();settings=self.c.path.read_bytes()
+        self.assertEqual(self.request('/api/visible/save',{'browser_source':'running_chrome','confirmed':True})[0],200)
+        self.assertEqual(self.c.visible.config['mode'],'api')
+        self.assertEqual(self.c.visible.config['recipes'],{})
+        self.assertEqual(self.c.visible.browser.source,'running_chrome')
+        self.assertEqual(journal.read_bytes(),before)
+        self.assertEqual(self.c.path.read_bytes(),settings)
+        self.assertEqual(Service.calls,0)
+        # The existing combined button is also permitted if mode is unchanged.
+        self.assertEqual(self.request('/api/visible/save',{'mode':'api','browser_source':'running_chrome','confirmed':True})[0],200)
+        for payload in ({'mode':'visible','browser_source':'running_chrome'},
+                        {'flow':'youtube_go','recipe':{},'browser_source':'running_chrome'},
+                        {'browser_source':'dedicated','recipe':{}}):
+            status,result,_=self.request('/api/visible/save',{**payload,'confirmed':True})
+            self.assertEqual(status,409);self.assertIn('recent run',result['error'])
+        self.assertEqual(journal.read_bytes(),before)
+        self.assertEqual(self.c.visible.config['mode'],'api')
+        self.assertEqual(self.c.visible.browser.source,'running_chrome')
+
+    def test_browser_selection_requires_pause_confirmation_and_local_pc(self):
+        self.login();payload={'browser_source':'running_chrome','confirmed':True}
+        with patch.object(Handler,'local',return_value=False):
+            self.assertEqual(self.request('/api/visible/save',payload)[0],403)
+        self.assertEqual(self.request('/api/visible/save',{'browser_source':'running_chrome'})[0],409)
+        self.c.armed=True
+        try:
+            status,result,_=self.request('/api/visible/save',payload)
+            self.assertEqual(status,409);self.assertIn('Pause automation',result['error'])
+            self.assertEqual(self.c.visible.browser.source,'dedicated')
+        finally:self.c.armed=False
     def test_save_preserves_blank_credentials_and_unknown_settings(self):
         self.login();self.c.cfg['future_option']='keep'
         self.assertEqual(self.request('/api/settings',{'obs_scene':'Main 2','facebook_page_token':''})[0],200)

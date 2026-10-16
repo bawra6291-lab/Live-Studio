@@ -1,3 +1,14 @@
+v0.8.6: Dashboard-only normal startup
+
+Use the existing Updates panel on this PC: Check for updates -> Download & install.
+Pause automation and finish live/recording first. Saved connections, credentials,
+schedules, browser profiles and internet enrollment remain in their existing location.
+After installing, launch OPEN-LIVE-DESK.cmd (or your installed shortcut).
+PC controls are in the dashboard sidebar; local Wi-Fi settings are in Mobile access.
+No black Python console or recovery launcher stays open during normal startup.
+If an old console remains during the first update restart, quit Live Desk from
+PC controls once, then reopen with OPEN-LIVE-DESK.cmd.
+
 ISKCON LIVE DESK — IN-APP UPDATES (v0.5.2)
 
 ONE-TIME UPGRADE

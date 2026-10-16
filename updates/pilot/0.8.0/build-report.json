@@ -1,0 +1,38 @@
+{
+  "version": "0.8.0",
+  "channel": "pilot",
+  "source_commit": "ff60ccc15f151dbddcf3510907751976411fd9c5",
+  "archive_sha256": "9b5ca10c18a47cc66efb203abb8730424bba07603719ed51746ad1e7f4b14dae",
+  "archive_size": 141205,
+  "files": 45,
+  "checks": {
+    "archive_matches_local_source": true,
+    "archive_hashes": true,
+    "no_operator_data_packaged": true,
+    "updater_0_7_1_stages_and_swaps": true,
+    "backup_created": true,
+    "bundled_runtime_preserved": true,
+    "legacy_migration_and_official_selection": true,
+    "archive_matches_committed_source": true
+  },
+  "limitations": [
+    "Upgrade simulation uses a disposable folder; actual operator-PC handoff is not verified.",
+    "Real OBS/platform/camera acceptance tests were deferred by the user.",
+    "Optional relay code is supplied but no hosting or production OAuth onboarding is deployed.",
+    "Windows installer and update feed are pilot/unsigned; publisher signing and public release review remain gates."
+  ],
+  "ci_run": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/37294294299",
+  "validation": {
+    "app_tests_windows_and_linux": 162,
+    "relay_tests_windows_and_linux": 12,
+    "desktop_mobile_browser_flows": 9,
+    "visible_chromium_fixture": "passed",
+    "windows_installer_build_install_uninstall": "passed"
+  },
+  "installer_artifact": {
+    "url": "https://github.com/bawra6291-lab/Live-Studio/actions/runs/37294294299/artifacts/11337549288",
+    "sha256": "bbddf51f1b4efa6363c6163a4b45d7c6877cb5b0a26d74a2c839ae68841389d1",
+    "expires": "2026-10-19",
+    "signed": false
+  }
+}
