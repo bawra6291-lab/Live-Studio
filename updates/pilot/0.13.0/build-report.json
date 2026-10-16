@@ -1,0 +1,72 @@
+{
+  "version": "0.13.0",
+  "source_commit": "18fdb7e8e8e3faf8e6afa3431b863500ccd79a33",
+  "source_tree": "9fe6e9259aca2050bcf2fbbbbe36c94feab8e7c6",
+  "package": {
+    "app_id": "iskcon-live-desk",
+    "version": "0.13.0",
+    "update_format": 1,
+    "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.13.0/ISKCON-Live-Desk.zip",
+    "size": 776213,
+    "sha256": "1605a460d1384233174f4555ac7ea2cd103c91cd7b1788fe75b196e628c19603",
+    "notes": "YouTube Community photos now upload and publish automatically in your connected running Chrome. Individual Send and Send to all support 7- and 10-photo posts, caption entry, one Publish click and verified new post links. No manual link-paste or photo-upload step. Connect Chrome locally and keep Windows unlocked. Real-account acceptance still needs a supervised first post; no real account was used by automated tests."
+  },
+  "validation": {
+    "development_run": 38861597882,
+    "controller_windows_job": 116844893177,
+    "controller_linux_job": 116844893568,
+    "dashboard_job": 116844893558,
+    "installer_job": 116844893620,
+    "android_run": 38861597925,
+    "obs_layout_run": 38861597937,
+    "all_workflows": "success",
+    "unit_tests": 307,
+    "remote_python_tests": 24,
+    "dashboard_flows": 20,
+    "dashboard_errors": [],
+    "production_adapter_local_chromium_cases": 9,
+    "local_browser_cases": [
+      "7-photo ordered upload and publish",
+      "10-photo upload dialog and publish",
+      "wrong channel blocks before upload",
+      "existing composer retained",
+      "changed caption blocks publication",
+      "changed photo order blocks publication",
+      "ambiguous Post control blocks publication",
+      "uncertain result dispatches Publish exactly once and never claims success",
+      "corrupted media blocks before upload"
+    ],
+    "screenshots_artifact": 12028994677,
+    "native_windows_lifecycle": "passed including rotated pairing",
+    "installer": "installed, runtime checked, uninstalled",
+    "viewports": [
+      320,
+      390,
+      1440
+    ],
+    "payload_matches_source_files": 99,
+    "updater_stage": "0.12.2 -> 0.13.0; dependencies unchanged; current installation unchanged"
+  },
+  "behavior": [
+    "New DARSHANFLOW YouTube photo drafts use browser delivery rather than manual handoff",
+    "Existing consented running Chrome only; never opens a new login profile",
+    "Visible account verification, caption entry, ordered local JPG upload, one Publish click and a matching new permalink receipt",
+    "Individual Send and reviewed Send to all execute the same publisher",
+    "Photos are integrity checked and copied into temporary numbered JPG paths; no download UI",
+    "Old manual drafts can explicitly create a new automatic review; old manual receipts stay retained",
+    "Wrong identity, existing composer, altered photos/text, ambiguous controls or uncertain results stop for review; no automatic repeat",
+    "WhatsApp sharing remains a separate manual step"
+  ],
+  "requirements": [
+    "Logged-in and unlocked Windows desktop",
+    "My running Chrome selected and Chrome browser-control permission granted locally",
+    "Intended channel primary owner in Chrome; Advanced account settings must show the exact selected channel ID"
+  ],
+  "real_account_acceptance": "NOT performed. The real YouTube website/account has not been used to validate the current DOM variant. First publication needs supervised acceptance on the operator PC. Fixture success does not establish compatibility with every YouTube UI variant.",
+  "real_social_posts_sent": false,
+  "real_live_obs_camera_actions_performed": false,
+  "preserved": {
+    "original_reference_sha256": "662e41b5b4b8a03922446dc4fbe731a2ea52676f9670a9d6fabd3b03885aabcb",
+    "live_settings_and_official_stream_key": "unchanged"
+  }
+}
