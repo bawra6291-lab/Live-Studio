@@ -27,8 +27,17 @@ DOM = r'''(arg => {
  const button=(label,root=document)=>unique(all('button,[role="button"]',root).filter(n=>norm(n.getAttribute('aria-label')||text(n)).toLowerCase()===label));
  const field=()=>{const r=box();return r&&unique(all('[contenteditable="true"],[contenteditable="plaintext-only"],textarea',r));};
  const input=()=>{const r=box(),nodes=all('input[type="file"]').filter(n=>/image|\.jpg|\.png/i.test(n.accept||'')&&n.multiple);return nodes.length===1?nodes[0]:r&&all('input[type="file"]',r).length===1?all('input[type="file"]',r)[0]:null;};
- const images=()=>{const roots=[box(),...all('ytd-backstage-image-upload-renderer').filter(visible)].filter(Boolean);return [...new Set(roots.flatMap(r=>all('ytd-backstage-image-renderer img, ytd-backstage-image-upload-renderer img, #attachments img, #image-attachment-previewer img, #image-attachment-preview img, img',r).filter(n=>(n.currentSrc||n.src)&&n.naturalWidth>32&&n.naturalHeight>32).filter(n=>r.tagName==='YTD-BACKSTAGE-IMAGE-UPLOAD-RENDERER'||n.closest('ytd-backstage-image-renderer, ytd-backstage-image-upload-renderer, #attachments, #image-attachment-previewer, #image-attachment-preview'))).map(n=>n.currentSrc||n.src))];};
- const posts=()=>all('ytd-backstage-post-renderer').map(n=>{const d=n.data||{},content=n.querySelector('#content-text'),links=all('a[href*="/post/"]',n),author=n.querySelector('#author-text, #author-thumbnail'),ident=d.authorEndpoint?.browseEndpoint?.browseId;return {caption:d.contentText?.runs?.map(r=>r.text||'').join('')||d.contentText?.simpleText||content?.innerText||content?.textContent||'',published:text(n.querySelector('#published-time-text'))||d.publishedTimeText?.simpleText||d.publishedTimeText?.runs?.map(r=>r.text||'').join('')||'',url:links.map(a=>a.href).find(u=>/\/post\/[A-Za-z0-9_-]+/.test(u))||(typeof d.postId==='string'&&/^Ug[\w-]+$/.test(d.postId)?location.origin+'/post/'+d.postId:''),authors:[...new Set([ident,author?.getAttribute('href')?.match(/\/channel\/(UC[\w-]{22})(?:[/?#]|$)/)?.[1]].filter(s=>typeof s==='string'&&/^UC[\w-]{22}$/.test(s)))]};});
+ const uploaders=()=>all('ytd-backstage-image-upload-renderer').filter(visible);
+ const attachedImages=root=>root?[...new Set(all('img',root).filter(n=>(n.currentSrc||n.src)&&n.naturalWidth>32&&n.naturalHeight>32&&(root.tagName==='YTD-BACKSTAGE-IMAGE-UPLOAD-RENDERER'||n.closest('ytd-backstage-image-renderer, ytd-backstage-image-upload-renderer, #attachments, #image-attachment-previewer, #image-attachment-preview'))).map(n=>n.currentSrc||n.src))]:[];
+ const postPhotos=n=>{
+  const attachment=n.data?.backstageAttachment;
+  const items=attachment?.postMultiImageRenderer?.images;
+  const hasImage=r=>r?.image?.thumbnails?.some(t=>typeof t.url==='string'&&t.url.length>0);
+  if(Array.isArray(items))return items.filter(i=>hasImage(i.backstageImageRenderer)).length;
+  if(hasImage(attachment?.backstageImageRenderer))return 1;
+  return attachedImages(n).length;
+ };
+ const posts=()=>all('ytd-backstage-post-renderer').map(n=>{const d=n.data||{},content=n.querySelector('#content-text'),links=all('a[href*="/post/"]',n),author=n.querySelector('#author-text, #author-thumbnail'),ident=d.authorEndpoint?.browseEndpoint?.browseId;return {photos:postPhotos(n),caption:d.contentText?.runs?.map(r=>r.text||'').join('')||d.contentText?.simpleText||content?.innerText||content?.textContent||'',published:text(n.querySelector('#published-time-text'))||d.publishedTimeText?.simpleText||d.publishedTimeText?.runs?.map(r=>r.text||'').join('')||'',url:links.map(a=>a.href).find(u=>/\/post\/[A-Za-z0-9_-]+/.test(u))||(typeof d.postId==='string'&&/^Ug[\w-]+$/.test(d.postId)?location.origin+'/post/'+d.postId:''),authors:[...new Set([ident,author?.getAttribute('href')?.match(/\/channel\/(UC[\w-]{22})(?:[/?#]|$)/)?.[1]].filter(s=>typeof s==='string'&&/^UC[\w-]{22}$/.test(s)))]};});
  if(arg.action==='account'){
   // Read only the labelled account setting. A channel link elsewhere on the
   // page is not evidence of the signed-in account. Input values are absent
@@ -59,7 +68,7 @@ DOM = r'''(arg => {
  if(arg.action==='caption')return point(field()||box()?.querySelector('#placeholder-area'));
  if(arg.action==='image')return point(button('image',box()||document)||button('image'));
  if(arg.action==='input')return input();
- if(arg.action==='state'){const f=field(),i=input();return {caption:f?(f.value??f.innerText):'',photos:images().length,files:i?Array.from(i.files||[]).map(f=>({name:f.name,size:f.size})):[],publish:point(button('post',box()||document))};}
+ if(arg.action==='state'){const f=field(),i=input();return {caption:f?(f.value??f.innerText):'',photos:attachedImages(box()).length,uploadPhotos:Math.max(0,...uploaders().map(r=>attachedImages(r).length)),uploadOpen:uploaders().length>0,busy:!!box()&&all('[aria-busy="true"],[role="progressbar"]',box()).some(visible),files:i?Array.from(i.files||[]).map(f=>({name:f.name,size:f.size})):[],publish:point(button('post',box()||document))};}
  if(arg.action==='done')return point(button('done',box()||document)||button('done'));
  if(arg.action==='posts')return posts();
  if(arg.action==='focus')return !!field()&&(document.activeElement===field());
@@ -165,35 +174,38 @@ class YouTubePost:
                     self.click(page,self.wait(lambda:self.read(page,'createPost')))
                 self.wait(lambda:self.read(page,'composer'))
                 state=self.read(page,'state')
-                if state['caption'].strip() or state['photos'] or state['files']:
+                if state['caption'].strip() or state['photos'] or state['uploadOpen'] or state['files']:
                     raise SetupError('The YouTube composer already contains another draft. It was retained; finish or discard it locally before posting.',retryable=False)
                 self.s.checkpoint(job['id'],'youtube',status='posting',stage='Entering reviewed caption')
                 self.click(page,self.wait(lambda:self.read(page,'caption')))
                 if not self.read(page,'focus'):raise SetupError('YouTube caption field lost focus. No text was entered.',retryable=False)
                 page.call('Input.insertText',text=job['caption'])
                 self.s.checkpoint(job['id'],'youtube',status='posting',stage='Uploading '+str(len(files))+' photos in preview order')
+                # Activate YouTube's image-post flow before setting files. A
+                # hidden file input can exist even while the composer is text-only.
+                self.click(page,self.wait(lambda:self.read(page,'image'),message='YouTube Image button was not ready. No publish click was sent. Keep the Chrome tab open for review.'))
                 expression=DOM+'('+json.dumps({'action':'input'})+')'
-                result=page.call('Runtime.evaluate',expression=expression,returnByValue=False).get('result',{})
-                if result.get('subtype')!='node':
-                    self.click(page,self.wait(lambda:self.read(page,'image')))
-                    def file_node():
-                        self.guard(page);return page.call('Runtime.evaluate',expression=expression,returnByValue=False).get('result',{})
-                    result=self.wait(lambda:(r if (r:=file_node()).get('subtype')=='node' else None))
+                def file_node():
+                    self.guard(page);return page.call('Runtime.evaluate',expression=expression,returnByValue=False).get('result',{})
+                result=self.wait(lambda:(r if (r:=file_node()).get('subtype')=='node' else None),message='YouTube image picker did not open. No publish click was sent. Keep the Chrome tab open for review.')
                 obj=result['objectId']
                 try:
                     self.guard(page);page.call('DOM.setFileInputFiles',files=[str(p.resolve()) for p in files],objectId=obj)
                 finally:page.call('Runtime.releaseObject',objectId=obj)
-                def uploaded():
+                def uploaded(committed=False):
                     state=self.read(page,'state')
                     expected=[{'name':p.name,'size':p.stat().st_size} for p in files]
                     if state['files'] and state['files']!=expected:raise SetupError('YouTube selected photos do not match the reviewed order. Nothing was published.',retryable=False)
-                    return state if state['photos']==len(files) else None
-                self.wait(uploaded,self.UPLOAD_TIMEOUT)
+                    count=state['photos'] if committed else max(state['photos'],state['uploadPhotos'])
+                    return state if count==len(files) and (not committed or not state['uploadOpen'] and not state['busy']) else None
+                self.wait(uploaded,self.UPLOAD_TIMEOUT,message='YouTube did not display all selected photo previews. No publish click was sent. Check the open image picker; selected files alone do not confirm an upload.')
                 done=self.read(page,'done')
                 if done:self.click(page,done)
+                self.s.checkpoint(job['id'],'youtube',status='posting',stage='Verifying '+str(len(files))+' attached photos in YouTube composer')
+                self.wait(lambda:uploaded(True),self.UPLOAD_TIMEOUT,message='YouTube photos were not attached to the post after the image picker. Posting stopped to avoid a text-only post. No publish click was sent.')
                 self.s.checkpoint(job['id'],'youtube',status='posting',stage='Rechecking Chrome channel before Publish')
                 self.account(identity,channel)  # Recheck the current Chrome identity immediately before Publish.
-                state=self.wait(lambda:(s if (s:=uploaded()) and s['publish'] else None))
+                state=self.wait(lambda:(s if (s:=uploaded(True)) and s['publish'] else None),self.UPLOAD_TIMEOUT,message='YouTube photo post is not ready to publish. Check the attached photos and upload progress in Chrome. No publish click was sent.')
                 # Contenteditable renders inserted newlines as browser block nodes.
                 # Ignore layout whitespace while still requiring every word/emoji.
                 if ' '.join(state['caption'].split())!=' '.join(job['caption'].split()):
@@ -209,10 +221,10 @@ class YouTubePost:
                         if not url:continue
                         if (parsed.path not in before and origin(url)==origin(self.SITE) and re.fullmatch(r'/post/[A-Za-z0-9_-]+',parsed.path)
                                 and (post['published'].lower()=='just now' or re.fullmatch(r'\d{1,2} seconds? ago',post['published'].lower()))
-                                and post['authors']==[channel] and ' '.join(post['caption'].split())==wanted):matches.append(post)
+                                and post['authors']==[channel] and post['photos']==len(files) and ' '.join(post['caption'].split())==wanted):matches.append(post)
                     return matches[0] if len(matches)==1 else None
-                posted=self.wait(receipt,self.RECEIPT_TIMEOUT);url=self.SITE+urlsplit(posted['url']).path
-                self.s.checkpoint(job['id'],'youtube',status='published',stage='Published in Chrome; new post link verified',id=urlsplit(url).path.rsplit('/',1)[1],url=url,photos=len(files))
+                posted=self.wait(receipt,self.RECEIPT_TIMEOUT,message='YouTube publish was dispatched, but a new post with all reviewed photos could not be verified. Check YouTube; do not resend automatically.');url=self.SITE+urlsplit(posted['url']).path
+                self.s.checkpoint(job['id'],'youtube',status='published',stage='Published in Chrome; new post link and photo count verified',id=urlsplit(url).path.rsplit('/',1)[1],url=url,photos=len(files))
             finally:
                 if page:
                     try:page.call('Page.setInterceptFileChooserDialog',enabled=False)
