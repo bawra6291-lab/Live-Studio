@@ -24,7 +24,7 @@ with tempfile.TemporaryDirectory(prefix='youtube-post-fixture-') as folder:
         SITE=site;TIMEOUT=3;UPLOAD_TIMEOUT=4;RECEIPT_TIMEOUT=3
     adapter=FixturePost({},None,media,threading.Event(),browser)
     job={'id':'fixture-job','platforms':['youtube'],'studio_youtube_browser':True,'privacy':'public',
-         'media':ids,'caption':data['caption'],'targets':{'youtube':'UC'+'a'*22},'results':{}}
+         'media':ids,'caption':data['caption'],'targets':{'youtube':data['channel']},'results':{}}
     error=''
     try:adapter.publish(job)
     except Exception as exc:error=str(exc)

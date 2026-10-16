@@ -17,6 +17,7 @@ from visible_browser import origin
 
 DOM = r'''(arg => {
  const all=(s,r=document)=>Array.from(r.querySelectorAll(s));
+ const deep=(s,r=document)=>all(s,r).concat(all('*',r).flatMap(n=>n.shadowRoot?deep(s,n.shadowRoot):[]));
  const visible=n=>!!n&&n.getClientRects().length>0&&getComputedStyle(n).visibility!=='hidden';
  const text=n=>(n?.innerText||n?.textContent||'').trim();
  const norm=s=>s.replace(/\s+/g,' ').trim();
@@ -29,9 +30,28 @@ DOM = r'''(arg => {
  const images=()=>{const roots=[box(),...all('ytd-backstage-image-upload-renderer').filter(visible)].filter(Boolean);return [...new Set(roots.flatMap(r=>all('ytd-backstage-image-renderer img, ytd-backstage-image-upload-renderer img, #attachments img, #image-attachment-previewer img, #image-attachment-preview img, img',r).filter(n=>(n.currentSrc||n.src)&&n.naturalWidth>32&&n.naturalHeight>32).filter(n=>r.tagName==='YTD-BACKSTAGE-IMAGE-UPLOAD-RENDERER'||n.closest('ytd-backstage-image-renderer, ytd-backstage-image-upload-renderer, #attachments, #image-attachment-previewer, #image-attachment-preview'))).map(n=>n.currentSrc||n.src))];};
  const posts=()=>all('ytd-backstage-post-renderer').map(n=>{const d=n.data||{},content=n.querySelector('#content-text'),links=all('a[href*="/post/"]',n),author=n.querySelector('#author-text, #author-thumbnail'),ident=d.authorEndpoint?.browseEndpoint?.browseId;return {caption:d.contentText?.runs?.map(r=>r.text||'').join('')||d.contentText?.simpleText||content?.innerText||content?.textContent||'',published:text(n.querySelector('#published-time-text'))||d.publishedTimeText?.simpleText||d.publishedTimeText?.runs?.map(r=>r.text||'').join('')||'',url:links.map(a=>a.href).find(u=>/\/post\/[A-Za-z0-9_-]+/.test(u))||(typeof d.postId==='string'&&/^Ug[\w-]+$/.test(d.postId)?location.origin+'/post/'+d.postId:''),authors:[...new Set([ident,author?.getAttribute('href')?.match(/\/channel\/(UC[\w-]{22})(?:[/?#]|$)/)?.[1]].filter(s=>typeof s==='string'&&/^UC[\w-]{22}$/.test(s)))]};});
  if(arg.action==='account'){
-  const exact=all('#channel-id, [aria-label="Channel ID"], [aria-label="Channel ID"] input').flatMap(n=>[n.value||'',text(n),...all('input',n).map(i=>i.value||'')]);
-  const values=exact.length?exact.join(' '):document.body.innerText;
-  return [...new Set(values.match(/\bUC[A-Za-z0-9_-]{22}\b/g)||[])];
+  // Read only the labelled account setting. A channel link elsewhere on the
+  // page is not evidence of the signed-in account. Input values are absent
+  // from innerText; modern settings can also wrap them in open shadow roots.
+  const ids=s=>Array.from(String(s).matchAll(/(?:^|[^A-Za-z0-9_-])(UC[A-Za-z0-9_-]{22})(?=$|[^A-Za-z0-9_-])/g),m=>m[1]);
+  const value=n=>ids([n.value||'',text(n),...deep('input,textarea',n).filter(visible).map(i=>i.value||'')].join(' '));
+  const labels=deep('*').filter(n=>visible(n)&&(n.id==='channel-id'||/^channel id:?$/i.test(n.getAttribute('aria-label')||'')||(!n.children.length&&/^channel id:?$/i.test(text(n)))));
+  const found=[];
+  for(const label of labels){
+   const linked=deep('input,textarea').filter(n=>visible(n)&&((label.htmlFor&&n.id===label.htmlFor)||(label.id&&(n.getAttribute('aria-labelledby')||'').split(/\s+/).includes(label.id))));
+   let matches=[...value(label),...linked.flatMap(value)];
+   // A label and readonly field are often siblings inside a setting row.
+   let row=label;
+   for(let depth=0;!matches.length&&depth<3;depth++){
+    row=row.parentElement||row.getRootNode()?.host;
+    if(!row||row===document.body||row===document.documentElement)break;
+    const fields=deep('input,textarea',row).filter(visible);
+    if(fields.length===1)matches=value(fields[0]);
+    else if(!fields.length&&row.children.length<=3)matches=value(row);
+   }
+   found.push(...matches);
+  }
+  return [...new Set(found)];
  }
  if(arg.action==='composer')return !!box();
  if(arg.action==='create')return point(button('create'));
@@ -73,22 +93,39 @@ class YouTubePost:
         self.guard(page)
         return page.evaluate(DOM+'('+json.dumps({'action':action})+')')
 
-    def wait(self,fn,timeout=None):
+    def wait(self,fn,timeout=None,message=None):
         end=time.monotonic()+(timeout or self.TIMEOUT)
         while time.monotonic()<end:
             self.guard();value=fn()
             if value:return value
             time.sleep(.2)
-        raise SetupError('YouTube page did not reach the expected posting step. Inspect the Chrome tab; this draft will not be repeated automatically.',retryable=False)
+        raise SetupError(message or 'YouTube page did not reach the expected posting step. Inspect the Chrome tab; this draft will not be repeated automatically.',retryable=False)
 
     def navigate(self,page,path):
-        self.guard();page.call('Page.enable');page.call('Page.bringToFront');page.call('Page.navigate',url=self.SITE+path)
+        self.guard();page.call('Page.enable');page.call('Page.bringToFront')
+        navigation=page.call('Page.navigate',url=self.SITE+path)
+        if navigation.get('errorText'):
+            raise SetupError('Chrome could not load YouTube. Check the network and the open Chrome tab, then prepare a new draft. No publish click was sent.',retryable=False)
         def loaded():
+            # Reopening the identity tab must inspect the newly loaded account,
+            # not the previous document at the same URL.
+            loader=navigation.get('loaderId')
+            if loader and page.call('Page.getFrameTree').get('frameTree',{}).get('frame',{}).get('loaderId')!=loader:return False
             self.guard();address=page.evaluate('location.href')
             if not address or address=='about:blank':return False
             if origin(address)!=origin(self.SITE):return False
             return urlsplit(address).path.rstrip('/')==path.split('?',1)[0].rstrip('/') and page.evaluate('document.readyState') in ('interactive','complete')
-        self.wait(loaded)
+        try:
+            self.wait(loaded)
+        except SetupError:
+            # Do not turn cancellation or a locked desktop into a login error.
+            self.guard()
+            address=urlsplit(page.evaluate('location.href') or '')
+            if address.hostname in ('accounts.google.com','consent.youtube.com','consent.google.com') or address.path in ('/signin','/oops'):
+                raise SetupError('Chrome needs YouTube sign-in or consent. Complete the page already open in your running Chrome, then prepare a new draft. No publish click was sent.',retryable=False) from None
+            if path.startswith('/account_advanced'):
+                raise SetupError('YouTube Advanced settings did not open. In this Chrome profile, select the channel owner account and open YouTube Settings → Advanced settings, then prepare a new draft. No publish click was sent.',retryable=False) from None
+            raise
 
     def click(self,page,point):
         self.guard(page);page.call('Page.bringToFront')
@@ -97,7 +134,7 @@ class YouTubePost:
 
     def account(self,page,channel):
         self.navigate(page,'/account_advanced?hl=en')
-        identities=self.wait(lambda:self.read(page,'account'))
+        identities=self.wait(lambda:self.read(page,'account'),message='Chrome channel verification could not read the Channel ID in YouTube Advanced settings. Keep that tab open and check that the channel owner is selected. No photos were published; prepare a new draft after correcting the account.')
         if identities!=[channel]:raise SetupError('Chrome is signed into a different YouTube channel. Switch Chrome to the reviewed channel before sending. No post was published.',retryable=False)
 
     def publish(self,job):
@@ -154,6 +191,7 @@ class YouTubePost:
                 self.wait(uploaded,self.UPLOAD_TIMEOUT)
                 done=self.read(page,'done')
                 if done:self.click(page,done)
+                self.s.checkpoint(job['id'],'youtube',status='posting',stage='Rechecking Chrome channel before Publish')
                 self.account(identity,channel)  # Recheck the current Chrome identity immediately before Publish.
                 state=self.wait(lambda:(s if (s:=uploaded()) and s['publish'] else None))
                 # Contenteditable renders inserted newlines as browser block nodes.
