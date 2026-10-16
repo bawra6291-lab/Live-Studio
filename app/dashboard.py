@@ -595,11 +595,13 @@ class Handler(BaseHTTPRequestHandler):
                     job.update(title='Social post',caption='',media=[],targets={})
                     job['results']={p:{k:v for k,v in r.items() if k in ('status','stage','percent')} for p,r in (job['results'] or {}).items()}
             return self.reply(200,snapshot)
-        if path.startswith('/api/social/export/'):
+        if path.startswith('/api/social/export/') or path.startswith('/api/studio/export/'):
             session=self.auth()
             if not session:return self.reply(401,{'error':'Pair this device to continue.'})
             if session.get('role')=='viewer':return self.reply(403,{'error':'Photo packages are available to operators only.'})
-            try:archive=self.server.controller.social.export_post(path.rsplit('/',1)[1])
+            try:
+                method=self.server.controller.studio.export_package if path.startswith('/api/studio/export/') else self.server.controller.social.export_post
+                archive=method(path.rsplit('/',1)[1])
             except (ValueError,OSError) as exc:return self.reply(409,{'error':str(exc) if isinstance(exc,ValueError) else 'Could not prepare the photo package.'})
             try:
                 archive.seek(0,2);size=archive.tell();archive.seek(0)
@@ -644,6 +646,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(200,{'devices':rows,'pairing_minutes_left':max(0,int((self.server.pair_expires-time.monotonic())/60))})
         assets={'/takeover.js':('takeover.js','text/javascript; charset=utf-8'),'/':('index.html','text/html; charset=utf-8'),'/style.css':('style.css','text/css; charset=utf-8'),'/app.js':('app.js','text/javascript; charset=utf-8'),'/icon.svg':('icon.svg','image/svg+xml'),'/features.js':('features.js','text/javascript; charset=utf-8'),'/darshanflow-host.js':('darshanflow-host.js','text/javascript; charset=utf-8'),'/darshanflow-host.css':('darshanflow-host.css','text/css; charset=utf-8'),'/darshanflow-theme.css':('darshanflow-theme.css','text/css; charset=utf-8')}
         assets.update({'/darshanflow-studio.js':('darshanflow-studio.js','text/javascript; charset=utf-8'),'/darshanflow-studio.css':('darshanflow-studio.css','text/css; charset=utf-8')})
+        assets['/darshanflow-extras.js']=('darshanflow-extras.js','text/javascript; charset=utf-8')
         if path not in assets:return self.reply(404,{'error':'Not found.'})
         name,ctype=assets[path];return self.reply(200,(WEB/name).read_bytes(),ctype)
     def social_media(self,ident):
@@ -696,7 +699,7 @@ class Handler(BaseHTTPRequestHandler):
             if session.get('role')=='viewer':return self.reply(403,{'error':'This device has view-only access. Pair with an operator code to control the PC.'})
             if path.startswith('/api/studio/'):
                 if path in ('/api/studio/instagram','/api/studio/telegram','/api/studio/check') and not self.local():return self.reply(403,{'error':'Set up posting accounts on this PC.'})
-                routes={'/api/studio/save':c.studio.save,'/api/studio/instagram':c.studio.save_instagram,'/api/studio/telegram':c.studio.save_telegram,'/api/studio/check':c.studio.check,'/api/studio/prepare':c.studio.prepare,'/api/studio/send':c.studio.send,'/api/studio/receipt':c.studio.receipt}
+                routes={'/api/studio/save':c.studio.save,'/api/studio/instagram':c.studio.save_instagram,'/api/studio/telegram':c.studio.save_telegram,'/api/studio/check':c.studio.check,'/api/studio/prepare':c.studio.prepare,'/api/studio/send':c.studio.send,'/api/studio/receipt':c.studio.receipt,'/api/studio/batch/prepare':c.studio.prepare_batch,'/api/studio/batch/send':c.studio.send_batch,'/api/studio/export':c.studio.prepare_export}
                 if path not in routes:return self.reply(404,{'error':'Posting action not found.'})
                 return self.reply(200,routes[path](data))
             if path.startswith('/api/social/'):

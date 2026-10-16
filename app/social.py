@@ -225,7 +225,7 @@ class Social:
         if not asset or not path.is_file() or path.stat().st_size!=asset['size']:raise ValueError('Saved media is missing or damaged.')
         return path,asset
 
-    def export_post(self, ident):
+    def export_post(self, ident, *, _job=None, groups=None):
         """Operator download; produces no platform writes or posting receipts.
 
         A spooled archive bounds memory usage even for a full 17-photo batch.
@@ -235,7 +235,7 @@ class Social:
         output=None
         try:
             with self.lock:
-                self.ready();job=copy.deepcopy(self.job(ident));assets=[]
+                self.ready();job=copy.deepcopy(_job if _job is not None else self.job(ident));assets=[]
                 for m in job['media']:
                     path,a=self.media_path(m)
                     if not a['type'].startswith('image/'):raise ValueError('Ordered packages are for photo posts.')
@@ -244,12 +244,19 @@ class Social:
             output=tempfile.SpooledTemporaryFile(max_size=2*1024*1024)
             manifest={'title':job['title'],'caption':job['caption'],'platforms':job['platforms'],
                 'delivery':job.get('delivery','api'),'publish_at':job['publish_at'],
-                'revision':job['revision'],'cover':1,'photos':[]}
+                    'revision':job['revision'],'cover':1,'photos':[]}
+            if groups:manifest['groups']=[{'folder':name,'photos':count,'cover':1} for name,count in groups]
             with ZipFile(output,'w',ZIP_STORED) as archive:
                 for i,(path,a) in enumerate(assets,1):
                     name=re.sub(r'[^\w. -]','_',a['name']).strip('. ')[:120] or 'photo'
                     if not name.lower().endswith(('.jpg','.jpeg','.png')):name+='.jpg' if a['type']=='image/jpeg' else '.png'
-                    name=f'{i:02d}_{name}';digest=hashlib.sha256()
+                    number=i;folder=''
+                    if groups:
+                        offset=0
+                        for label,count in groups:
+                            if i<=offset+count:folder=label+'/';number=i-offset;break
+                            offset+=count
+                    name=f'{folder}{number:02d}_{name}';digest=hashlib.sha256()
                     with path.open('rb') as src,archive.open(name,'w') as dest:
                         for chunk in iter(lambda:src.read(CHUNK),b''):digest.update(chunk);dest.write(chunk)
                     if digest.hexdigest()!=a['id']:raise ValueError('A photo changed or is damaged. Re-import it before posting.')

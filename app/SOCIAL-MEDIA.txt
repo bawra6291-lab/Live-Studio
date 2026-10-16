@@ -1,6 +1,16 @@
-DARSHANFLOW / Live Desk 0.11.1
+DARSHANFLOW / Live Desk 0.12.0
 
 PHOTOS -> PUBLISH -> CONNECTIONS -> WHATSAPP
+
+SECTION CONTROLS (0.12.0)
+- In Publish, choose 7 portrait, 10 landscape, 17 mixed, or both posts (7 + 10). This updates the destination cards. Facebook now also supports a selected 7/10-photo post or two separate posts.
+- For 17 mixed, Instagram and YouTube prepare TWO full posts (7 + 10), and Telegram prepares two albums. Nothing is silently reduced to the first seven images. WhatsApp/download retain the selected mixed order.
+- Review all connected accounts prepares verified Facebook/Instagram/Telegram drafts plus available YouTube handoffs. Check every destination, photo and caption in the batch preview. Publish reviewed API posts sends them sequentially; YouTube remains a manual handoff. WhatsApp uses its sharing controls.
+- An API failure stops the batch. Successful receipts remain; uncertain items require review. Not-yet-attempted items return to draft. A started batch is not automatically retried, including after app restart. Saved reviews are available above the destination cards.
+- Download selected photos creates one ordered ZIP with the full caption and order manifest. Both posts creates separate portrait and landscape folders. Downloads do not create platform posts.
+- Review WhatsApp photos prepares the selected full set. Share photos + caption opens the device share sheet when supported. Otherwise download/extract the ZIP and copy the caption. Check delivery in WhatsApp; no automatic community/channel sending is claimed.
+- Caption date is explicitly in IST. Add / update date in title retains your text, description and hashtags and replaces only a date added by that button.
+- In Photos, click a slot to replace its uploaded image. Reference and Today previews remain separate. The original reference is never overwritten. Swap can select any of the 17 positions. All export/publish images are fitted without cropping; real uploaded photos are required.
 
 Photos: upload 7 portraits and 10 landscapes together, check and swap the suggested order. Reference images are guides and cannot be published. A full selection is required before preparing a post. The original supplied reference document remains byte-for-byte unchanged; the host adds the workspace.
 
