@@ -24,10 +24,10 @@ DOM = r'''(arg => {
  const box=()=>unique(all('ytd-backstage-post-dialog-renderer, ytd-backstage-post-creation-box-renderer').filter(n=>!n.querySelector('ytd-backstage-post-dialog-renderer, ytd-backstage-post-creation-box-renderer')));
  const point=n=>{if(!n||n.disabled||n.getAttribute('aria-disabled')==='true')return null;n.scrollIntoView({block:'center'});const r=n.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2,top=document.elementFromPoint(x,y);return top&&(top===n||n.contains(top))?{x,y}:null;};
  const button=(label,root=document)=>unique(all('button,[role="button"]',root).filter(n=>norm(n.getAttribute('aria-label')||text(n)).toLowerCase()===label));
- const field=()=>{const r=box();return r&&unique(all('[contenteditable="true"],textarea',r));};
+ const field=()=>{const r=box();return r&&unique(all('[contenteditable="true"],[contenteditable="plaintext-only"],textarea',r));};
  const input=()=>{const r=box(),nodes=all('input[type="file"]').filter(n=>/image|\.jpg|\.png/i.test(n.accept||'')&&n.multiple);return nodes.length===1?nodes[0]:r&&all('input[type="file"]',r).length===1?all('input[type="file"]',r)[0]:null;};
- const images=()=>{const r=box();if(!r)return [];return [...new Set(all('ytd-backstage-image-renderer img, ytd-backstage-image-upload-renderer img, #attachments img, #image-attachment-previewer img, #image-attachment-preview img',r).filter(n=>n.currentSrc||n.src).filter(n=>n.naturalWidth>32&&n.naturalHeight>32).map(n=>n.currentSrc||n.src))];};
- const posts=()=>all('ytd-backstage-post-renderer').map(n=>{const content=n.querySelector('#content-text'),links=all('a[href*="/post/"]',n),authors=all('a[href*="/channel/"]',n);return {caption:content?.innerText||content?.textContent||'',published:text(n.querySelector('#published-time-text')),url:links.map(a=>a.href).find(u=>/\/post\/[A-Za-z0-9_-]+/.test(u))||'',authors:[...new Set(authors.map(a=>a.getAttribute('href').match(/\/channel\/(UC[\w-]{22})(?:[/?#]|$)/)?.[1]).filter(Boolean))]};});
+ const images=()=>{const roots=[box(),...all('ytd-backstage-image-upload-renderer').filter(visible)].filter(Boolean);return [...new Set(roots.flatMap(r=>all('ytd-backstage-image-renderer img, ytd-backstage-image-upload-renderer img, #attachments img, #image-attachment-previewer img, #image-attachment-preview img, img',r).filter(n=>(n.currentSrc||n.src)&&n.naturalWidth>32&&n.naturalHeight>32).filter(n=>r.tagName==='YTD-BACKSTAGE-IMAGE-UPLOAD-RENDERER'||n.closest('ytd-backstage-image-renderer, ytd-backstage-image-upload-renderer, #attachments, #image-attachment-previewer, #image-attachment-preview'))).map(n=>n.currentSrc||n.src))];};
+ const posts=()=>all('ytd-backstage-post-renderer').map(n=>{const d=n.data||{},content=n.querySelector('#content-text'),links=all('a[href*="/post/"]',n),author=n.querySelector('#author-text, #author-thumbnail'),ident=d.authorEndpoint?.browseEndpoint?.browseId;return {caption:d.contentText?.runs?.map(r=>r.text||'').join('')||d.contentText?.simpleText||content?.innerText||content?.textContent||'',published:text(n.querySelector('#published-time-text'))||d.publishedTimeText?.simpleText||d.publishedTimeText?.runs?.map(r=>r.text||'').join('')||'',url:links.map(a=>a.href).find(u=>/\/post\/[A-Za-z0-9_-]+/.test(u))||(typeof d.postId==='string'&&/^Ug[\w-]+$/.test(d.postId)?location.origin+'/post/'+d.postId:''),authors:[...new Set([ident,author?.getAttribute('href')?.match(/\/channel\/(UC[\w-]{22})(?:[/?#]|$)/)?.[1]].filter(s=>typeof s==='string'&&/^UC[\w-]{22}$/.test(s)))]};});
  if(arg.action==='account'){
   const exact=all('#channel-id, [aria-label="Channel ID"], [aria-label="Channel ID"] input').flatMap(n=>[n.value||'',text(n),...all('input',n).map(i=>i.value||'')]);
   const values=exact.length?exact.join(' '):document.body.innerText;
@@ -156,7 +156,9 @@ class YouTubePost:
                 if done:self.click(page,done)
                 self.account(identity,channel)  # Recheck the current Chrome identity immediately before Publish.
                 state=self.wait(lambda:(s if (s:=uploaded()) and s['publish'] else None))
-                if state['caption'].replace('\r\n','\n').strip()!=job['caption'].replace('\r\n','\n').strip():
+                # Contenteditable renders inserted newlines as browser block nodes.
+                # Ignore layout whitespace while still requiring every word/emoji.
+                if ' '.join(state['caption'].split())!=' '.join(job['caption'].split()):
                     raise SetupError('YouTube caption differs from the reviewed preview. Nothing was published.',retryable=False)
                 before.update(urlsplit(p['url']).path for p in self.read(page,'posts'))
                 self.s.checkpoint(job['id'],'youtube',status='posting',stage='Publish click dispatched; awaiting a new post link',write_dispatched=True)
