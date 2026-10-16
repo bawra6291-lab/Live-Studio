@@ -21,6 +21,18 @@ class StudioBatch:
                     or any(p not in ('facebook','instagram','youtube','telegram') for p in platforms) or not isinstance(media,dict)):
                 raise ValueError('Select the accounts to include in this review.')
             specs=[]
+            # WhatsApp is a reviewed manual handoff, never an API send or receipt.
+            whatsapp=data.get('whatsapp')
+            if whatsapp is not None:
+                if not isinstance(whatsapp,dict) or whatsapp.get('mode')!=section:raise ValueError('Review the selected WhatsApp photo section.')
+                values=whatsapp.get('media');caption=whatsapp.get('caption','');title=whatsapp.get('title','Daily darshan')
+                if not isinstance(values,list) or len(values)!={'P1':7,'P2':10,'FB':17,'BOTH':17}.get(section):raise ValueError('Upload every reviewed WhatsApp photo.')
+                if any(not isinstance(v,str) for v in values) or len(set(values))!=len(values):raise ValueError('Use a different photo in every WhatsApp position.')
+                if not isinstance(caption,str) or len(caption)>5000 or not isinstance(title,str) or len(title)>100:raise ValueError('Shorten the WhatsApp title or caption.')
+                for ident in values:
+                    _,asset=self.s.media_path(ident)
+                    if not asset['type'].startswith('image/'):raise ValueError('Choose photos for WhatsApp.')
+                whatsapp={'mode':section,'media':values.copy(),'caption':caption,'title':title,'status':'manual_ready'}
             for platform in platforms:
                 groups=media.get(platform,{})
                 if not isinstance(groups,dict):raise ValueError('Upload every selected photo sequence.')
@@ -33,6 +45,7 @@ class StudioBatch:
                 jobs=[self.prepare(spec,_persist=False) for spec in specs]
                 batch={'id':secrets.token_hex(12),'revision':1,'section':section,'jobs':[j['id'] for j in jobs],
                        'revisions':{j['id']:j['revision'] for j in jobs},'status':'draft','created_at':now_ist().isoformat(),'error':''}
+                if whatsapp is not None:batch['whatsapp']=whatsapp
                 self.data.setdefault('batches',[]).append(batch)
                 self.data['batches']=self.data['batches'][-30:]
                 self.s.persist();self.persist()
@@ -68,7 +81,7 @@ class StudioBatch:
                         self.publisher(item)(cfg,self.c.vault,self.s,self.s.stop).publish(item)
                         with self.s.lock:self.s.job(item['id'])['status']='published';self.s.persist()
                     with self.s.lock:
-                        batch['status']='manual_ready' if any(j['platforms']==['youtube'] for j in jobs) else 'completed';self.persist()
+                        batch['status']='manual_ready' if batch.get('whatsapp') or any(j['platforms']==['youtube'] for j in jobs) else 'completed';self.persist()
                 except Exception as exc:
                     with self.s.lock:
                         error=self.s.safe_failure(exc)

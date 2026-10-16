@@ -87,6 +87,29 @@ class BatchTests(unittest.TestCase):
         restarted=Studio(self.c);self.assertEqual(restarted.data['batches'][0]['status'],'needs_review')
         self.assertEqual(FakePublisher.sent,[])
 
+    def test_whatsapp_handoff_survives_restart_without_becoming_an_api_receipt(self):
+        self.connected();media=self.photos(17)
+        batch=self.st.prepare_batch({'section':'BOTH','platforms':['facebook'],
+            'media':{'facebook':{'P1':media[:7],'P2':media[7:]}},'title':'Darshan','caption':'Caption',
+            'whatsapp':{'mode':'BOTH','media':media,'title':'Darshan','caption':'Exact WhatsApp caption'}})
+        with patch('studio.Publisher',FakePublisher):self.send(batch);self.wait()
+        restored=Studio(self.c).data['batches'][0]
+        self.assertEqual(restored['status'],'manual_ready')
+        self.assertEqual(restored['whatsapp'],{'mode':'BOTH','media':media,'title':'Darshan','caption':'Exact WhatsApp caption','status':'manual_ready'})
+        self.assertEqual(FakePublisher.sent,batch['jobs'])
+        self.assertTrue(all('whatsapp' not in self.s.job(i)['results'] for i in batch['jobs']))
+        self.assertFalse(self.st.data.get('receipts'))
+
+    def test_invalid_whatsapp_handoff_creates_no_partial_batch(self):
+        self.connected();media=self.photos(17)
+        for handoff in [{'mode':'P1','media':media},{'mode':'BOTH','media':media[:7]},
+                        {'mode':'BOTH','media':media[:16]+media[:1]},
+                        {'mode':'BOTH','media':media,'caption':'x'*5001}]:
+            with self.assertRaises(ValueError):self.st.prepare_batch({'section':'BOTH','platforms':['facebook'],
+                'media':{'facebook':{'P1':media[:7],'P2':media[7:]}},'whatsapp':handoff})
+        self.assertEqual(self.s.data['jobs'],[]);self.assertFalse(self.st.data.get('batches'))
+        self.assertEqual(FakePublisher.sent,[])
+
     def test_local_zip_has_separate_7_and_10_folders_caption_and_no_posting_receipt(self):
         media=self.photos(17)
         export=self.st.prepare_export({'mode':'BOTH','media':media,'title':'Darshan','caption':'Full caption'})
