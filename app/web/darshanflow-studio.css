@@ -63,7 +63,8 @@ body .shell{max-width:1280px;margin:0 auto;padding:20px 22px 36px}
 .sf-target button{padding:8px!important;font-size:11px!important}
 .sf-receipt{border-top:1px solid #e0e5db;padding:14px 0;font-size:12px;overflow-wrap:anywhere}
 .sf-thumbs{display:flex;gap:6px;overflow:auto;padding:14px 0}
-.sf-thumbs img{width:52px;height:68px;object-fit:contain;background:#edf2e9;border-radius:5px}
+.sf-thumbs img{width:52px;height:68px;flex:0 0 52px;object-fit:contain;background:#edf2e9;border-radius:5px}
+.sf-panel[id]{scroll-margin-top:180px}
 #sf-root details{border-top:1px solid #e0e5db;margin-top:16px;padding-top:14px;font-size:12px}
 #sf-root summary{cursor:pointer;font-weight:600;color:#45604e}
 #sf-root ol{padding-left:20px;line-height:1.8;color:#4b6556}
