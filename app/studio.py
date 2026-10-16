@@ -12,6 +12,7 @@ from connections import Facebook, YouTube, SetupError
 from social_publish import Publisher
 from telegram_publish import Telegram, channel_id, bot_token, caption_length
 from studio_batch import StudioBatch
+from studio_workflow import StudioWorkflow, fingerprint
 from youtube_post import YouTubePost, chrome_ready
 
 SECRETS = {'instagram_login_token', 'instagram_imgbb_key'}
@@ -84,7 +85,7 @@ class DirectInstagram(Publisher):
         self.post_instagram(job)
 
 
-class Studio(StudioBatch):
+class Studio(StudioBatch, StudioWorkflow):
     def __init__(self,controller):
         self.c=controller;self.s=controller.social;self.path=controller.base/'darshanflow.json'
         self.accounts={};self.error='';self.exports={}
@@ -129,6 +130,8 @@ class Studio(StudioBatch):
                     'telegram_token_saved':bool(self.c.vault.get('telegram_bot_token')),
                     'jobs':[j for j in self.s.snapshot()['jobs'] if j['id'] in self.data.get('jobs',[])][:80],
                     'batches':copy.deepcopy(self.data.get('batches',[])[-20:]),
+                    'workflow':copy.deepcopy(self.data.get('workflow',{})),
+                    'share_fingerprint':fingerprint(self.data['share']),
                     'live_links':[],
                     'youtube_browser':{'ready':bool(getattr(getattr(getattr(self.c,'visible',None),'browser',None),'source','')=='running_chrome' and getattr(getattr(getattr(self.c,'visible',None),'browser',None),'chrome',None) and not self.c.visible.browser.chrome.closed)}}
             for key,rec in Journal(self.c.base/'journal.json').data.items():
@@ -142,6 +145,7 @@ class Studio(StudioBatch):
     def save(self,data):
         with self.c.lock,self.s.lock:
             self.ready()
+            if 'workflow' in data:self.data['workflow']=self.save_workflow(data['workflow'])
             if 'caption' in data:
                 values=data['caption']
                 if not isinstance(values,dict) or any(not isinstance(values.get(k,''),str) or len(values.get(k,''))>n for k,n in [('title',100),('body',4000),('tags',1000)]):raise ValueError('Shorten the title or caption.')
@@ -162,6 +166,13 @@ class Studio(StudioBatch):
                     return v.strip()
                 clean={'date':day,'programs':[{'name':name(r),'youtube':public_link(r.get('youtube',''),'youtube'),'facebook':public_link(r.get('facebook',''),'facebook')} for r in rows],
                        'targets':[{'name':name(r),'url':public_link(r.get('url',''),'whatsapp')} for r in targets]}
+                if values.get('sequence')=='rgm_jbs':
+                    photos=values.get('photos',{})
+                    if not isinstance(photos,dict) or set(photos)!= {'L1','L5'} or len(set(photos.values()))!=2:raise ValueError('Upload different RGM (L1) and JBS (L5) photos before saving the two-message setup.')
+                    for ident in photos.values():
+                        _,asset=self.s.media_path(ident)
+                        if asset['type']!='image/jpeg':raise ValueError('Choose JPG photos for the two-message setup.')
+                    clean.update(sequence='rgm_jbs',photos=photos.copy())
                 if clean!=self.data['share']:self.data['receipts']={}
                 self.data['share']=clean
             self.persist();return {'ok':True}
@@ -237,19 +248,30 @@ class Studio(StudioBatch):
                 if account.get('source_channel')!=self.data.get('telegram',{}).get('channel'):raise ValueError('Telegram channel changed. Verify it again.')
                 caption=data.get('caption','')
                 if not isinstance(caption,str) or caption_length(caption)>1024:raise ValueError('Telegram album captions allow 1024 characters (emoji may count as two). Shorten the shared caption before review.')
+            day=data.get('service_date','');split=data.get('album_split',7)
+            if not isinstance(day,str):raise ValueError('Choose a valid service date.')
+            if day:date.fromisoformat(day)
+            if type(split)!=int or split not in (7,10):raise ValueError('Choose a 7+10 or 10+7 Telegram album split.')
             job=self.s.draft({'title':data.get('title','Darshan'),'caption':data.get('caption',''),'media':media,'platforms':[platform],
                 'publish_at':(now_ist()+timedelta(minutes=5)).isoformat(),'delivery':'browser' if platform=='youtube' else 'api','privacy':'public' if platform=='youtube' else 'private'},_persist=False,studio=True)
             if platform=='instagram':
                 self.s.job(job['id'])['studio_instagram']=True
             self.s.job(job['id'])['studio_target']=self.youtube_target() if platform=='youtube' else account.get('id','')
-            if platform=='telegram':self.s.job(job['id'])['studio_bot_id']=account['bot_id']
+            saved=self.s.job(job['id'])
+            if day:saved['studio_service_date']=day
+            if platform=='instagram':saved['studio_audio']=copy.deepcopy(self.data.get('workflow',{}).get('instagram_audio',{}))
+            if platform=='telegram':
+                saved['studio_bot_id']=account['bot_id']
+                if mode=='TG':saved['studio_album_split']=split
             if platform=='youtube':self.s.job(job['id'])['studio_youtube_browser']=True
             self.data.setdefault('jobs',[]).append(job['id'])
             if _persist:self.s.persist();self.persist()
             return copy.deepcopy(self.s.job(job['id']))
 
-    def validate_send(self,job):
+    def validate_send(self,job, *, pretest=False):
         if job['status']!='draft':raise ValueError('Started posts cannot be sent again. Prepare a new review.')
+        if job.get('studio_service_date') and job['studio_service_date']!=now_ist().date().isoformat():raise ValueError('The service date is not today in IST. Review a new draft for today.')
+        if job.get('studio_audio',{}).get('required'):raise ValueError('Needs audio action: this Instagram draft requires saved audio. API sending is blocked; finish the photo post with that track in Instagram. It will not be posted silently.')
         platform=job['platforms'][0];direct=bool(job.get('studio_instagram'));telegram=bool(job.get('studio_telegram'))
         account=self.accounts.get(platform,{})
         if platform!='youtube' and account.get('status')!='verified':raise ValueError('Verify this destination in Connections first.')
@@ -259,7 +281,10 @@ class Studio(StudioBatch):
         if telegram and (account.get('source_channel')!=self.data.get('telegram',{}).get('channel') or account.get('bot_id')!=job.get('studio_bot_id')):raise ValueError('Telegram bot or channel changed after preview. Prepare a new draft.')
         if job.get('studio_youtube_browser'):
             if not re.fullmatch(r'UC[\w-]{22}',actual):raise ValueError('Verify YouTube in Connections before automatic photo posting.')
-            chrome_ready(self.c.visible.browser)
+            if pretest:
+                browser=self.c.visible.browser
+                if browser.source!='running_chrome' or not browser.chrome or browser.chrome.closed:raise ValueError('Connect your running Chrome for YouTube photo posting.')
+            else:chrome_ready(self.c.visible.browser)
         if direct and not self.c.vault.get('instagram_imgbb_key'):raise ValueError('Save an ImgBB key for temporary Instagram photo hosting first.')
 
     def approve_job(self,job):
@@ -304,7 +329,16 @@ class Studio(StudioBatch):
             else:
                 index=data.get('index')
                 if type(index)!=int or not 0<=index<9:raise ValueError('Choose a community or channel.')
-                if data.get('undo') is True:self.data['receipts'].pop(str(index),None)
-                else:self.data['receipts'][str(index)]={'at':now_ist().isoformat(),'status':'confirmed_by_you'}
+                key=str(index)
+                if self.data['share'].get('sequence')=='rgm_jbs':
+                    step=data.get('step')
+                    if step not in ('rgm','jbs') or data.get('fingerprint')!=fingerprint(self.data['share']):raise ValueError('Review the current WhatsApp message and photo before confirming.')
+                    if self.data['share'].get('date')!=now_ist().date().isoformat():raise ValueError('Choose today in IST before confirming the two-message flow.')
+                    if not any(r.get('youtube') or r.get('facebook') for r in self.data['share'].get('programs',[])):raise ValueError('Add the published links before confirming message 1.')
+                    key+=':'+step
+                    if step=='jbs' and str(index)+':rgm' not in self.data['receipts']:raise ValueError('Confirm RGM message 1 for this destination before JBS message 2.')
+                    if step=='rgm' and data.get('undo') is True:self.data['receipts'].pop(str(index)+':jbs',None)
+                if data.get('undo') is True:self.data['receipts'].pop(key,None)
+                else:self.data['receipts'][key]={'at':now_ist().isoformat(),'status':'confirmed_by_you'}
                 self.persist()
             return {'ok':True}

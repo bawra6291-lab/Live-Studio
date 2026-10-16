@@ -9,7 +9,7 @@ function themeDarshanFlow(frame){
   const style=doc.createElement('link');style.rel='stylesheet';style.href='/darshanflow-studio.css';doc.head.appendChild(style);
   style.addEventListener('load',()=>{
    const script=doc.createElement('script');script.src='/darshanflow-studio.js';
-   script.addEventListener('load',()=>{const extras=doc.createElement('script');extras.src='/darshanflow-extras.js';extras.addEventListener('load',()=>{doc.documentElement.dataset.liveDeskTheme='ready';});doc.head.appendChild(extras);});doc.head.appendChild(script);
+   script.addEventListener('load',()=>{const extras=doc.createElement('script');extras.src='/darshanflow-extras.js';extras.addEventListener('load',()=>{const daily=doc.createElement('script');daily.src='/darshanflow-daily.js';daily.addEventListener('load',()=>{doc.documentElement.dataset.liveDeskTheme='ready';});doc.head.appendChild(daily);});doc.head.appendChild(extras);});doc.head.appendChild(script);
   });
  });
  doc.head.appendChild(link);

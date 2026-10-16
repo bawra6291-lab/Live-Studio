@@ -47,3 +47,31 @@ Saved captions, destination names, links, prepared posts and manual confirmation
 
 YOUTUBE CHANNEL CHECK (0.12.2)
 Preview and Send resolve the same configured or verified YouTube channel ID. A channel discovered through Verify YouTube is remembered without changing the live settings or stream key. If an existing preview reports a changed destination, verify the intended YouTube channel, reopen its saved preview and try again. A genuinely different channel still requires a new draft. Automatic YouTube drafts keep the channel saved with the preview.
+
+0.14.0 — daily workflow additions from the supplied design
+Publish → Daily workflow:
+- Save a caption template for Facebook, each Instagram and YouTube set, or Telegram.
+  Blank templates use the master caption. Variables: {{event_title}}, {{body}},
+  {{tags}}, {{date_short}}, {{date_long_ordinal}}. Preview the actual expanded text.
+- Service date is frozen into new drafts. Sending a draft for another IST day is
+  blocked. Legacy drafts retain their original behavior.
+- Telegram can use portrait 7 + landscape 10, or the Facebook mixed sequence split
+  into albums of 10 then 7. The exact split is frozen in the preview; old drafts
+  keep 7 + 10. No existing draft or published post is reordered.
+- Run pre-test checks the selected saved draft media hashes, target, draft state,
+  required audio, date and local PC readiness without external calls or publishing.
+  Connection statuses are the last checks, not freshly tested authorizations.
+  A fingerprint identifies the saved evidence; re-run after changing a draft.
+- Required Instagram saved audio stores only a reference, never an invented track.
+  API sending is blocked for that draft. Finish it in Instagram; this app does
+  not claim to attach Saved Audio or to verify a native audio completion.
+WhatsApp → RGM → JBS: enable two-message flow, upload L1 and L5, save setup.
+Message 1 shares L1 with the full date/links text; message 2 shares L5 only.
+Confirm each actual message at each destination. JBS cannot be confirmed before
+RGM. Undoing RGM clears JBS. Photo/date/link/destination changes clear confirmations.
+The 8 communities and channel remain assisted sharing; confirmations are operator
+reports, never WhatsApp API delivery receipts. No sample IDs or fake successes.
+The uploaded design's schedule, automatic-daily, crop, audio sync, sandbox sending
+and simulated retry buttons are not wired to production as real capabilities.
+The existing YouTube Chrome channel-check error still needs its actual Chrome
+page inspected. This update does not assert that error has been repaired.

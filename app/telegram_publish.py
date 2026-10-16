@@ -70,7 +70,9 @@ class Telegram(Publisher):
         account=self.identity()
         if account['id']!=job['targets'].get('telegram') or account['bot_id']!=job.get('studio_bot_id'):
             raise SetupError('Telegram bot or channel changed. Prepare and review a new draft.',retryable=False)
-        media=job['media'];batches=[media[:7],media[7:]] if len(media)==17 else [media]
+        media=job['media'];split=job.get('studio_album_split',7)
+        if type(split)!=int or split not in (7,10):raise SetupError('Review the Telegram album split again.',retryable=False)
+        batches=[media[:split],media[split:]] if len(media)==17 else [media]
         albums=[]
         for number,batch in enumerate(batches,1):
             self.cancelled()

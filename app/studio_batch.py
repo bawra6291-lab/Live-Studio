@@ -20,6 +20,7 @@ class StudioBatch:
             if (not isinstance(platforms,list) or not platforms or len(platforms)>4 or any(not isinstance(p,str) for p in platforms) or len(set(platforms))!=len(platforms)
                     or any(p not in ('facebook','instagram','youtube','telegram') for p in platforms) or not isinstance(media,dict)):
                 raise ValueError('Select the accounts to include in this review.')
+            if not isinstance(data.get('captions',{}),dict):raise ValueError('Review platform captions again.')
             specs=[]
             # WhatsApp is a reviewed manual handoff, never an API send or receipt.
             whatsapp=data.get('whatsapp')
@@ -38,7 +39,8 @@ class StudioBatch:
                 if not isinstance(groups,dict):raise ValueError('Upload every selected photo sequence.')
                 for mode in posting_modes(platform,section):
                     values=groups.get(mode)
-                    specs.append({'platform':platform,'mode':mode,'media':values,'caption':data.get('caption',''),
+                    specs.append({'platform':platform,'mode':mode,'media':values,'caption':data.get('captions',{}).get(platform+'_'+mode,data.get('caption','')),
+                        'album_split':data.get('album_split',7),'service_date':data.get('service_date',''),
                         'title':str(data.get('title','Daily darshan'))[:80]+(' · Portrait' if mode=='P1' else ' · Landscape' if mode=='P2' else '')})
             before=copy.deepcopy(self.s.data);settings=copy.deepcopy(self.data)
             try:

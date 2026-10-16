@@ -84,6 +84,17 @@ class TelegramTests(unittest.TestCase):
         self.assertEqual(posted['results']['telegram']['urls'],['https://t.me/darshan_test/100','https://t.me/darshan_test/200'])
         with self.assertRaises(ValueError):self.send(job)
 
+    def test_reviewed_mixed_sequence_uses_10_then_7_and_old_drafts_stay_7_then_10(self):
+        self.connect();media=self.photos(17)
+        order=[7,8,9,10,0,1,2,3,4,5,6,11,12,13,14,15,16]
+        job=self.st.prepare({'platform':'telegram','mode':'TG','media':[media[i] for i in order],'caption':'Mixed','album_split':10})
+        calls=[]
+        with patch('studio.Telegram.request',side_effect=self.responder(calls)):
+            self.send(job);self.wait()
+        self.assertEqual([len(c['media']) for c in calls],[10,7])
+        self.assertEqual(sum((c['bytes'] for c in calls),[]),[('fixture-photo-'+str(i)).encode() for i in order])
+        self.assertEqual(self.s.job(job['id'])['studio_album_split'],10)
+
     def test_single_seven_and_ten_photo_albums(self):
         for count in (7,10):
             job=self.draft(count);calls=[]
