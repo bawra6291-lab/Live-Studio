@@ -1,0 +1,9 @@
+{
+  "app_id": "iskcon-live-desk",
+  "version": "0.12.2",
+  "update_format": 1,
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.12.2/ISKCON-Live-Desk.zip",
+  "size": 770097,
+  "sha256": "ea063001d29ece632e9521a73dd1c264181a04ebac41d80f23b283e699a63c3e",
+  "notes": "Fixes YouTube destination changed after preview when the channel was verified without a configured ID. Preview, Send and Send to all use the same channel identity; real channel changes still require a new preview. Verify YouTube, then reopen an existing saved draft. Live settings and Official stream key stay unchanged."
+}
