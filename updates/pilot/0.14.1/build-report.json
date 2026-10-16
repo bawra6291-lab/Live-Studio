@@ -1,0 +1,37 @@
+{
+  "version": "0.14.1",
+  "source_commit": "7e9f272f34cdeed463f15f593cb2edb3c2226870",
+  "source_tree": "f95675394fbe43131134f4b1085698e436b49b29",
+  "payload_files": 102,
+  "package_size": 788595,
+  "sha256": "c6c1214fa698ffd928cc8ad8e020a59496cd71496388719134f2002c33b6b2a4",
+  "validation": {
+    "development_run": 38924240734,
+    "controller_tests": 317,
+    "remote_controller_tests": 24,
+    "dashboard_flows": 21,
+    "youtube_local_cdp_cases": 20,
+    "windows_native_lifecycle": "passed",
+    "windows_install_runtime_uninstall": "passed",
+    "obs_helper_run": 38924240781,
+    "android_run": 38924240738,
+    "development": "passed",
+    "android": "passed",
+    "obs_helper": "passed"
+  },
+  "updater_staging": {
+    "from": "0.14.0",
+    "to": "0.14.1",
+    "old_install_unchanged": true,
+    "payload_matches_tested_source": true,
+    "requirements_changed": false
+  },
+  "preserved_reference_sha256": "662e41b5b4b8a03922446dc4fbe731a2ea52676f9670a9d6fabd3b03885aabcb",
+  "real_platforms_contacted": false,
+  "real_account_acceptance": "not performed",
+  "known_limitations": [
+    "The operator Chrome DOM was unavailable; this patch fixes demonstrated channel-setting parsing failures, but does not establish the exact cause of that live-account failure.",
+    "YouTube UI changes or unavailable owner settings still stop safely with a specific diagnostic.",
+    "Existing uncertain publish dispatches are never replayed automatically."
+  ]
+}
