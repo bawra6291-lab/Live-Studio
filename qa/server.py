@@ -12,6 +12,7 @@ from datetime import datetime
 from core import IST
 from unittest.mock import Mock
 from studio import Telegram
+import studio
 QA_LIVE_EPOCH=time.time()-360
 
 class MemoryVault:
@@ -83,6 +84,11 @@ with tempfile.TemporaryDirectory(prefix='live-desk-qa-') as directory:
             return result
         raise AssertionError('QA refuses unsupported Telegram calls')
     Telegram.request=fake_telegram
+    class StudioYouTubeFixture:
+        def __init__(self,*args):pass
+        def connect(self):pass
+        def owned_channel(self):return {'id':'UC'+'a'*22,'snippet':{'title':'QA verified YouTube channel'}}
+    studio.YouTube=StudioYouTubeFixture
     controller.desktop_host=DesktopHost()
     controller.desktop_host.update(addresses=['192.168.1.42'])
     def fake_host():

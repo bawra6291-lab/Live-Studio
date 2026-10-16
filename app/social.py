@@ -476,7 +476,8 @@ class Social:
                 if job['status']!='draft':raise ValueError('Only drafts can be approved.')
                 if job.get('delivery')=='manual':
                     for m in job['media']:self.media_path(m)
-                    job.update(status='manual_ready',approved_at=now_ist().isoformat(),targets=self.targets(job['platforms']))
+                    targets={'youtube':job['studio_target']} if studio and job['platforms']==['youtube'] and 'studio_target' in job else self.targets(job['platforms'])
+                    job.update(status='manual_ready',approved_at=now_ist().isoformat(),targets=targets)
                     self.persist();return {'ok':True}
                 targets={job['platforms'][0]:job['studio_target']} if job.get('studio_instagram') or job.get('studio_telegram') else self.targets(job['platforms'])
                 if any(not re.fullmatch(r'UC[A-Za-z0-9_-]{22}' if p=='youtube' else r'-100[0-9]{5,17}' if p=='telegram' else r'[0-9]{5,30}',v or '') for p,v in targets.items()):raise ValueError('Save the selected Page/channel and linked Instagram account before approving.')

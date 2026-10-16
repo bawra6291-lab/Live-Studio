@@ -103,9 +103,17 @@ class Studio(StudioBatch):
 
     def persist(self):self.ready();atomic_json(self.path,self.data)
 
+    def youtube_target(self):
+        """Use the selected channel, then verified identity, then its saved discovery."""
+        account=self.accounts.get('youtube',{})
+        return (self.c.cfg.get('youtube_channel_id','')
+                or (account.get('id','') if account.get('status')=='verified' else '')
+                or self.s.data.get('youtube_id',''))
+
     def state(self,local=False):
         with self.c.lock,self.s.lock:
             saved={p:self.c.cfg.get(k,'') for p,k in [('facebook','facebook_page_id'),('youtube','youtube_channel_id')]}
+            saved['youtube']=self.youtube_target()
             saved['telegram']=self.data.get('telegram',{}).get('channel','')
             accounts=copy.deepcopy(self.accounts)
             for p,ident in saved.items():
@@ -191,6 +199,7 @@ class Studio(StudioBatch):
                     with self.s.lock:
                         self.accounts[platform]={**item,'status':'verified'}
                         if platform=='instagram':self.s.data['studio_instagram_id']=item['id'];self.s.persist()
+                        if platform=='youtube':self.s.data['youtube_id']=item['id'];self.s.persist()
                 except Exception as exc:
                     with self.s.lock:self.accounts[platform]={'status':'error','message':self.s.safe_failure(exc)}
             self.s.worker=threading.Thread(target=work,daemon=True);self.s.worker.start()
@@ -219,6 +228,8 @@ class Studio(StudioBatch):
             if not isinstance(media,list) or len(media)!= {'P1':7,'P2':10,'FB':17,'TG':17}[mode]:raise ValueError('Upload and review every photo in the selected sequence first.')
             account=self.accounts.get(platform,{})
             if platform!='youtube' and account.get('status')!='verified':raise ValueError('Verify the selected posting account first.')
+            if platform=='youtube' and account.get('status')=='verified' and account.get('id')!=self.youtube_target():
+                raise ValueError('The verified YouTube channel differs from Connections. Verify the intended channel before preparing a preview.')
             if platform=='facebook' and account.get('id')!=self.c.cfg.get('facebook_page_id'):raise ValueError('Facebook Page changed. Verify it again.')
             if platform=='telegram':
                 if account.get('source_channel')!=self.data.get('telegram',{}).get('channel'):raise ValueError('Telegram channel changed. Verify it again.')
@@ -228,11 +239,11 @@ class Studio(StudioBatch):
                 'publish_at':(now_ist()+timedelta(minutes=5)).isoformat(),'delivery':'manual' if platform=='youtube' else 'api'},_persist=False,studio=True)
             if platform=='instagram':
                 self.s.job(job['id'])['studio_instagram']=True
-            self.s.job(job['id'])['studio_target']=account.get('id') or self.c.cfg.get('youtube_channel_id','')
+            self.s.job(job['id'])['studio_target']=self.youtube_target() if platform=='youtube' else account.get('id','')
             if platform=='telegram':self.s.job(job['id'])['studio_bot_id']=account['bot_id']
             self.data.setdefault('jobs',[]).append(job['id'])
             if _persist:self.s.persist();self.persist()
-            return job
+            return copy.deepcopy(self.s.job(job['id']))
 
     def validate_send(self,job):
         if job['status']!='draft':raise ValueError('Started posts cannot be sent again. Prepare a new review.')
@@ -240,8 +251,8 @@ class Studio(StudioBatch):
         account=self.accounts.get(platform,{})
         if platform!='youtube' and account.get('status')!='verified':raise ValueError('Verify this destination in Connections first.')
         expected=job.get('studio_target','')
-        actual=account.get('id','') if direct or telegram else self.c.cfg.get('facebook_page_id' if platform=='facebook' else 'youtube_channel_id','')
-        if expected and expected!=actual:raise ValueError('The destination changed after preview. Prepare a new draft.')
+        actual=self.youtube_target() if platform=='youtube' else account.get('id','') if direct or telegram else self.c.cfg.get('facebook_page_id','')
+        if expected!=actual and (expected or platform=='youtube'):raise ValueError('The destination changed after preview. Prepare a new draft.')
         if telegram and (account.get('source_channel')!=self.data.get('telegram',{}).get('channel') or account.get('bot_id')!=job.get('studio_bot_id')):raise ValueError('Telegram bot or channel changed after preview. Prepare a new draft.')
         if direct and not self.c.vault.get('instagram_imgbb_key'):raise ValueError('Save an ImgBB key for temporary Instagram photo hosting first.')
 

@@ -28,7 +28,7 @@ class ConnectionsAndPosting(unittest.TestCase):
             result.append(ident)
         return result
     def ready(self,platform='facebook',mode='FB'):
-        self.st.accounts[platform]={'status':'verified','id':'123456' if platform=='facebook' else '7654321','name':'Fixture'}
+        self.st.accounts[platform]={'status':'verified','id':'123456' if platform=='facebook' else self.c.cfg['youtube_channel_id'] if platform=='youtube' else '7654321','name':'Fixture'}
         return self.st.prepare({'platform':platform,'mode':mode,'media':self.photos(17 if mode=='FB' else 7),'title':'Darshan','caption':'Hare Krishna'})
     def send(self,j):return self.st.send({'id':j['id'],'revision':j['revision'],'confirmed':True})
     def test_one_post_sent_once_without_enabling_or_resuming_old_queue(self):
@@ -62,12 +62,50 @@ class ConnectionsAndPosting(unittest.TestCase):
         self.assertEqual(FakePublisher.sent,[j['id']])
     def test_youtube_handoff_is_never_claimed_published_and_requires_link(self):
         j=self.ready('youtube','P1');self.st.accounts['youtube']={}
-        # The fixture selected a fake YT account above; use the actual configured channel.
-        self.s.job(j['id'])['studio_target']=self.c.cfg['youtube_channel_id']
         self.send(j);self.assertEqual(self.s.job(j['id'])['status'],'manual_ready');self.assertEqual(FakePublisher.sent,[])
         with self.assertRaises(ValueError):self.st.receipt({'kind':'youtube','id':j['id'],'confirmed':True,'url':'https://evil.example/post'})
         self.st.receipt({'kind':'youtube','id':j['id'],'confirmed':True,'url':'https://www.youtube.com/post/fixture'})
         self.assertEqual(self.s.job(j['id'])['status'],'manual_done')
+
+    def test_verified_youtube_without_configured_id_can_send_the_unchanged_preview(self):
+        self.c.cfg['youtube_channel_id']='';channel='UC'+'b'*22
+        self.st.accounts['youtube']={'status':'verified','id':channel,'name':'Verified channel'}
+        # The user may already have this preview from before the fix.
+        j=self.st.prepare({'platform':'youtube','mode':'P1','media':self.photos(7),'title':'Darshan','caption':'Caption'})
+        self.assertEqual(j['studio_target'],channel)
+        self.assertEqual(self.st.state()['saved']['youtube'],channel)
+        self.send(j)
+        self.assertEqual(self.s.job(j['id'])['targets'],{'youtube':channel})
+        self.assertEqual(self.s.job(j['id'])['status'],'manual_ready')
+        self.assertEqual(self.c.cfg['youtube_channel_id'],'');self.assertEqual(FakePublisher.sent,[])
+
+    def test_youtube_verification_remembers_channel_and_keeps_existing_preview_after_restart(self):
+        self.c.cfg['youtube_channel_id']='';channel='UC'+'b'*22
+        with patch('studio.YouTube') as yt:
+            yt.return_value.owned_channel.return_value={'id':channel,'snippet':{'title':'Verified channel'}}
+            self.st.check({'platform':'youtube'});self.wait()
+        j=self.st.prepare({'platform':'youtube','mode':'P1','media':self.photos(7),'title':'Darshan'})
+        self.assertEqual(self.s.data['youtube_id'],channel)
+        self.st=Studio(self.c)
+        self.assertEqual(self.st.state()['saved']['youtube'],channel)
+        self.send(j);self.assertEqual(self.s.job(j['id'])['targets'],{'youtube':channel})
+        self.assertEqual(self.c.cfg['youtube_channel_id'],'');self.assertEqual(FakePublisher.sent,[])
+
+    def test_real_youtube_channel_change_still_blocks_single_and_batch_sends(self):
+        self.c.cfg['youtube_channel_id']='';channel='UC'+'b'*22
+        self.st.accounts['youtube']={'status':'verified','id':channel}
+        media=self.photos(7)
+        batch=self.st.prepare_batch({'section':'P1','platforms':['youtube'],'media':{'youtube':{'P1':media}},'title':'Darshan'})
+        j=self.s.job(batch['jobs'][0]);self.st.accounts['youtube']['id']='UC'+'c'*22
+        with self.assertRaisesRegex(ValueError,'destination changed'):self.send(j)
+        with self.assertRaisesRegex(ValueError,'destination changed'):self.st.send_batch({'id':batch['id'],'revision':1,'confirmed':True})
+        self.assertEqual(j['status'],'draft');self.assertEqual(FakePublisher.sent,[])
+
+    def test_verified_youtube_conflict_is_rejected_before_creating_a_draft(self):
+        self.st.accounts['youtube']={'status':'verified','id':'UC'+'b'*22}
+        with self.assertRaisesRegex(ValueError,'differs from Connections'):
+            self.st.prepare({'platform':'youtube','mode':'P1','media':self.photos(7),'title':'Darshan'})
+        self.assertFalse(self.st.data.get('jobs'));self.assertEqual(FakePublisher.sent,[])
     def test_tokens_are_in_vault_only_blank_preserves_and_direct_check_uses_ig(self):
         self.st.save_instagram({'instagram_login_token':'private-ig-token','instagram_imgbb_key':'private-host-key'})
         self.st.save_instagram({'instagram_login_token':''})

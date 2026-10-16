@@ -1,4 +1,4 @@
-DARSHANFLOW / Live Desk 0.12.1
+DARSHANFLOW / Live Desk 0.12.2
 
 PHOTOS -> PUBLISH -> CONNECTIONS -> WHATSAPP
 
@@ -44,3 +44,6 @@ YouTube: reuse Connect YouTube on PC and Verify YouTube. Photo Community posts u
 WhatsApp: enter 8 community names and one channel name once. Optional invite/channel links help open them. Select date and photo. Programs & links follow your screenshot structure: ISKCON Kolkata, date, program heading, YouTube/Facebook links. Add available post/live links imports only returned published links and today's confirmed live records; paste external YouTube links manually. Use Send to WhatsApp · share sheet on devices that support file sharing. Otherwise copy the message, open the destination and attach the photo from your original folder. Choose the community/channel inside WhatsApp and send; then press Sent / confirm for that destination. Open/Copy never marks a message sent. Editing date/text/targets resets confirmations. No existing-community or Channel API automation is claimed.
 
 Saved captions, destination names, links, prepared posts and manual confirmations survive app updates. Unprepared photo selections remain in the open browser session only. Live-stream settings, Official YouTube stream key, OBS and camera behavior are unchanged by this workspace.
+
+YOUTUBE CHANNEL CHECK (0.12.2)
+Preview and Send resolve the same configured or verified YouTube channel ID. A channel discovered through Verify YouTube is remembered without changing the live settings or stream key. If an existing preview reports a changed destination, verify the intended YouTube channel, reopen its saved preview and try again. A genuinely different channel still requires a new draft. The YouTube handoff link always uses the channel saved with that preview.
