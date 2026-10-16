@@ -421,12 +421,13 @@ class Social:
             caption=data.get('caption','')
             platforms=data.get('platforms',[]);media=data.get('media',[])
             delivery=data.get('delivery','api')
-            if delivery not in ('api','manual'):raise ValueError('Choose API posting or manual handoff.')
+            if delivery not in ('api','manual','browser'):raise ValueError('Choose API or browser posting.')
             if not title or len(title)>100 or not isinstance(caption,str) or len(caption)>5000:raise ValueError('Use a title up to 100 characters and a caption up to 5000.')
             telegram=studio and platforms==['telegram']
             if not telegram and (not isinstance(platforms,list) or not platforms or len(platforms)!=len(set(platforms)) or any(p not in PLATFORMS for p in platforms)):raise ValueError('Choose Facebook, Instagram or YouTube; prepare Telegram posts in DARSHANFLOW.')
             limit=17 if platforms==['facebook'] or telegram else 10
             if not isinstance(media,list) or any(not isinstance(m,str) for m in media) or len(media)>limit or len(media)!=len(set(media)) or any(m not in self.data['assets'] for m in media):raise ValueError('Choose up to 17 photos for Facebook alone, or 10 for other posts.')
+            if delivery=='browser' and (not studio or platforms!=['youtube'] or len(media) not in (7,10) or any(self.data['assets'][m]['type']!='image/jpeg' or self.data['assets'][m]['size']>16*1024*1024 for m in media)):raise ValueError('Automatic YouTube photos require a reviewed 7- or 10-JPG draft in DARSHANFLOW.')
             if delivery=='manual' and (len(platforms)!=1 or not media or any(not self.data['assets'][m]['type'].startswith('image/') for m in media)):raise ValueError('Manual photo handoff needs one destination and saved photos.')
             if delivery=='manual' and 'youtube' in platforms and any(self.data['assets'][m]['size']>16*1024*1024 for m in media):raise ValueError('YouTube photo uploads need images under 16 MB. Save an edited copy first.')
             if not caption.strip() and not media:raise ValueError('Add a caption or media.')
@@ -472,6 +473,7 @@ class Social:
             if action=='approve':
                 if job.get('studio_instagram') and not studio:raise ValueError('Review and send this direct Instagram post from DARSHANFLOW.')
                 if job.get('studio_telegram') and not studio:raise ValueError('Review and send this Telegram post from DARSHANFLOW.')
+                if job.get('studio_youtube_browser') and not studio:raise ValueError('Review and send this YouTube photo post from DARSHANFLOW.')
                 if data.get('confirmed') is not True:raise ValueError('Approve the exact preview first.')
                 if job['status']!='draft':raise ValueError('Only drafts can be approved.')
                 if job.get('delivery')=='manual':
@@ -479,7 +481,7 @@ class Social:
                     targets={'youtube':job['studio_target']} if studio and job['platforms']==['youtube'] and 'studio_target' in job else self.targets(job['platforms'])
                     job.update(status='manual_ready',approved_at=now_ist().isoformat(),targets=targets)
                     self.persist();return {'ok':True}
-                targets={job['platforms'][0]:job['studio_target']} if job.get('studio_instagram') or job.get('studio_telegram') else self.targets(job['platforms'])
+                targets={job['platforms'][0]:job['studio_target']} if job.get('studio_instagram') or job.get('studio_telegram') or job.get('studio_youtube_browser') else self.targets(job['platforms'])
                 if any(not re.fullmatch(r'UC[A-Za-z0-9_-]{22}' if p=='youtube' else r'-100[0-9]{5,17}' if p=='telegram' else r'[0-9]{5,30}',v or '') for p,v in targets.items()):raise ValueError('Save the selected Page/channel and linked Instagram account before approving.')
                 due=datetime.fromisoformat(job['publish_at'])
                 if due<now_ist():raise ValueError('Choose a future posting time and save the draft again.')

@@ -89,6 +89,17 @@ with tempfile.TemporaryDirectory(prefix='live-desk-qa-') as directory:
         def connect(self):pass
         def owned_channel(self):return {'id':'UC'+'a'*22,'snippet':{'title':'QA verified YouTube channel'}}
     studio.YouTube=StudioYouTubeFixture
+    # Dashboard delivery fixture; the production adapter is separately exercised
+    # through real Chromium/CDP against local pages in youtube-post.test.cjs.
+    studio.chrome_ready=lambda browser:None
+    youtube_post_ids=[0]
+    class StudioPhotoPostFixture:
+        def __init__(self,cfg,vault,manager,stop,browser):self.manager=manager
+        def publish(self,job):
+            if not job.get('studio_youtube_browser') or job['targets']['youtube']!='UC'+'a'*22 or len(job['media']) not in (7,10):raise AssertionError('Unexpected YouTube fixture post')
+            youtube_post_ids[0]+=1
+            self.manager.checkpoint(job['id'],'youtube',status='published',write_dispatched=True,stage='Fixture published receipt',url='https://www.youtube.com/post/UgQaFixture'+str(youtube_post_ids[0]))
+    studio.YouTubePost=StudioPhotoPostFixture
     controller.desktop_host=DesktopHost()
     controller.desktop_host.update(addresses=['192.168.1.42'])
     def fake_host():

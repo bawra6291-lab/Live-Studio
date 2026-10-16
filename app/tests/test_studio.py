@@ -1,6 +1,7 @@
 """Posting boundary tests. All platform calls are mocked; no real posts/messages."""
 import copy, json, tempfile, threading, unittest, sys
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from studio import Studio, DirectInstagram, public_link
@@ -13,7 +14,7 @@ from dashboard import Handler
 
 class ConnectionsAndPosting(unittest.TestCase):
     def setUp(self):
-        test_social.SocialTests.setUp(self);self.c.social=self.s;self.st=Studio(self.c)
+        test_social.SocialTests.setUp(self);self.c.social=self.s;self.c.visible=SimpleNamespace(browser=SimpleNamespace(source='running_chrome',recording=None,chrome=SimpleNamespace(closed=False),ensure=Mock()));self.st=Studio(self.c)
     tearDown=test_social.SocialTests.tearDown
     upload=test_social.SocialTests.upload
     wait=test_social.SocialTests.wait
@@ -61,7 +62,8 @@ class ConnectionsAndPosting(unittest.TestCase):
         with self.assertRaises(ValueError):self.send(j)
         self.assertEqual(FakePublisher.sent,[j['id']])
     def test_youtube_handoff_is_never_claimed_published_and_requires_link(self):
-        j=self.ready('youtube','P1');self.st.accounts['youtube']={}
+        j=self.s.draft({'title':'Legacy manual post','caption':'Caption','platforms':['youtube'],'media':self.photos(7),'delivery':'manual','publish_at':(__import__('core').now_ist()+__import__('datetime').timedelta(minutes=5)).isoformat()});self.st.data.setdefault('jobs',[]).append(j['id']);self.st.persist()
+        self.s.job(j['id'])['studio_target']=self.c.cfg['youtube_channel_id']
         self.send(j);self.assertEqual(self.s.job(j['id'])['status'],'manual_ready');self.assertEqual(FakePublisher.sent,[])
         with self.assertRaises(ValueError):self.st.receipt({'kind':'youtube','id':j['id'],'confirmed':True,'url':'https://evil.example/post'})
         self.st.receipt({'kind':'youtube','id':j['id'],'confirmed':True,'url':'https://www.youtube.com/post/fixture'})
@@ -74,10 +76,10 @@ class ConnectionsAndPosting(unittest.TestCase):
         j=self.st.prepare({'platform':'youtube','mode':'P1','media':self.photos(7),'title':'Darshan','caption':'Caption'})
         self.assertEqual(j['studio_target'],channel)
         self.assertEqual(self.st.state()['saved']['youtube'],channel)
-        self.send(j)
+        with patch('studio.YouTubePost',FakePublisher):self.send(j);self.wait()
         self.assertEqual(self.s.job(j['id'])['targets'],{'youtube':channel})
-        self.assertEqual(self.s.job(j['id'])['status'],'manual_ready')
-        self.assertEqual(self.c.cfg['youtube_channel_id'],'');self.assertEqual(FakePublisher.sent,[])
+        self.assertEqual(self.s.job(j['id'])['status'],'published')
+        self.assertEqual(self.c.cfg['youtube_channel_id'],'');self.assertEqual(FakePublisher.sent,[j['id']])
 
     def test_youtube_verification_remembers_channel_and_keeps_existing_preview_after_restart(self):
         self.c.cfg['youtube_channel_id']='';channel='UC'+'b'*22
@@ -88,8 +90,9 @@ class ConnectionsAndPosting(unittest.TestCase):
         self.assertEqual(self.s.data['youtube_id'],channel)
         self.st=Studio(self.c)
         self.assertEqual(self.st.state()['saved']['youtube'],channel)
-        self.send(j);self.assertEqual(self.s.job(j['id'])['targets'],{'youtube':channel})
-        self.assertEqual(self.c.cfg['youtube_channel_id'],'');self.assertEqual(FakePublisher.sent,[])
+        with patch('studio.YouTubePost',FakePublisher):self.send(j);self.wait()
+        self.assertEqual(self.s.job(j['id'])['targets'],{'youtube':channel})
+        self.assertEqual(self.c.cfg['youtube_channel_id'],'');self.assertEqual(FakePublisher.sent,[j['id']])
 
     def test_real_youtube_channel_change_still_blocks_single_and_batch_sends(self):
         self.c.cfg['youtube_channel_id']='';channel='UC'+'b'*22
@@ -106,6 +109,26 @@ class ConnectionsAndPosting(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'differs from Connections'):
             self.st.prepare({'platform':'youtube','mode':'P1','media':self.photos(7),'title':'Darshan'})
         self.assertFalse(self.st.data.get('jobs'));self.assertEqual(FakePublisher.sent,[])
+
+    def test_browser_unavailable_blocks_the_whole_batch_before_any_send(self):
+        self.st.accounts['facebook']={'status':'verified','id':'123456'};media=self.photos(7)
+        batch=self.st.prepare_batch({'section':'P1','platforms':['facebook','youtube'],
+            'media':{'facebook':{'P1':media},'youtube':{'P1':media}},'title':'Darshan'})
+        self.c.visible.browser.source='dedicated'
+        with self.assertRaisesRegex(ValueError,'My running Chrome'):self.st.send_batch({'id':batch['id'],'revision':1,'confirmed':True})
+        self.assertTrue(all(self.s.job(i)['status']=='draft' for i in batch['jobs']));self.assertEqual(FakePublisher.sent,[])
+
+    def test_uncertain_youtube_publish_never_repeats_on_send_tick_or_restart(self):
+        job=self.ready('youtube','P1')
+        class Uncertain(FakePublisher):
+            def publish(self,job):
+                self.manager.checkpoint(job['id'],'youtube',write_dispatched=True,status='posting')
+                raise SetupError('Receipt not observed after Publish',retryable=False)
+        with patch('studio.YouTubePost',Uncertain):self.send(job);self.wait()
+        saved=self.s.job(job['id']);self.assertEqual(saved['status'],'needs_review');self.assertTrue(saved['results']['youtube']['write_dispatched'])
+        with self.assertRaises(ValueError):self.send(job)
+        self.s.command({'action':'enable','confirmed':True});self.s.tick();self.assertEqual(FakePublisher.sent,[])
+        self.assertEqual(Studio(self.c).s.job(job['id'])['status'],'needs_review')
     def test_tokens_are_in_vault_only_blank_preserves_and_direct_check_uses_ig(self):
         self.st.save_instagram({'instagram_login_token':'private-ig-token','instagram_imgbb_key':'private-host-key'})
         self.st.save_instagram({'instagram_login_token':''})

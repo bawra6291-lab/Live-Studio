@@ -41,15 +41,15 @@ class BatchTests(unittest.TestCase):
         self.assertEqual(Studio(self.c).data['batches'][0]['id'],batch['id'])
         for p in ['instagram','youtube']:self.assertEqual(posting_modes(p,'FB'),['P1','P2'])
 
-    def test_one_confirmation_sends_api_posts_once_and_prepares_manual_youtube(self):
+    def test_one_confirmation_sends_api_and_browser_posts_once(self):
         batch=self.prepare()
         with self.assertRaises(ValueError):self.send(batch,confirmed=False)
-        with patch('studio.Publisher',FakePublisher),patch('studio.DirectInstagram',FakePublisher),patch('studio.Telegram',FakePublisher):
+        with patch('studio.Publisher',FakePublisher),patch('studio.DirectInstagram',FakePublisher),patch('studio.Telegram',FakePublisher),patch('studio.YouTubePost',FakePublisher):
             self.send(batch);self.wait()
         jobs=[self.s.job(i) for i in batch['jobs']]
-        self.assertEqual([j['status'] for j in jobs],['published']*5+['manual_ready']*2)
-        self.assertEqual(FakePublisher.sent,[j['id'] for j in jobs[:5]])
-        self.assertFalse(self.s.data['enabled']);self.assertEqual(self.st.data['batches'][0]['status'],'manual_ready')
+        self.assertEqual([j['status'] for j in jobs],['published']*7)
+        self.assertEqual(FakePublisher.sent,[j['id'] for j in jobs])
+        self.assertFalse(self.s.data['enabled']);self.assertEqual(self.st.data['batches'][0]['status'],'completed')
         with self.assertRaises(ValueError):self.send(batch)
 
     def test_later_validation_failure_makes_no_partial_drafts(self):

@@ -68,7 +68,7 @@ class StudioBatch:
             try:
                 for job in jobs:self.approve_job(job)
             except Exception:self.s.data=before;self.s.persist();raise
-            api_jobs=[job for job in jobs if job['platforms']!=['youtube']]
+            api_jobs=[job for job in jobs if job.get('delivery')!='manual']
             for job in api_jobs:job.update(status='publishing',error='')
             batch['status']='publishing' if api_jobs else 'manual_ready';batch['error']=''
             self.s.persist();self.persist()
@@ -81,7 +81,7 @@ class StudioBatch:
                         self.publisher(item)(cfg,self.c.vault,self.s,self.s.stop).publish(item)
                         with self.s.lock:self.s.job(item['id'])['status']='published';self.s.persist()
                     with self.s.lock:
-                        batch['status']='manual_ready' if batch.get('whatsapp') or any(j['platforms']==['youtube'] for j in jobs) else 'completed';self.persist()
+                        batch['status']='manual_ready' if batch.get('whatsapp') or any(j.get('delivery')=='manual' for j in jobs) else 'completed';self.persist()
                 except Exception as exc:
                     with self.s.lock:
                         error=self.s.safe_failure(exc)

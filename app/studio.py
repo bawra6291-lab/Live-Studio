@@ -12,6 +12,7 @@ from connections import Facebook, YouTube, SetupError
 from social_publish import Publisher
 from telegram_publish import Telegram, channel_id, bot_token, caption_length
 from studio_batch import StudioBatch
+from youtube_post import YouTubePost, chrome_ready
 
 SECRETS = {'instagram_login_token', 'instagram_imgbb_key'}
 DOCS = 'https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/'
@@ -128,7 +129,8 @@ class Studio(StudioBatch):
                     'telegram_token_saved':bool(self.c.vault.get('telegram_bot_token')),
                     'jobs':[j for j in self.s.snapshot()['jobs'] if j['id'] in self.data.get('jobs',[])][:80],
                     'batches':copy.deepcopy(self.data.get('batches',[])[-20:]),
-                    'live_links':[]}
+                    'live_links':[],
+                    'youtube_browser':{'ready':bool(getattr(getattr(getattr(self.c,'visible',None),'browser',None),'source','')=='running_chrome' and getattr(getattr(getattr(self.c,'visible',None),'browser',None),'chrome',None) and not self.c.visible.browser.chrome.closed)}}
             for key,rec in Journal(self.c.base/'journal.json').data.items():
                 if key.startswith(now_ist().date().isoformat()) and rec.get('confirmed_at'):
                     yt=str(rec.get('yt_id',''));fb=str(rec.get('fb_id',''))
@@ -236,11 +238,12 @@ class Studio(StudioBatch):
                 caption=data.get('caption','')
                 if not isinstance(caption,str) or caption_length(caption)>1024:raise ValueError('Telegram album captions allow 1024 characters (emoji may count as two). Shorten the shared caption before review.')
             job=self.s.draft({'title':data.get('title','Darshan'),'caption':data.get('caption',''),'media':media,'platforms':[platform],
-                'publish_at':(now_ist()+timedelta(minutes=5)).isoformat(),'delivery':'manual' if platform=='youtube' else 'api'},_persist=False,studio=True)
+                'publish_at':(now_ist()+timedelta(minutes=5)).isoformat(),'delivery':'browser' if platform=='youtube' else 'api','privacy':'public' if platform=='youtube' else 'private'},_persist=False,studio=True)
             if platform=='instagram':
                 self.s.job(job['id'])['studio_instagram']=True
             self.s.job(job['id'])['studio_target']=self.youtube_target() if platform=='youtube' else account.get('id','')
             if platform=='telegram':self.s.job(job['id'])['studio_bot_id']=account['bot_id']
+            if platform=='youtube':self.s.job(job['id'])['studio_youtube_browser']=True
             self.data.setdefault('jobs',[]).append(job['id'])
             if _persist:self.s.persist();self.persist()
             return copy.deepcopy(self.s.job(job['id']))
@@ -254,14 +257,18 @@ class Studio(StudioBatch):
         actual=self.youtube_target() if platform=='youtube' else account.get('id','') if direct or telegram else self.c.cfg.get('facebook_page_id','')
         if expected!=actual and (expected or platform=='youtube'):raise ValueError('The destination changed after preview. Prepare a new draft.')
         if telegram and (account.get('source_channel')!=self.data.get('telegram',{}).get('channel') or account.get('bot_id')!=job.get('studio_bot_id')):raise ValueError('Telegram bot or channel changed after preview. Prepare a new draft.')
+        if job.get('studio_youtube_browser'):
+            if not re.fullmatch(r'UC[\w-]{22}',actual):raise ValueError('Verify YouTube in Connections before automatic photo posting.')
+            chrome_ready(self.c.visible.browser)
         if direct and not self.c.vault.get('instagram_imgbb_key'):raise ValueError('Save an ImgBB key for temporary Instagram photo hosting first.')
 
     def approve_job(self,job):
         job['publish_at']=(now_ist()+timedelta(minutes=5)).isoformat()
         self.s.command({'action':'approve','id':job['id'],'revision':job['revision'],'confirmed':True},studio=True)
 
-    @staticmethod
-    def publisher(job):return Telegram if job.get('studio_telegram') else DirectInstagram if job.get('studio_instagram') else Publisher
+    def publisher(self,job):
+        if job.get('studio_youtube_browser'):return lambda cfg,vault,manager,stop:YouTubePost(cfg,vault,manager,stop,self.c.visible.browser)
+        return Telegram if job.get('studio_telegram') else DirectInstagram if job.get('studio_instagram') else Publisher
 
     def send(self,data):
         with self.c.lock,self.s.lock:
@@ -270,7 +277,7 @@ class Studio(StudioBatch):
             if self.s.busy or self.s.live_blocked():raise ValueError('Wait for the current operation or live session to finish before posting.')
             if job['status']!='draft' or data.get('revision')!=job['revision'] or data.get('confirmed') is not True:raise ValueError('Review this draft before sending it. Started posts cannot be sent again.')
             platform=job['platforms'][0];self.validate_send(job);self.approve_job(job)
-            if platform=='youtube':return {'ok':True,'status':'manual_ready'}
+            if platform=='youtube' and not job.get('studio_youtube_browser'):return {'ok':True,'status':'manual_ready'}
             job.update(status='publishing',error='');self.s.persist()
             frozen=copy.deepcopy(job);cfg=copy.deepcopy(self.c.cfg)
             cfg['telegram_channel']=self.data.get('telegram',{}).get('channel','')
