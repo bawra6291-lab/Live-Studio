@@ -1,9 +1,9 @@
 {
   "app_id": "iskcon-live-desk",
-  "version": "0.14.1",
+  "version": "0.14.2",
   "update_format": 1,
-  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.14.1/ISKCON-Live-Desk.zip",
-  "size": 788595,
-  "sha256": "c6c1214fa698ffd928cc8ad8e020a59496cd71496388719134f2002c33b6b2a4",
-  "notes": "YouTube Chrome channel verification: read labelled Channel ID fields, wait for fresh page load, and show specific sign-in or Advanced settings errors. Prepare a fresh YouTube draft after updating."
+  "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.14.2/ISKCON-Live-Desk.zip",
+  "size": 789184,
+  "sha256": "2c6ced6f3999df94aa5f7ce9501b28f5fe75a2aae741e867f13d327eac97aa32",
+  "notes": "YouTube photo posting: activate Image before selecting files; wait for picker Done and verify committed attachments; only confirm success with a new post containing the reviewed photo count. Review any existing text-only post before preparing a new draft."
 }
