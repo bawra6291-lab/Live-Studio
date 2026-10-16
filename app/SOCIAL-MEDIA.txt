@@ -1,4 +1,4 @@
-DARSHANFLOW / Live Desk 0.11.0
+DARSHANFLOW / Live Desk 0.11.1
 
 PHOTOS -> PUBLISH -> CONNECTIONS -> WHATSAPP
 
@@ -15,6 +15,16 @@ Instagram WITHOUT a Facebook Page link:
 4. Generate the Instagram Login token for that account; prefer the long-lived token described in Meta's guide. This is not a Facebook Page token.
 5. DARSHANFLOW -> Connections -> Instagram direct connection: paste token and an ImgBB API key, then Save & verify Instagram. Confirm the username before publishing. Token/key stay in Windows Credential Manager; blank fields preserve saved values.
 6. Selected photos are uploaded to ImgBB with a requested 1-hour expiry so Instagram can fetch them. This is required for the direct-token publishing path. Reconnect when the Instagram token expires or is revoked. The app does not silently refresh or replace Facebook credentials.
+
+TELEGRAM CHANNEL (0.11.1)
+1. DARSHANFLOW -> Connections -> Telegram channel connection.
+2. In Telegram, use @BotFather to create/select a bot and copy its bot token.
+3. Add that bot to your channel as an administrator with Post messages permission.
+4. Enter the bot token and @channelusername or numeric -100... channel ID. Use Save & verify Telegram. Verification reads bot/channel permissions only; it does not send a test message.
+5. If the old studio saved Telegram settings in this browser, use Import previous Telegram settings. The bot token moves to Windows Credential Manager; it is not returned to the page. Otherwise enter it once. Blank tokens keep the saved value.
+6. Publish -> Telegram: choose both albums (7 portrait followed by 10 landscape), or one 7/10-photo album. Upload every required real photo, shorten the caption to 1024 characters (emoji may count as two), and review the channel, exact order and caption.
+7. Publish this telegram post sends only that reviewed draft. Each album has the same full caption on its first photo; no automatic cropping is performed. There is no Telegram dependency on Facebook or Instagram tokens or ImgBB.
+8. Posting history retains album links and receipts. A timeout, interruption, partial album delivery or app restart requires manual review; the draft is never automatically repeated. Verify channel history before creating another draft.
 7. Accounts beyond app roles/test users can require Meta review/access approval. The desktop app does not include a hosted multi-customer OAuth service.
 Official guide: https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/
 Hosting key: https://api.imgbb.com/

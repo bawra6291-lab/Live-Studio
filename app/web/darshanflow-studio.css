@@ -30,6 +30,7 @@ body .shell{max-width:1280px;margin:0 auto;padding:20px 22px 36px}
 .sf-metric span{font-size:11px;letter-spacing:.6px;color:#536b5e}
 .sf-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
 .sf-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.sf-destinations{grid-template-columns:repeat(2,minmax(0,1fr))}
 .sf-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:16px}
 .sf-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:14px 0}
 #sf-root label{font-size:11px;font-weight:600;color:#496355;display:block}

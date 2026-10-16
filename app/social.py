@@ -404,19 +404,21 @@ class Social:
     def targets(self, platforms):
         return {p:(self.c.cfg.get({'facebook':'facebook_page_id','youtube':'youtube_channel_id'}.get(p,''),'') or (self.data.get('youtube_id','') if p=='youtube' else '')) if p!='instagram' else self.data['instagram_id'] for p in platforms}
 
-    def draft(self, data, _persist=True):
+    def draft(self, data, _persist=True, *, studio=False):
         with self.c.lock,self.lock:
             self.ready();existing=self.job(data['id']) if data.get('id') else None
             if existing and data.get('revision')!=existing['revision']:raise ValueError('This draft changed on another device. Reload it before saving.')
             if existing and existing['status'] not in ('draft','cancelled'):raise ValueError('Cancel the queued post before editing. Posted/review items are immutable.')
+            if existing and existing.get('studio_telegram'):raise ValueError('Prepare a new Telegram draft in DARSHANFLOW.')
             title=data.get('title','').strip() if isinstance(data.get('title'),str) else ''
             caption=data.get('caption','')
             platforms=data.get('platforms',[]);media=data.get('media',[])
             delivery=data.get('delivery','api')
             if delivery not in ('api','manual'):raise ValueError('Choose API posting or manual handoff.')
             if not title or len(title)>100 or not isinstance(caption,str) or len(caption)>5000:raise ValueError('Use a title up to 100 characters and a caption up to 5000.')
-            if not isinstance(platforms,list) or not platforms or len(platforms)!=len(set(platforms)) or any(p not in PLATFORMS for p in platforms):raise ValueError('Choose Facebook, Instagram or YouTube.')
-            limit=17 if platforms==['facebook'] else 10
+            telegram=studio and platforms==['telegram']
+            if not telegram and (not isinstance(platforms,list) or not platforms or len(platforms)!=len(set(platforms)) or any(p not in PLATFORMS for p in platforms)):raise ValueError('Choose Facebook, Instagram or YouTube; prepare Telegram posts in DARSHANFLOW.')
+            limit=17 if platforms==['facebook'] or telegram else 10
             if not isinstance(media,list) or any(not isinstance(m,str) for m in media) or len(media)>limit or len(media)!=len(set(media)) or any(m not in self.data['assets'] for m in media):raise ValueError('Choose up to 17 photos for Facebook alone, or 10 for other posts.')
             if delivery=='manual' and (len(platforms)!=1 or not media or any(not self.data['assets'][m]['type'].startswith('image/') for m in media)):raise ValueError('Manual photo handoff needs one destination and saved photos.')
             if delivery=='manual' and 'youtube' in platforms and any(self.data['assets'][m]['size']>16*1024*1024 for m in media):raise ValueError('YouTube photo uploads need images under 16 MB. Save an edited copy first.')
@@ -426,6 +428,9 @@ class Social:
             if 'youtube' in platforms and any(c in title for c in '<>'):raise ValueError('YouTube titles cannot contain < or >.')
             if delivery=='api' and 'youtube' in platforms and (len(media)!=1 or self.data['assets'][media[0]]['type']!='video/mp4'):raise ValueError('YouTube API posting requires one video. Choose manual handoff for Community photos.')
             if 'instagram' in platforms and (not media or len(caption)>2200):raise ValueError('Instagram needs media and a caption up to 2200 characters.')
+            if telegram:
+                from telegram_publish import caption_length
+                if delivery!='api' or len(media) not in (7,10,17) or caption_length(caption)>1024 or any(self.data['assets'][m]['type']!='image/jpeg' or self.data['assets'][m]['size']>10*1024*1024 for m in media):raise ValueError('Telegram needs 7, 10 or 17 JPG photos under 10 MB, with a caption up to 1024 characters.')
             when=data.get('publish_at','')
             try:
                 due=datetime.fromisoformat(when)
@@ -441,6 +446,7 @@ class Social:
                  'privacy':privacy,'made_for_kids':data.get('made_for_kids',False),'status':'draft',
                  'created_at':existing['created_at'] if existing else now_ist().isoformat(),'results':{},'error':'','approved_at':None,'targets':{},
                  'delivery':delivery,'batch_revision':data.get('batch_revision')}
+            if telegram:job['studio_telegram']=True
             if existing:self.data['jobs'][self.data['jobs'].index(existing)]=job
             else:
                 if len(self.data['jobs'])>=300:raise ValueError('Remove unused drafts before adding more posts (300 limit).')
@@ -458,14 +464,15 @@ class Social:
             if data.get('revision')!=job['revision']:raise ValueError('This post changed. Reload its preview before continuing.')
             if action=='approve':
                 if job.get('studio_instagram') and not studio:raise ValueError('Review and send this direct Instagram post from DARSHANFLOW.')
+                if job.get('studio_telegram') and not studio:raise ValueError('Review and send this Telegram post from DARSHANFLOW.')
                 if data.get('confirmed') is not True:raise ValueError('Approve the exact preview first.')
                 if job['status']!='draft':raise ValueError('Only drafts can be approved.')
                 if job.get('delivery')=='manual':
                     for m in job['media']:self.media_path(m)
                     job.update(status='manual_ready',approved_at=now_ist().isoformat(),targets=self.targets(job['platforms']))
                     self.persist();return {'ok':True}
-                targets={'instagram':job['studio_target']} if job.get('studio_instagram') else self.targets(job['platforms'])
-                if any(not re.fullmatch(r'UC[A-Za-z0-9_-]{22}' if p=='youtube' else r'[0-9]{5,30}',v or '') for p,v in targets.items()):raise ValueError('Save the selected Page/channel and linked Instagram account before approving.')
+                targets={job['platforms'][0]:job['studio_target']} if job.get('studio_instagram') or job.get('studio_telegram') else self.targets(job['platforms'])
+                if any(not re.fullmatch(r'UC[A-Za-z0-9_-]{22}' if p=='youtube' else r'-100[0-9]{5,17}' if p=='telegram' else r'[0-9]{5,30}',v or '') for p,v in targets.items()):raise ValueError('Save the selected Page/channel and linked Instagram account before approving.')
                 due=datetime.fromisoformat(job['publish_at'])
                 if due<now_ist():raise ValueError('Choose a future posting time and save the draft again.')
                 for ident in job['media']:

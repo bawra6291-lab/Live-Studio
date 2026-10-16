@@ -415,7 +415,7 @@ class Controller:
     def diagnostics(self):
         # Redact known stored secrets even if an older app put one in an error line.
         known=[]
-        for key in SECRET_FIELDS | {'youtube_oauth','instagram_login_token','instagram_imgbb_key'}:
+        for key in SECRET_FIELDS | {'youtube_oauth','instagram_login_token','instagram_imgbb_key','telegram_bot_token'}:
             value=self.vault.get(key)
             if value:known.append(value)
             if key=='youtube_oauth' and value:
@@ -695,8 +695,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(200,{'ok':True},cookie='iskcon_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0')
             if session.get('role')=='viewer':return self.reply(403,{'error':'This device has view-only access. Pair with an operator code to control the PC.'})
             if path.startswith('/api/studio/'):
-                if path in ('/api/studio/instagram','/api/studio/check') and not self.local():return self.reply(403,{'error':'Set up posting accounts on this PC.'})
-                routes={'/api/studio/save':c.studio.save,'/api/studio/instagram':c.studio.save_instagram,'/api/studio/check':c.studio.check,'/api/studio/prepare':c.studio.prepare,'/api/studio/send':c.studio.send,'/api/studio/receipt':c.studio.receipt}
+                if path in ('/api/studio/instagram','/api/studio/telegram','/api/studio/check') and not self.local():return self.reply(403,{'error':'Set up posting accounts on this PC.'})
+                routes={'/api/studio/save':c.studio.save,'/api/studio/instagram':c.studio.save_instagram,'/api/studio/telegram':c.studio.save_telegram,'/api/studio/check':c.studio.check,'/api/studio/prepare':c.studio.prepare,'/api/studio/send':c.studio.send,'/api/studio/receipt':c.studio.receipt}
                 if path not in routes:return self.reply(404,{'error':'Posting action not found.'})
                 return self.reply(200,routes[path](data))
             if path.startswith('/api/social/'):

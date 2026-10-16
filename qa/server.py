@@ -11,6 +11,7 @@ import time
 from datetime import datetime
 from core import IST
 from unittest.mock import Mock
+from studio import Telegram
 QA_LIVE_EPOCH=time.time()-360
 
 class MemoryVault:
@@ -65,6 +66,23 @@ class RemoteHandler(Handler):
 with tempfile.TemporaryDirectory(prefix='live-desk-qa-') as directory:
     controller = QAController(directory, ReadOnlyFakeServices, MemoryVault())
     controller.social.publisher_factory=SocialFixture
+    # Isolated Telegram Bot API fixture; never contact a real bot or channel.
+    telegram_message_id=[100]
+    def fake_telegram(self,method,data=None,files=None):
+        if self.vault.get('telegram_bot_token')!='123456789:'+'q'*35:raise ValueError('QA requires its fake bot token.')
+        if method=='getMe':return {'id':123456789,'is_bot':True,'username':'qa_fixture_bot'}
+        if method=='getChat':
+            if data['chat_id']!='@qa_darshan':raise ValueError('QA requires its fake channel.')
+            return {'id':-1001234567890,'type':'channel','title':'QA Telegram channel','username':'qa_darshan'}
+        if method=='getChatMember':return {'status':'administrator','can_post_messages':True}
+        if method=='sendMediaGroup':
+            result=[]
+            for item in json.loads(data['media']):
+                telegram_message_id[0]+=1
+                result.append({'message_id':telegram_message_id[0],'chat':{'id':-1001234567890}})
+            return result
+        raise AssertionError('QA refuses unsupported Telegram calls')
+    Telegram.request=fake_telegram
     controller.desktop_host=DesktopHost()
     controller.desktop_host.update(addresses=['192.168.1.42'])
     def fake_host():

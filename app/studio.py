@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 from core import atomic_json, now_ist, Journal
 from connections import Facebook, YouTube, SetupError
 from social_publish import Publisher
+from telegram_publish import Telegram, channel_id, bot_token, caption_length
 
 SECRETS = {'instagram_login_token', 'instagram_imgbb_key'}
 DOCS = 'https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/'
@@ -102,15 +103,18 @@ class Studio:
     def state(self,local=False):
         with self.c.lock,self.s.lock:
             saved={p:self.c.cfg.get(k,'') for p,k in [('facebook','facebook_page_id'),('youtube','youtube_channel_id')]}
+            saved['telegram']=self.data.get('telegram',{}).get('channel','')
             accounts=copy.deepcopy(self.accounts)
             for p,ident in saved.items():
-                if accounts.get(p,{}).get('id')!=ident and ident:accounts.pop(p,None)
+                current=accounts.get(p,{})
+                if (current.get('source_channel') if p=='telegram' else current.get('id'))!=ident and ident:accounts.pop(p,None)
             result={'accounts':accounts,'saved':saved,'local':local,'error':self.error,
                     'busy':self.s.busy,'caption':copy.deepcopy(self.data['caption']),
                     'share':copy.deepcopy(self.data['share']),'receipts':copy.deepcopy(self.data['receipts']),
                     'instagram_id':self.s.data.get('studio_instagram_id',''),
                     'instagram_token_saved':bool(self.c.vault.get('instagram_login_token')),
                     'hosting_key_saved':bool(self.c.vault.get('instagram_imgbb_key')),
+                    'telegram_token_saved':bool(self.c.vault.get('telegram_bot_token')),
                     'jobs':[j for j in self.s.snapshot()['jobs'] if j['id'] in self.data.get('jobs',[])][:80],
                     'live_links':[]}
             for key,rec in Journal(self.c.base/'journal.json').data.items():
@@ -159,15 +163,19 @@ class Studio:
 
     def check(self,data):
         platform=data.get('platform')
-        if platform not in ('facebook','youtube','instagram'):raise ValueError('Choose a connection.')
+        if platform not in ('facebook','youtube','instagram','telegram'):raise ValueError('Choose a connection.')
         with self.c.lock,self.s.lock:
             self.ready()
             if self.s.busy:raise ValueError('Wait for the current connection or posting operation.')
             cfg=copy.deepcopy(self.c.cfg)
+            cfg['telegram_channel']=self.data.get('telegram',{}).get('channel','')
             self.accounts[platform]={'status':'checking','name':'Checking…'}
             def work():
                 try:
-                    if platform=='instagram':item=DirectInstagram(cfg,self.c.vault,self.s,self.s.stop).identity()
+                    if platform=='telegram':
+                        item=Telegram(cfg,self.c.vault,self.s,self.s.stop).identity()
+                        item['source_channel']=cfg['telegram_channel']
+                    elif platform=='instagram':item=DirectInstagram(cfg,self.c.vault,self.s,self.s.stop).identity()
                     elif platform=='facebook':
                         item=Facebook(cfg,self.c.vault).identity();item={'id':item['id'],'name':item.get('name','Facebook Page')}
                     else:
@@ -180,21 +188,40 @@ class Studio:
             self.s.worker=threading.Thread(target=work,daemon=True);self.s.worker.start()
             return {'ok':True}
 
+    def save_telegram(self,data):
+        with self.c.lock,self.s.lock:
+            self.ready()
+            if self.s.busy:raise ValueError('Wait for the current connection or posting operation.')
+            channel=channel_id(data.get('channel',''))
+            value=data.get('token','')
+            if not isinstance(value,str):raise ValueError('Paste the Telegram bot token.')
+            token=bot_token(value) if value.strip() else ''
+            if not token and not self.c.vault.get('telegram_bot_token'):raise ValueError('Save a Telegram bot token from BotFather first.')
+            if token:self.c.vault.set('telegram_bot_token',token)
+            self.data['telegram']={'channel':channel};self.persist()
+            self.accounts.pop('telegram',None)
+            return {'ok':True}
+
     def prepare(self,data):
         with self.c.lock,self.s.lock:
             self.ready();platform=data.get('platform');mode=data.get('mode')
-            if platform not in ('facebook','instagram','youtube') or mode not in ('P1','P2','FB'):raise ValueError('Choose a posting destination and photo sequence.')
-            if (platform=='facebook')!=(mode=='FB'):raise ValueError('Facebook uses 17 photos; Instagram/YouTube use the 7 or 10 photo sequence.')
+            if platform not in ('facebook','instagram','youtube','telegram') or mode not in ('P1','P2','FB','TG'):raise ValueError('Choose a posting destination and photo sequence.')
+            if (platform=='facebook')!=(mode=='FB') or (mode=='TG' and platform!='telegram'):raise ValueError('Facebook uses mixed order; Telegram uses 7 portrait, 10 landscape or both albums.')
             media=data.get('media',[])
-            if not isinstance(media,list) or len(media)!= {'P1':7,'P2':10,'FB':17}[mode]:raise ValueError('Upload and review every photo in the selected sequence first.')
+            if not isinstance(media,list) or len(media)!= {'P1':7,'P2':10,'FB':17,'TG':17}[mode]:raise ValueError('Upload and review every photo in the selected sequence first.')
             account=self.accounts.get(platform,{})
             if platform!='youtube' and account.get('status')!='verified':raise ValueError('Verify the selected posting account first.')
             if platform=='facebook' and account.get('id')!=self.c.cfg.get('facebook_page_id'):raise ValueError('Facebook Page changed. Verify it again.')
+            if platform=='telegram':
+                if account.get('source_channel')!=self.data.get('telegram',{}).get('channel'):raise ValueError('Telegram channel changed. Verify it again.')
+                caption=data.get('caption','')
+                if not isinstance(caption,str) or caption_length(caption)>1024:raise ValueError('Telegram album captions allow 1024 characters (emoji may count as two). Shorten the shared caption before review.')
             job=self.s.draft({'title':data.get('title','Darshan'),'caption':data.get('caption',''),'media':media,'platforms':[platform],
-                'publish_at':(now_ist()+timedelta(minutes=5)).isoformat(),'delivery':'manual' if platform=='youtube' else 'api'})
+                'publish_at':(now_ist()+timedelta(minutes=5)).isoformat(),'delivery':'manual' if platform=='youtube' else 'api'},studio=True)
             if platform=='instagram':
                 self.s.job(job['id'])['studio_instagram']=True
             self.s.job(job['id'])['studio_target']=account.get('id') or self.c.cfg.get('youtube_channel_id','')
+            if platform=='telegram':self.s.job(job['id'])['studio_bot_id']=account['bot_id']
             self.s.persist()
             self.data.setdefault('jobs',[]).append(job['id']);self.persist()
             return job
@@ -205,12 +232,13 @@ class Studio:
             if job['id'] not in self.data.get('jobs',[]):raise ValueError('Select a DARSHANFLOW draft.')
             if self.s.busy or self.s.live_blocked():raise ValueError('Wait for the current operation or live session to finish before posting.')
             if job['status']!='draft' or data.get('revision')!=job['revision'] or data.get('confirmed') is not True:raise ValueError('Review this draft before sending it. Started posts cannot be sent again.')
-            platform=job['platforms'][0];direct=bool(job.get('studio_instagram'))
+            platform=job['platforms'][0];direct=bool(job.get('studio_instagram'));telegram=bool(job.get('studio_telegram'))
             account=self.accounts.get(platform,{})
             if platform!='youtube' and account.get('status')!='verified':raise ValueError('Verify this destination in Connections first.')
             expected=job.get('studio_target','')
-            actual=account.get('id','') if direct else self.c.cfg.get('facebook_page_id' if platform=='facebook' else 'youtube_channel_id','')
+            actual=account.get('id','') if direct or telegram else self.c.cfg.get('facebook_page_id' if platform=='facebook' else 'youtube_channel_id','')
             if expected and expected!=actual:raise ValueError('The destination changed after preview. Prepare a new draft.')
+            if telegram and (account.get('source_channel')!=self.data.get('telegram',{}).get('channel') or account.get('bot_id')!=job.get('studio_bot_id')):raise ValueError('Telegram bot or channel changed after preview. Prepare a new draft.')
             if direct and not self.c.vault.get('instagram_imgbb_key'):raise ValueError('Save an ImgBB key for temporary Instagram photo hosting first.')
             # Reuse media validation without changing the legacy linked-IG account.
             job['publish_at']=(now_ist()+timedelta(minutes=5)).isoformat()
@@ -218,9 +246,10 @@ class Studio:
             if platform=='youtube':return {'ok':True,'status':'manual_ready'}
             job.update(status='publishing',error='');self.s.persist()
             frozen=copy.deepcopy(job);cfg=copy.deepcopy(self.c.cfg)
+            cfg['telegram_channel']=self.data.get('telegram',{}).get('channel','')
             def work():
                 try:
-                    factory=DirectInstagram if direct else Publisher
+                    factory=Telegram if telegram else DirectInstagram if direct else Publisher
                     factory(cfg,self.c.vault,self.s,self.s.stop).publish(frozen)
                     with self.s.lock:job['status']='published';self.s.persist()
                 except Exception as exc:

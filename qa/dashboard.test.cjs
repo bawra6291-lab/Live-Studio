@@ -88,6 +88,7 @@ async function noOverflow(page){assert.ok(await page.evaluate(()=>document.docum
  await test('DARSHANFLOW separates connections, blocks reference posting and tracks nine manual shares',async()=>{
   const frame=desktop.frameLocator('#darshanflow-frame');
   await frame.getByRole('button',{name:'Publish',exact:true}).click();await frame.locator('[data-prepare="facebook"]').click();await frame.locator('#sf-message').filter({hasText:'Upload all 17 photos'}).waitFor();
+  await frame.locator('[data-prepare="telegram"]').click();await frame.locator('#sf-message').filter({hasText:'Upload all 17 photos'}).waitFor();
   await frame.getByRole('button',{name:'Connections',exact:true}).click();assert.equal(await frame.locator('#sf-ig-token').getAttribute('type'),'password');await frame.getByText('How to connect Instagram without Facebook linking',{exact:true}).click();
   await desktop.locator('#darshanflow-frame').screenshot({path:path.join(output,'darshanflow-connections.png')});
   await frame.getByRole('button',{name:'WhatsApp',exact:true}).click();assert.equal(await frame.locator('.sf-target').count(),9);
@@ -106,6 +107,30 @@ async function noOverflow(page){assert.ok(await page.evaluate(()=>document.docum
   await frame.locator('#sf-youtube-url').fill('https://www.youtube.com/post/qa-fixture');await frame.locator('#sf-youtube-done').click();await frame.locator('#sf-message').filter({hasText:'YouTube link saved as confirmed by you'}).waitFor();
   await frame.getByRole('button',{name:'WhatsApp',exact:true}).click();await frame.locator('#sf-use-links').click();assert.ok((await frame.locator('#sf-share-preview').textContent()).includes('/post/qa-fixture'));
   await desktop.reload();await desktop.locator('#app').waitFor({state:'visible'});await view(desktop,'social');await frame.locator('html[data-live-desk-theme="ready"]').waitFor();await frame.getByRole('button',{name:'Publish',exact:true}).click();await frame.locator('#sf-history').filter({hasText:'manual done'}).waitFor();
+ });
+ await test('Telegram restores saved connection and publishes two reviewed fixture albums',async()=>{
+  const frame=desktop.frameLocator('#darshanflow-frame');await frame.getByRole('button',{name:'Connections',exact:true}).click();
+  assert.equal(await frame.locator('#sf-tg-token').getAttribute('type'),'password');
+  await frame.locator('body').evaluate(()=>{localStorage.setItem('df_pure_tgToken','123456789:'+'q'.repeat(35));localStorage.setItem('df_pure_tgChatId','@qa_darshan');});
+  await frame.locator('#sf-import-telegram').click();await frame.locator('#sf-status-telegram').filter({hasText:'Verified'}).waitFor();
+  assert.match(await frame.locator('#sf-account-telegram').textContent(),/QA Telegram channel/);
+  assert.equal(await frame.locator('#sf-tg-token').inputValue(),'');assert.equal(await frame.locator('#sf-tg-channel').inputValue(),'@qa_darshan');
+  assert.equal(await frame.locator('body').evaluate(()=>localStorage.getItem('df_pure_tgToken')),null);
+  assert.ok(!JSON.stringify(await desktop.evaluate(()=>fetch('/api/studio/state').then(r=>r.json()))).includes('q'.repeat(35)));
+  for(const width of [1440,390,320]){await desktop.setViewportSize({width,height:1000});await noOverflow(desktop);assert.ok(await frame.locator('body').evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await desktop.locator('#darshanflow-frame').screenshot({path:path.join(output,'telegram-connections-'+width+'.png')});}
+  await desktop.setViewportSize({width:1440,height:1000});
+  await frame.getByRole('button',{name:'Photos',exact:true}).click();
+  await frame.locator('body').evaluate(()=>{for(const [prefix,count,w,h] of [['P',7,300,400],['L',10,400,300]])for(let i=1;i<=count;i++){const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.fillStyle='rgb('+i*20+','+(prefix==='P'?80:140)+',100)';x.fillRect(0,0,w,h);assignedSlots[prefix+i]={dataUrl:c.toDataURL('image/png'),fileName:'qa-'+prefix+i+'.png'};}renderGrid();});
+  await frame.getByRole('button',{name:'Publish',exact:true}).click();await frame.locator('#captionTitle').fill('QA Telegram darshan');await frame.locator('#captionBody').fill('Fixture caption only');await frame.locator('#captionTags').fill('#fixture');
+  assert.equal(await frame.locator('#sf-mode-telegram').inputValue(),'TG');await frame.locator('[data-prepare="telegram"]').click();await frame.locator('#sf-review').waitFor({state:'visible'});
+  assert.equal(await frame.locator('#sf-review-photos img').count(),17);assert.match(await frame.locator('#sf-review-note').textContent(),/7 portrait, then 10 landscape/);
+  await desktop.locator('#darshanflow-frame').screenshot({path:path.join(output,'telegram-preview.png')});
+  await frame.locator('#sf-send').click();await frame.locator('#sf-history').filter({hasText:'telegram · published'}).waitFor();
+  assert.equal(await frame.locator('#sf-history a').filter({hasText:/Open album/}).count(),2);
+  const saved=await desktop.evaluate(()=>fetch('/api/studio/state').then(r=>r.json()));const job=saved.jobs.find(j=>j.platforms[0]==='telegram');
+  assert.equal(job.status,'published');assert.deepEqual(job.results.telegram.albums.map(a=>a.count),[7,10]);
+  assert.equal((await desktop.evaluate(()=>fetch('/api/social/state').then(r=>r.json()))).enabled,false);
+  await desktop.reload();await desktop.locator('#app').waitFor({state:'visible'});await view(desktop,'social');await frame.locator('html[data-live-desk-theme="ready"]').waitFor();await frame.getByRole('button',{name:'Connections',exact:true}).click();assert.equal(await frame.locator('#sf-tg-channel').inputValue(),'@qa_darshan');
  });
  await test('Custom schedule, end time and camera action survive save/reload',async()=>{
   await view(desktop,'schedule');await desktop.locator('#add-program').click();const p=desktop.locator('.schedule-program');await p.locator('[data-field="name"]').fill('Evening Service');await programTab(desktop,'content');await p.locator('[data-field="reference"]').fill('abcdefghijk');await programTab(desktop);await p.locator('[data-field="at"]').fill('18:00');await p.locator('[data-field="end_at"]').fill('18:30');await p.locator('[data-field="enabled"]').check();await programTab(desktop,'camera');await p.locator('.add-action').click();await p.locator('[data-field="kind"]').selectOption('preset');await p.locator('[data-field="number"]').fill('3');await saveSchedule(desktop);
