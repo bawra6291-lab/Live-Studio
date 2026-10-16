@@ -1,0 +1,52 @@
+{
+  "version": "0.12.1",
+  "source_commit": "aa4ee59d592e3e88abd17ea919695c181542e43f",
+  "source_tree": "c96488270eab8c684262e2d3dc22f38b3933310e",
+  "package": {
+    "app_id": "iskcon-live-desk",
+    "version": "0.12.1",
+    "update_format": 1,
+    "package_url": "https://raw.githubusercontent.com/bawra6291-lab/Live-Studio/codex/product-foundation/updates/pilot/0.12.1/ISKCON-Live-Desk.zip",
+    "size": 769208,
+    "sha256": "a61979b4e4c20adb5ad55e7639fe0a17c25aaba6c613a381570ebfde64aa5a3d",
+    "notes": "Photo and ZIP download controls removed from DARSHANFLOW. Send individually or review Send to all. WhatsApp reviewed photos persist with the batch; YouTube and WhatsApp final sending remains manual. Saved live connections and schedules are retained."
+  },
+  "validation": {
+    "development_run": 38852212764,
+    "controller_windows_job": 116815727453,
+    "controller_linux_job": 116815727266,
+    "dashboard_job": 116815727594,
+    "installer_job": 116815727647,
+    "android_run": 38852212686,
+    "obs_layout_run": 38852212597,
+    "all_workflows": "success",
+    "unit_tests": 301,
+    "remote_python_tests": 24,
+    "browser_flows": 20,
+    "browser_errors": [],
+    "native_windows_lifecycle": "passed including rotated pairing and taskbar branding",
+    "windows_installer": "installed, runtime checked, uninstalled",
+    "viewports": [
+      320,
+      390,
+      1440
+    ],
+    "screenshots_artifact": 12025538625,
+    "payload_matches_source_files": 98,
+    "updater_stage": "0.12.0 -> 0.12.1, current install unchanged"
+  },
+  "changes": [
+    "Removed photo and ZIP download controls from all DARSHANFLOW tabs and inherited export handlers",
+    "Individual destination Send review and combined Send to all review retained",
+    "Included WhatsApp manual photo handoff persists with reviewed batches",
+    "Native share sheet is invoked directly from the user click after preparing files",
+    "YouTube Community final publishing and WhatsApp delivery remain manual; opening or sharing never produces an API delivery receipt"
+  ],
+  "preserved": {
+    "reference_document_sha256": "662e41b5b4b8a03922446dc4fbe731a2ea52676f9670a9d6fabd3b03885aabcb",
+    "live_settings": "unchanged",
+    "settings_backup_and_app_update_controls": "retained separately"
+  },
+  "real_social_posts_sent": false,
+  "real_live_obs_camera_actions_performed": false
+}
