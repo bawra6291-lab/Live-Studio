@@ -1,7 +1,7 @@
 """Visible Community photo posting in the operator's consented Chrome session.
 
 No private YouTube endpoint, cookies or credentials are read. A published
-receipt needs a new post permalink with the reviewed caption, not a toast.
+receipt needs a new post permalink with the reviewed caption and photo count.
 """
 import hashlib
 import json
