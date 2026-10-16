@@ -1,0 +1,39 @@
+{
+  "version": "0.14.0",
+  "source_commit": "9754162c0ee94c9bb67e831b86f5f980bec4bde9",
+  "source_tree": "9f52330cd64942d9c2d2bd0357bfa5bd77ef47db",
+  "payload_files": 102,
+  "package_size": 787615,
+  "sha256": "860aeed7090d5ae647606bf7243416ab71e020279f87266869c773c8820c73ef",
+  "validation": {
+    "development_run": 38900166454,
+    "controller_tests": 317,
+    "remote_controller_tests": 24,
+    "dashboard_flows": 21,
+    "browser_page_errors": 0,
+    "youtube_local_cdp_cases": 9,
+    "windows_native_lifecycle": "passed",
+    "windows_install_runtime_uninstall": "passed",
+    "obs_helper_run": 38900166461,
+    "android_run": 38900166480,
+    "android": "passed",
+    "obs_helper": "passed",
+    "development": "passed"
+  },
+  "updater_staging": {
+    "from": "0.13.0",
+    "to": "0.14.0",
+    "old_install_unchanged": true,
+    "payload_matches_tested_source": true,
+    "requirements_changed": false
+  },
+  "preserved_reference_sha256": "662e41b5b4b8a03922446dc4fbe731a2ea52676f9670a9d6fabd3b03885aabcb",
+  "real_platforms_contacted": false,
+  "real_account_acceptance": "not performed",
+  "known_limitations": [
+    "Existing Chrome channel identity error remains unconfirmed; no fix claimed.",
+    "Instagram saved audio is a stored reference and send hold, not native audio attachment.",
+    "WhatsApp sharing is manual; per-message confirmations are operator reports.",
+    "Uploaded design simulated schedules, retry, crop and success states are not imported as production actions."
+  ]
+}
